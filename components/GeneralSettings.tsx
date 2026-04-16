@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { useTournament } from "@/lib/store";
 import type { TournamentSettings } from "@/lib/types";
 import NumberInput from "./NumberInput";
@@ -22,67 +21,9 @@ type Props = {
 
 export default function GeneralSettings({ draft, onChange }: Props) {
   const resetTournament = useTournament((s) => s.resetTournament);
-  const importState = useTournament((s) => s.importState);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   function updateSettings(patch: Partial<TournamentSettings>) {
     onChange({ settings: { ...draft.settings, ...patch } });
-  }
-
-  function handleExport() {
-    const state = useTournament.getState();
-    const {
-      players,
-      tables,
-      blindStructure,
-      payouts,
-      settings: st,
-      name: nm,
-      startingStack: ss,
-      buyIn: bi,
-      rebuyChips: rc,
-      clock,
-    } = state;
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            name: nm,
-            startingStack: ss,
-            buyIn: bi,
-            rebuyChips: rc,
-            players,
-            tables,
-            blindStructure,
-            payouts,
-            settings: st,
-            clock,
-          },
-          null,
-          2,
-        ),
-      ],
-      { type: "application/json" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${nm.replace(/\s+/g, "_")}_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      importState(parsed);
-    } catch (err) {
-      alert(`Failed to import: ${(err as Error).message}`);
-    }
-    if (fileRef.current) fileRef.current.value = "";
   }
 
   return (
@@ -198,22 +139,6 @@ export default function GeneralSettings({ draft, onChange }: Props) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)] mt-2">
-        <button className="btn btn-sm" onClick={handleExport}>
-          Export JSON
-        </button>
-        <button
-          className="btn btn-sm"
-          onClick={() => fileRef.current?.click()}
-        >
-          Import JSON
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={handleImport}
-        />
         <div className="flex-1" />
         <button
           className="btn btn-sm btn-danger"
@@ -231,7 +156,7 @@ export default function GeneralSettings({ draft, onChange }: Props) {
         </button>
       </div>
       <div className="text-xs text-[var(--text-muted)]">
-        Import and Reset apply immediately; other fields need Save.
+        Reset applies immediately; other fields need Save.
       </div>
     </div>
   );
