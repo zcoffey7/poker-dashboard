@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Poker Tournament Dashboard",
-  description: "Self-managing poker tournament clock, seating and payouts",
+  title: "PokerClock",
+  description:
+    "Self-managing poker dashboard for tournaments and cash games.",
 };
 
 export const viewport = {
