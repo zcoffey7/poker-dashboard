@@ -61,21 +61,21 @@ export default function BlindClock() {
           {fmtTime(clock.remainingSec)}
         </div>
         {!current.isBreak && (
-          <div className="mt-3 w-full flex items-center justify-center gap-4 sm:gap-6 flex-wrap font-semibold">
-            <div className="flex items-baseline gap-2 min-w-0">
-              <span className="text-[var(--text-muted)] text-[11px] sm:text-sm uppercase tracking-wider shrink-0">
+          <div className="mt-3 w-full flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-8 font-semibold px-2">
+            <div className="flex flex-col sm:flex-row sm:items-baseline items-center sm:gap-2 min-w-0 w-full sm:w-auto">
+              <span className="text-[var(--text-muted)] text-[11px] sm:text-sm uppercase tracking-wider">
                 Blinds
               </span>
-              <span className="text-[clamp(1rem,5.5vw,1.75rem)] whitespace-nowrap tabular-nums">
+              <span className="text-[clamp(1rem,7vw,1.75rem)] tabular-nums leading-tight break-all text-center">
                 {fmtChips(current.smallBlind)} / {fmtChips(current.bigBlind)}
               </span>
             </div>
             {current.ante > 0 && (
-              <div className="flex items-baseline gap-2 min-w-0">
-                <span className="text-[var(--text-muted)] text-[11px] sm:text-sm uppercase tracking-wider shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-baseline items-center sm:gap-2 min-w-0 w-full sm:w-auto">
+                <span className="text-[var(--text-muted)] text-[11px] sm:text-sm uppercase tracking-wider">
                   Ante
                 </span>
-                <span className="text-[clamp(1rem,5.5vw,1.75rem)] whitespace-nowrap tabular-nums">
+                <span className="text-[clamp(1rem,7vw,1.75rem)] tabular-nums leading-tight break-all text-center">
                   {fmtChips(current.ante)}
                 </span>
               </div>
