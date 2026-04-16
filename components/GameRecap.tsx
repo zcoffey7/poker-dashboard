@@ -281,23 +281,27 @@ function WinnerCard({ row }: { row: Row }) {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <Stat label="Won" value={`$${row.payout.toLocaleString()}`} emphasize />
+        <Stat
+          label="In for"
+          value={`$${row.moneyIn.toLocaleString()}`}
+          emphasize
+        />
+        <Stat
+          label="Out for"
+          value={`$${row.payout.toLocaleString()}`}
+          emphasize
+        />
+        <Stat label="Buy-ins" value={`${row.entries}×`} />
+        <Stat label="Add-ons" value={`${row.addOns}×`} />
         <Stat
           label="Net"
           value={`${row.net >= 0 ? "+" : "−"}$${Math.abs(row.net).toLocaleString()}`}
           emphasize
           positive={row.net >= 0}
         />
-        <Stat label="Buy-in" value={`${row.entries}×`} />
-        <Stat label="Add-ons" value={`${row.addOns}×`} />
-        <Stat
-          label="Money in"
-          value={`$${row.moneyIn.toLocaleString()}`}
-        />
-        <Stat
-          label="Played"
-          value={row.durationSec != null ? fmtDuration(row.durationSec) : "—"}
-        />
+        {row.durationSec != null && (
+          <Stat label="Played" value={fmtDuration(row.durationSec)} />
+        )}
       </div>
     </div>
   );
@@ -305,34 +309,65 @@ function WinnerCard({ row }: { row: Row }) {
 
 function ParticipantRow({ row }: { row: Row }) {
   const positive = row.net >= 0;
+  const netStr = `${positive ? "+" : "−"}$${Math.abs(row.net).toLocaleString()}`;
   return (
-    <div className="card p-3 grid grid-cols-12 items-center gap-2 text-sm">
-      <div className="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
+    <div className="card p-3 flex flex-col gap-2 text-sm">
+      <div className="flex items-center gap-2 min-w-0">
         <span className="chip min-w-[46px] justify-center font-semibold shrink-0">
           {placeLabel(row.place, row.isCoWinner)}
         </span>
-        <span className="truncate font-medium">{row.name}</span>
+        <span className="truncate font-medium flex-1">{row.name}</span>
+        <span className="text-xs text-[var(--text-muted)] shrink-0">
+          {row.entries}×
+          {row.addOns > 0 ? ` · ${row.addOns}A` : ""}
+        </span>
+        {row.durationSec != null && (
+          <span className="text-xs text-[var(--text-muted)] font-mono shrink-0">
+            {fmtDuration(row.durationSec)}
+          </span>
+        )}
       </div>
-      <div className="col-span-4 sm:col-span-3 text-[var(--text-muted)] font-mono text-xs sm:text-sm">
-        {row.durationSec != null ? fmtDuration(row.durationSec) : "—"}
+      <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm border-t border-[var(--border)] pt-2">
+        <MiniStat label="In for" value={`$${row.moneyIn.toLocaleString()}`} />
+        <MiniStat label="Out for" value={`$${row.payout.toLocaleString()}`} />
+        <MiniStat
+          label="Net"
+          value={netStr}
+          positive={positive}
+          muted={!positive}
+        />
       </div>
-      <div className="col-span-3 sm:col-span-2 text-[var(--text-muted)] text-xs sm:text-sm">
-        {row.entries}×
-        {row.addOns > 0 ? ` · ${row.addOns}A` : ""}
-      </div>
-      <div className="col-span-6 sm:col-span-1 text-[var(--text-muted)] font-mono text-xs sm:text-sm sm:text-right">
-        ${row.moneyIn.toLocaleString()}
-      </div>
-      <div className="col-span-3 sm:col-span-1 font-mono font-semibold text-right">
-        ${row.payout.toLocaleString()}
-      </div>
-      <div
-        className={`col-span-3 sm:col-span-1 font-mono text-right ${
-          positive ? "text-[var(--accent)]" : "text-[var(--text-muted)]"
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  positive,
+  muted,
+}: {
+  label: string;
+  value: string;
+  positive?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex flex-col min-w-0">
+      <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+        {label}
+      </span>
+      <span
+        className={`font-mono font-semibold truncate ${
+          positive
+            ? "text-[var(--accent)]"
+            : muted
+              ? "text-[var(--text-muted)]"
+              : ""
         }`}
       >
-        {positive ? "+" : "−"}${Math.abs(row.net).toLocaleString()}
-      </div>
+        {value}
+      </span>
     </div>
   );
 }
