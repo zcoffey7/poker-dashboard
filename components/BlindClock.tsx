@@ -61,25 +61,29 @@ export default function BlindClock() {
           {fmtTime(clock.remainingSec)}
         </div>
         {!current.isBreak && (
-          <div className="mt-3 flex items-center justify-center gap-6 text-xl md:text-2xl font-semibold">
-            <div>
-              <span className="text-[var(--text-muted)] text-sm mr-2">
+          <div className="mt-3 w-full flex items-center justify-center gap-4 sm:gap-6 flex-wrap font-semibold">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <span className="text-[var(--text-muted)] text-[11px] sm:text-sm uppercase tracking-wider shrink-0">
                 Blinds
               </span>
-              {fmtChips(current.smallBlind)} / {fmtChips(current.bigBlind)}
+              <span className="text-[clamp(1rem,5.5vw,1.75rem)] whitespace-nowrap tabular-nums">
+                {fmtChips(current.smallBlind)} / {fmtChips(current.bigBlind)}
+              </span>
             </div>
             {current.ante > 0 && (
-              <div>
-                <span className="text-[var(--text-muted)] text-sm mr-2">
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="text-[var(--text-muted)] text-[11px] sm:text-sm uppercase tracking-wider shrink-0">
                   Ante
                 </span>
-                {fmtChips(current.ante)}
+                <span className="text-[clamp(1rem,5.5vw,1.75rem)] whitespace-nowrap tabular-nums">
+                  {fmtChips(current.ante)}
+                </span>
               </div>
             )}
           </div>
         )}
         {next && (
-          <div className="mt-3 text-sm text-[var(--text-muted)]">
+          <div className="mt-3 w-full text-[clamp(0.75rem,3vw,0.95rem)] text-[var(--text-muted)] text-center px-2 break-words">
             Next:{" "}
             {next.isBreak
               ? `Break (${Math.round(next.durationSec / 60)} min)`
