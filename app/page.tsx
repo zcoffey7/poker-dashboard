@@ -5,12 +5,12 @@ export default function LandingPage() {
     <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-3xl flex flex-col gap-6">
         <div className="text-center">
-          <div className="text-3xl sm:text-4xl font-semibold tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
             <span className="text-[var(--accent)]">Poker</span>Clock
-          </div>
-          <div className="text-[var(--text-muted)] mt-2 text-sm sm:text-base">
+          </h1>
+          <p className="text-[var(--text-muted)] mt-2 text-sm sm:text-base">
             Pick a game mode to get started.
-          </div>
+          </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ModeCard

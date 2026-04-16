@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
 import type {
   BlindLevel,
@@ -40,9 +40,14 @@ function snapshot(): Draft {
   };
 }
 
+/**
+ * Outer wrapper. Subscribes to the handful of store fields that form the
+ * "baseline" for the form and derives a stable `storedKey`. When an external
+ * change (Save, Reset, Import JSON, another tab) updates the store, the key
+ * changes and the inner form remounts with a fresh draft rather than relying
+ * on a set-state-in-effect sync (which React 19 flags as impure).
+ */
 export default function SettingsForm() {
-  // Track a version counter derived from store changes so we can
-  // re-baseline the draft after external updates (e.g. Import JSON, Reset).
   const storedName = useTournament((s) => s.name);
   const storedTables = useTournament((s) => s.tables);
   const storedPayouts = useTournament((s) => s.payouts);
@@ -53,11 +58,10 @@ export default function SettingsForm() {
   const storedRebuyChips = useTournament((s) => s.rebuyChips);
   const storedAddOnChips = useTournament((s) => s.addOnChips);
   const storedAddOnCost = useTournament((s) => s.addOnCost);
-  const saveSettings = useTournament((s) => s.saveSettings);
 
-  const storedSnapshot = useMemo<Draft>(
-    () => ({
-      general: {
+  const storedKey = useMemo(
+    () =>
+      JSON.stringify({
         name: storedName,
         startingStack: storedStartingStack,
         buyIn: storedBuyIn,
@@ -65,11 +69,10 @@ export default function SettingsForm() {
         addOnChips: storedAddOnChips,
         addOnCost: storedAddOnCost,
         settings: storedSettings,
-      },
-      tables: storedTables,
-      payouts: storedPayouts,
-      blindStructure: storedStructure,
-    }),
+        tables: storedTables,
+        payouts: storedPayouts,
+        blindStructure: storedStructure,
+      }),
     [
       storedName,
       storedTables,
@@ -84,27 +87,20 @@ export default function SettingsForm() {
     ],
   );
 
+  return <SettingsFormInner key={storedKey} baselineKey={storedKey} />;
+}
+
+function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
+  const saveSettings = useTournament((s) => s.saveSettings);
+
+  // Initialize from the current store snapshot. Because the parent remounts us
+  // whenever `baselineKey` changes, we can treat `baselineKey` as an immutable
+  // baseline for "dirty" detection without a separate useState cell.
   const [draft, setDraft] = useState<Draft>(() => snapshot());
-  const [lastSavedKey, setLastSavedKey] = useState<string>(() =>
-    JSON.stringify(snapshot()),
-  );
-
-  const storedKey = useMemo(
-    () => JSON.stringify(storedSnapshot),
-    [storedSnapshot],
-  );
-
-  // If the store changes from outside (Import JSON, Reset), rebase the draft.
-  useEffect(() => {
-    if (storedKey !== lastSavedKey) {
-      setDraft(snapshot());
-      setLastSavedKey(storedKey);
-    }
-  }, [storedKey, lastSavedKey]);
 
   const dirty = useMemo(
-    () => JSON.stringify(draft) !== lastSavedKey,
-    [draft, lastSavedKey],
+    () => JSON.stringify(draft) !== baselineKey,
+    [draft, baselineKey],
   );
 
   const updateGeneral = useCallback(
@@ -127,7 +123,6 @@ export default function SettingsForm() {
   );
 
   function handleSave() {
-    // Basic validation: at least 1 table, at least 1 level.
     if (draft.tables.length === 0) {
       alert("You must have at least one table.");
       return;
@@ -149,7 +144,7 @@ export default function SettingsForm() {
       payouts: draft.payouts,
       blindStructure: draft.blindStructure,
     });
-    setLastSavedKey(JSON.stringify(draft));
+    // The store update bumps storedKey → parent remounts us with fresh state.
   }
 
   function handleDiscard() {

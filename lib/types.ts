@@ -9,6 +9,12 @@ export type Player = {
   eliminated: boolean;
   eliminatedAt?: number;
   finishPlace?: number;
+  /**
+   * Chip count captured at the moment of elimination so a later
+   * `restorePlayer` can restore the real stack instead of resetting
+   * back to `startingStack`.
+   */
+  chipsBeforeElim?: number;
 };
 
 export type Table = {
@@ -37,6 +43,13 @@ export type ClockState = {
   remainingSec: number;
   running: boolean;
   lastTickAt: number;
+  /**
+   * Wall-clock timestamp for when the *current* level started (adjusted for
+   * any pre-existing progress). Used to reconcile `remainingSec` against real
+   * elapsed time so the clock doesn't drift in background tabs and catches up
+   * after page reloads. `null` until the clock has been started at least once.
+   */
+  levelStartedAt: number | null;
 };
 
 export type TournamentSettings = {
@@ -46,7 +59,7 @@ export type TournamentSettings = {
   seatingMode: "spread" | "fill";
 };
 
-export type FinishType = "winner" | "chop";
+export type FinishType = "winner" | "chop" | "elimination";
 
 export type TournamentState = {
   name: string;

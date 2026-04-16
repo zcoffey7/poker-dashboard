@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import NumberInput from "../NumberInput";
 import { fmtMoney } from "@/lib/money";
 
 type Props = {
   title: string;
   subtitle?: string;
+  /** Default buy-in amount, in DOLLARS. */
   defaultAmount: number;
   confirmLabel?: string;
+  /** Called with the entered amount in DOLLARS. */
   onSubmit: (amount: number) => void;
   onClose: () => void;
 };
@@ -24,10 +26,19 @@ export default function BuyInDialog({
   onClose,
 }: Props) {
   const [amount, setAmount] = useState(defaultAmount || 0);
+  const titleId = useId();
 
   const quickAmounts = Array.from(
     new Set([defaultAmount, ...QUICK_AMOUNTS]),
   ).filter((n) => n > 0);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
     <div
@@ -37,17 +48,26 @@ export default function BuyInDialog({
       <div
         className="card w-full max-w-sm flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div className="min-w-0">
-            <div className="label">{title}</div>
+            <div className="label" id={titleId}>
+              {title}
+            </div>
             {subtitle && (
               <div className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
                 {subtitle}
               </div>
             )}
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>

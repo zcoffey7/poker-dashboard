@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
-import { fmtMoney, fmtSigned } from "@/lib/money";
+import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 import BuyInDialog from "./BuyInDialog";
 import CashOutDialog from "./CashOutDialog";
 import CashPlayerDetailsModal from "./CashPlayerDetailsModal";
@@ -92,7 +92,7 @@ export default function CashPlayerRoster() {
                 {p.buyIns.length}×
               </span>
               <span className="font-mono text-xs tabular-nums min-w-[64px] text-right">
-                {fmtMoney(totalIn)}
+                {fmtMoneyCents(totalIn)}
               </span>
               <div className="flex gap-1">
                 <button
@@ -153,7 +153,7 @@ export default function CashPlayerRoster() {
                         : "text-[var(--text-muted)]"
                     }`}
                   >
-                    {fmtSigned(net)}
+                    {fmtSignedCents(net)}
                   </span>
                   <button
                     className="btn btn-ghost btn-sm !px-2 !py-0.5"
@@ -181,7 +181,7 @@ export default function CashPlayerRoster() {
       {addOpen && (
         <BuyInDialog
           title={`Buy-in for ${addName.trim()}`}
-          defaultAmount={defaultBuyIn}
+          defaultAmount={fromCents(defaultBuyIn)}
           onSubmit={(amount) => {
             addPlayer(addName, amount);
             setAddName("");
@@ -195,7 +195,7 @@ export default function CashPlayerRoster() {
         <BuyInDialog
           title="Rebuy"
           subtitle={players.find((p) => p.id === rebuyId)?.name}
-          defaultAmount={defaultBuyIn}
+          defaultAmount={fromCents(defaultBuyIn)}
           onSubmit={(amount) => {
             useCash.getState().rebuy(rebuyId, amount);
             setRebuyId(null);

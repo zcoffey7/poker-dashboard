@@ -1,9 +1,22 @@
 import type { Player, Table } from "./types";
 
-export function shuffle<T>(arr: T[]): T[] {
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function shuffle<T>(arr: T[], seed?: number): T[] {
   const a = arr.slice();
+  const rand =
+    seed === undefined ? Math.random : mulberry32(seed);
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rand() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -13,17 +26,23 @@ export function randomAssign(
   players: Player[],
   tables: Table[],
   mode: "spread" | "fill" = "spread",
+  seed?: number,
 ): Player[] {
   const active = tables.filter((t) => !t.broken);
   if (active.length === 0) return players.map((p) => ({ ...p }));
 
   const living = players.filter((p) => !p.eliminated);
-  const shuffled = shuffle(living);
+  // Derive distinct but deterministic sub-seeds from the caller's seed so
+  // each shuffle step is independent yet reproducible.
+  const shuffled = shuffle(living, seed);
 
   const byTable: Record<string, number[]> = {};
-  active.forEach((t) => {
+  active.forEach((t, idx) => {
     byTable[t.id] = Array.from({ length: t.seatCount }, (_, i) => i + 1);
-    byTable[t.id] = shuffle(byTable[t.id]);
+    byTable[t.id] = shuffle(
+      byTable[t.id],
+      seed === undefined ? undefined : (seed + idx + 1) >>> 0,
+    );
   });
 
   const assignments = new Map<string, { tableId: string; seat: number }>();
@@ -154,9 +173,14 @@ export function balanceTables(
       .slice()
       .sort((a, b) => counts[b.id].length - counts[a.id].length);
     const fullest = sorted[0];
-    const shortTable = sorted[sorted.length - 1];
+    // Walk from shortest upward until we find one with an open seat; if every
+    // table is full there is no move to make.
+    const shortTable = sorted
+      .slice()
+      .reverse()
+      .find((t) => counts[t.id].length < t.seatCount);
+    if (!shortTable) break;
     if (counts[fullest.id].length - counts[shortTable.id].length < 2) break;
-    if (counts[shortTable.id].length >= shortTable.seatCount) break;
 
     // Pick a player to move - deterministically choose highest seat # as proxy for "just posted BB"
     const candidates = counts[fullest.id]

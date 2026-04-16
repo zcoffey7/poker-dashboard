@@ -130,9 +130,62 @@ const initialState: TournamentState = {
     remainingSec: initialLevel.durationSec,
     running: false,
     lastTickAt: 0,
+    levelStartedAt: null,
   },
   settings: DEFAULT_SETTINGS,
 };
+
+/**
+ * Wall-clock reconciliation used on tab restore. Walks the blind structure
+ * forward from `clock.currentLevel`, rolling through any levels that elapsed
+ * while the tab was backgrounded / closed. Clamps against negative clock
+ * drift and caps at the last level so it never overshoots a shortened
+ * structure.
+ */
+function reconcileClock(
+  clock: TournamentState["clock"],
+  blindStructure: BlindLevel[],
+): TournamentState["clock"] {
+  if (!clock.running || clock.levelStartedAt == null) return clock;
+  if (blindStructure.length === 0) return clock;
+
+  const maxIdx = blindStructure.length - 1;
+  let currentLevel = Math.min(clock.currentLevel, maxIdx);
+  let levelStartedAt = clock.levelStartedAt;
+  const now = Date.now();
+
+  if (levelStartedAt > now) levelStartedAt = now;
+
+  let guard = blindStructure.length + 1;
+  while (guard-- > 0) {
+    const lv = blindStructure[currentLevel];
+    if (!lv) break;
+    const elapsed = Math.floor((now - levelStartedAt) / 1000);
+    const remaining = lv.durationSec - elapsed;
+    if (remaining > 0) {
+      return {
+        ...clock,
+        currentLevel,
+        remainingSec: remaining,
+        lastTickAt: now,
+        levelStartedAt,
+      };
+    }
+    if (currentLevel >= maxIdx) {
+      return {
+        ...clock,
+        currentLevel: maxIdx,
+        remainingSec: 0,
+        running: false,
+        lastTickAt: now,
+        levelStartedAt,
+      };
+    }
+    levelStartedAt = levelStartedAt + lv.durationSec * 1000;
+    currentLevel += 1;
+  }
+  return clock;
+}
 
 export const useTournament = create<TournamentStore>()(
   persist(
@@ -190,10 +243,13 @@ export const useTournament = create<TournamentStore>()(
         })),
       eliminatePlayer: (id) => {
         const s = get();
+        const target = s.players.find((p) => p.id === id);
+        if (!target || target.eliminated) return;
         const remainingActive = s.players.filter(
           (p) => !p.eliminated && p.id !== id,
         ).length;
         const place = remainingActive + 1;
+        const now = Date.now();
         let updated = s.players.map((p) =>
           p.id === id
             ? {
@@ -201,15 +257,19 @@ export const useTournament = create<TournamentStore>()(
                 eliminated: true,
                 tableId: null,
                 seat: null,
+                chipsBeforeElim: p.chips,
                 chips: 0,
-                eliminatedAt: Date.now(),
+                eliminatedAt: now,
                 finishPlace: place,
               }
             : p,
         );
-        // If exactly one player remains after this elimination, they win.
-        const autoFinish = remainingActive === 1 && !s.finishedAt;
-        if (autoFinish) {
+        // If no active players remain, the tournament is over. The eliminated
+        // player already holds finishPlace 1 (remainingActive + 1 === 1).
+        const autoFinishElim = remainingActive === 0 && !s.finishedAt;
+        // If exactly one player remains, they win automatically.
+        const autoFinishWinner = remainingActive === 1 && !s.finishedAt;
+        if (autoFinishWinner) {
           updated = updated.map((p) =>
             !p.eliminated && p.finishPlace == null
               ? { ...p, finishPlace: 1 }
@@ -223,13 +283,16 @@ export const useTournament = create<TournamentStore>()(
           nextPlayers = res.players;
           nextTables = res.tables;
         }
+        const autoFinish = autoFinishWinner || autoFinishElim;
         set({
           players: nextPlayers,
           tables: nextTables,
           ...(autoFinish
             ? {
-                finishedAt: Date.now(),
-                finishType: "winner" as FinishType,
+                finishedAt: now,
+                finishType: (autoFinishWinner
+                  ? "winner"
+                  : "elimination") as FinishType,
                 clock: { ...s.clock, running: false },
               }
             : {}),
@@ -244,26 +307,30 @@ export const useTournament = create<TournamentStore>()(
                   eliminated: false,
                   eliminatedAt: undefined,
                   finishPlace: undefined,
-                  chips: s.startingStack,
+                  chips: p.chipsBeforeElim ?? s.startingStack,
+                  chipsBeforeElim: undefined,
                 }
               : p,
           ),
         })),
       rebuyPlayer: (id) =>
-        set((s) => ({
-          players: s.players.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  chips: p.chips + s.rebuyChips,
-                  rebuys: p.rebuys + 1,
-                  eliminated: false,
-                  eliminatedAt: undefined,
-                  finishPlace: undefined,
-                }
-              : p,
-          ),
-        })),
+        set((s) => {
+          const target = s.players.find((p) => p.id === id);
+          // Refuse to rebuy eliminated players — the UI should already hide
+          // this, but the store enforces the invariant for safety.
+          if (!target || target.eliminated) return {};
+          return {
+            players: s.players.map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    chips: p.chips + s.rebuyChips,
+                    rebuys: p.rebuys + 1,
+                  }
+                : p,
+            ),
+          };
+        }),
       addOnPlayer: (id) =>
         set((s) => ({
           players: s.players.map((p) =>
@@ -416,8 +483,30 @@ export const useTournament = create<TournamentStore>()(
           const j = index + dir;
           if (j < 0 || j >= arr.length) return {};
           [arr[index], arr[j]] = [arr[j], arr[index]];
+          const renum = arr.map((lv, i) => ({ ...lv, level: i + 1 }));
+          const cur = s.clock.currentLevel;
+          // If the active level identity changed (the row swap affected the
+          // currently-playing level), clamp remaining time to the new level's
+          // duration and reset levelStartedAt so wall-clock reconciliation
+          // stays consistent in the new slot.
+          const activeShifted = cur === index || cur === j;
+          if (!activeShifted) {
+            return { blindStructure: renum };
+          }
+          const newLv = renum[cur];
+          const newDur = newLv?.durationSec ?? s.clock.remainingSec;
+          const remainingSec = Math.min(s.clock.remainingSec, newDur);
+          const levelStartedAt =
+            s.clock.levelStartedAt != null
+              ? Date.now() - (newDur - remainingSec) * 1000
+              : s.clock.levelStartedAt;
           return {
-            blindStructure: arr.map((lv, i) => ({ ...lv, level: i + 1 })),
+            blindStructure: renum,
+            clock: {
+              ...s.clock,
+              remainingSec,
+              levelStartedAt,
+            },
           };
         }),
       setBlindStructure: (levels) =>
@@ -453,33 +542,49 @@ export const useTournament = create<TournamentStore>()(
         })),
 
       startClock: () =>
-        set((s) => ({
-          clock: { ...s.clock, running: true, lastTickAt: Date.now() },
-          startedAt: s.startedAt ?? Date.now(),
-        })),
+        set((s) => {
+          const lv = s.blindStructure[s.clock.currentLevel];
+          const dur = lv?.durationSec ?? s.clock.remainingSec;
+          const now = Date.now();
+          return {
+            clock: {
+              ...s.clock,
+              running: true,
+              lastTickAt: now,
+              levelStartedAt: now - (dur - s.clock.remainingSec) * 1000,
+            },
+            startedAt: s.startedAt ?? now,
+          };
+        }),
       pauseClock: () =>
         set((s) => ({ clock: { ...s.clock, running: false } })),
       toggleClock: () =>
         set((s) => {
           const willRun = !s.clock.running;
+          const now = Date.now();
+          const lv = s.blindStructure[s.clock.currentLevel];
+          const dur = lv?.durationSec ?? s.clock.remainingSec;
           return {
             clock: {
               ...s.clock,
               running: willRun,
-              lastTickAt: Date.now(),
+              lastTickAt: now,
+              levelStartedAt: willRun
+                ? now - (dur - s.clock.remainingSec) * 1000
+                : s.clock.levelStartedAt,
             },
-            ...(willRun && s.startedAt == null
-              ? { startedAt: Date.now() }
-              : {}),
+            ...(willRun && s.startedAt == null ? { startedAt: now } : {}),
           };
         }),
       resetLevel: () =>
         set((s) => {
           const lv = s.blindStructure[s.clock.currentLevel];
+          const dur = lv?.durationSec ?? s.clock.remainingSec;
           return {
             clock: {
               ...s.clock,
-              remainingSec: lv?.durationSec ?? s.clock.remainingSec,
+              remainingSec: dur,
+              levelStartedAt: s.clock.running ? Date.now() : null,
             },
           };
         }),
@@ -490,11 +595,13 @@ export const useTournament = create<TournamentStore>()(
             s.blindStructure.length - 1,
           );
           const lv = s.blindStructure[next];
+          const dur = lv?.durationSec ?? 0;
           return {
             clock: {
               ...s.clock,
               currentLevel: next,
-              remainingSec: lv?.durationSec ?? 0,
+              remainingSec: dur,
+              levelStartedAt: s.clock.running ? Date.now() : null,
             },
           };
         }),
@@ -502,11 +609,13 @@ export const useTournament = create<TournamentStore>()(
         set((s) => {
           const prev = Math.max(0, s.clock.currentLevel - 1);
           const lv = s.blindStructure[prev];
+          const dur = lv?.durationSec ?? 0;
           return {
             clock: {
               ...s.clock,
               currentLevel: prev,
-              remainingSec: lv?.durationSec ?? 0,
+              remainingSec: dur,
+              levelStartedAt: s.clock.running ? Date.now() : null,
             },
           };
         }),
@@ -515,32 +624,72 @@ export const useTournament = create<TournamentStore>()(
         if (!s.clock.running) return;
         const cur = s.blindStructure[s.clock.currentLevel];
         if (!cur) return;
-        const next = s.clock.remainingSec - 1;
 
+        const now = Date.now();
+        let levelStartedAt = s.clock.levelStartedAt;
+        // If levelStartedAt is missing (e.g. persisted state from before this
+        // field existed), derive it from current remaining time.
+        if (levelStartedAt == null) {
+          levelStartedAt = now - (cur.durationSec - s.clock.remainingSec) * 1000;
+        }
+        // Clamp against negative drift (system clock moved backward).
+        if (levelStartedAt > now) levelStartedAt = now;
+
+        const elapsedSec = Math.floor((now - levelStartedAt) / 1000);
+        const prevRemaining = s.clock.remainingSec;
+        const remaining = Math.max(0, cur.durationSec - elapsedSec);
+
+        // Fire warning sound when crossing the warn threshold within this tick.
         if (
           s.settings.soundEnabled &&
-          next === s.settings.warnSec &&
-          next > 0
+          remaining > 0 &&
+          remaining <= s.settings.warnSec &&
+          prevRemaining > s.settings.warnSec
         ) {
           playWarning();
         }
 
-        if (next <= 0) {
+        if (remaining <= 0) {
+          const atEnd =
+            s.clock.currentLevel >= s.blindStructure.length - 1;
           const nextIdx = Math.min(
             s.clock.currentLevel + 1,
             s.blindStructure.length - 1,
           );
           const nextLv = s.blindStructure[nextIdx];
-          const atEnd =
-            s.clock.currentLevel >= s.blindStructure.length - 1;
           if (s.settings.soundEnabled) playLevelUp();
+          if (atEnd) {
+            set({
+              clock: {
+                ...s.clock,
+                currentLevel: s.clock.currentLevel,
+                remainingSec: 0,
+                running: false,
+                lastTickAt: now,
+                levelStartedAt,
+              },
+            });
+            return;
+          }
+          // Carry over any extra elapsed time into the new level so we don't
+          // lose a second on rollover in the background.
+          const carryoverMs = Math.max(
+            0,
+            now - (levelStartedAt + cur.durationSec * 1000),
+          );
+          const newStarted = now - carryoverMs;
+          const newDur = nextLv?.durationSec ?? 0;
+          const newRemaining = Math.max(
+            0,
+            newDur - Math.floor(carryoverMs / 1000),
+          );
           set({
             clock: {
               ...s.clock,
               currentLevel: nextIdx,
-              remainingSec: atEnd ? 0 : nextLv?.durationSec ?? 0,
-              running: atEnd ? false : s.clock.running,
-              lastTickAt: Date.now(),
+              remainingSec: newRemaining,
+              lastTickAt: now,
+              levelStartedAt: newStarted,
             },
           });
           return;
@@ -549,8 +698,9 @@ export const useTournament = create<TournamentStore>()(
         set({
           clock: {
             ...s.clock,
-            remainingSec: next,
-            lastTickAt: Date.now(),
+            remainingSec: remaining,
+            lastTickAt: now,
+            levelStartedAt,
           },
         });
       },
@@ -573,23 +723,57 @@ export const useTournament = create<TournamentStore>()(
               const each = totalPct / ids.length;
               shares = Object.fromEntries(ids.map((id) => [id, each]));
             }
-            // Any remaining active players that aren't in the chop list get
-            // finish places after the chop group; chop participants tie for 1st.
             const chopSet = new Set(ids);
+            // Remaining active players NOT in the chop group, ranked by chips
+            // descending (id asc as a stable tiebreak) and placed immediately
+            // behind the chop tie at place `ids.length + 1`, +2, etc.
+            const nonChopActives = s.players
+              .filter(
+                (p) => !p.eliminated && !chopSet.has(p.id) && p.finishPlace == null,
+              )
+              .slice()
+              .sort((a, b) => {
+                if (b.chips !== a.chips) return b.chips - a.chips;
+                return a.id.localeCompare(b.id);
+              });
+            const nonChopPlaces = new Map<string, number>();
+            nonChopActives.forEach((p, i) => {
+              nonChopPlaces.set(p.id, ids.length + 1 + i);
+            });
             players = s.players.map((p) => {
               if (chopSet.has(p.id)) {
-                return { ...p, finishPlace: p.finishPlace ?? 1 };
+                // Chop members all tie at place 1.
+                return { ...p, finishPlace: 1 };
+              }
+              const np = nonChopPlaces.get(p.id);
+              if (np != null) {
+                return { ...p, finishPlace: np };
               }
               return p;
             });
           }
         } else {
-          // "winner": last active player gets place 1.
-          players = s.players.map((p) =>
-            !p.eliminated && p.finishPlace == null
-              ? { ...p, finishPlace: 1 }
-              : p,
+          // "winner": resolve remaining active players into unique places.
+          const actives = s.players.filter(
+            (p) => !p.eliminated && p.finishPlace == null,
           );
+          if (actives.length === 1) {
+            const winnerId = actives[0].id;
+            players = s.players.map((p) =>
+              p.id === winnerId ? { ...p, finishPlace: 1 } : p,
+            );
+          } else if (actives.length > 1) {
+            const ranked = actives.slice().sort((a, b) => {
+              if (b.chips !== a.chips) return b.chips - a.chips;
+              return a.id.localeCompare(b.id);
+            });
+            const placeById = new Map<string, number>();
+            ranked.forEach((p, i) => placeById.set(p.id, i + 1));
+            players = s.players.map((p) => {
+              const place = placeById.get(p.id);
+              return place != null ? { ...p, finishPlace: place } : p;
+            });
+          }
         }
         set({
           players,
@@ -621,6 +805,7 @@ export const useTournament = create<TournamentStore>()(
             remainingSec: DEFAULT_BLIND_STRUCTURE[0].durationSec,
             running: false,
             lastTickAt: 0,
+            levelStartedAt: null,
           },
           startedAt: undefined,
           finishedAt: undefined,
@@ -628,7 +813,58 @@ export const useTournament = create<TournamentStore>()(
           chopShares: undefined,
         }),
 
-      importState: (state) => set((s) => ({ ...s, ...state })),
+      importState: (state) =>
+        set((s) => {
+          // Deep, validated merge: only accept known top-level keys, deep-merge
+          // clock/settings, and silently skip anything unrecognised. Missing
+          // nested fields fall back to the current value so partial payloads
+          // don't clobber good state.
+          if (!state || typeof state !== "object") return {};
+          const next: Partial<TournamentState> = {};
+          if (typeof state.name === "string") next.name = state.name;
+          if (typeof state.startingStack === "number")
+            next.startingStack = Math.max(0, state.startingStack);
+          if (typeof state.buyIn === "number")
+            next.buyIn = Math.max(0, state.buyIn);
+          if (typeof state.rebuyChips === "number")
+            next.rebuyChips = Math.max(0, state.rebuyChips);
+          if (typeof state.addOnChips === "number")
+            next.addOnChips = Math.max(0, state.addOnChips);
+          if (typeof state.addOnCost === "number")
+            next.addOnCost = Math.max(0, state.addOnCost);
+          if (Array.isArray(state.players)) next.players = state.players;
+          if (Array.isArray(state.tables)) next.tables = state.tables;
+          if (Array.isArray(state.blindStructure))
+            next.blindStructure = state.blindStructure;
+          if (Array.isArray(state.payouts)) next.payouts = state.payouts;
+          if (state.settings && typeof state.settings === "object") {
+            next.settings = { ...s.settings, ...state.settings };
+          }
+          if (state.clock && typeof state.clock === "object") {
+            next.clock = {
+              ...s.clock,
+              ...state.clock,
+              // Ensure levelStartedAt is always defined (null is allowed).
+              levelStartedAt:
+                state.clock.levelStartedAt ?? s.clock.levelStartedAt ?? null,
+            };
+          }
+          if (typeof state.startedAt === "number")
+            next.startedAt = state.startedAt;
+          if (typeof state.finishedAt === "number")
+            next.finishedAt = state.finishedAt;
+          if (
+            state.finishType === "winner" ||
+            state.finishType === "chop" ||
+            state.finishType === "elimination"
+          ) {
+            next.finishType = state.finishType;
+          }
+          if (state.chopShares && typeof state.chopShares === "object") {
+            next.chopShares = state.chopShares;
+          }
+          return next;
+        }),
 
       saveSettings: (draft) => {
         const s = get();
@@ -691,12 +927,12 @@ export const useTournament = create<TournamentStore>()(
     {
       name: "poker-tournament-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persistedState, version) => {
         if (!persistedState) return persistedState as TournamentState;
-        const state = persistedState as Partial<TournamentState>;
+        let state = persistedState as Partial<TournamentState>;
         if (version < 2) {
-          return {
+          state = {
             ...state,
             addOnChips: state.addOnChips ?? DEFAULT_ADD_ON_CHIPS,
             addOnCost: state.addOnCost ?? DEFAULT_ADD_ON_COST,
@@ -705,9 +941,46 @@ export const useTournament = create<TournamentStore>()(
               addOns: p.addOns ?? 0,
               rebuys: p.rebuys ?? 0,
             })),
-          } as TournamentState;
+          };
+        }
+        if (version < 3) {
+          // v3 introduces `clock.levelStartedAt` for wall-clock reconciliation.
+          // Fall back to `lastTickAt` (if the clock was running) so we don't
+          // drop the user's progress; otherwise leave null.
+          const existingClock = state.clock;
+          if (existingClock) {
+            state = {
+              ...state,
+              clock: {
+                ...existingClock,
+                levelStartedAt:
+                  existingClock.running && existingClock.lastTickAt
+                    ? existingClock.lastTickAt -
+                      ((state.blindStructure?.[existingClock.currentLevel]
+                        ?.durationSec ?? existingClock.remainingSec) -
+                        existingClock.remainingSec) *
+                        1000
+                    : null,
+              },
+            };
+          }
         }
         return state as TournamentState;
+      },
+      onRehydrateStorage: () => (rehydrated, error) => {
+        if (error || !rehydrated) return;
+        // Catch up elapsed time while the tab was closed, rolling through any
+        // levels that expired. Scheduled as a microtask so zustand has finished
+        // committing the rehydrated state before we patch it. Safe because
+        // reconcileClock clamps against out-of-range indices and backward
+        // clock drift.
+        const clock = reconcileClock(
+          rehydrated.clock,
+          rehydrated.blindStructure,
+        );
+        if (clock !== rehydrated.clock) {
+          queueMicrotask(() => useTournament.setState({ clock }));
+        }
       },
       partialize: (state) => {
         const {

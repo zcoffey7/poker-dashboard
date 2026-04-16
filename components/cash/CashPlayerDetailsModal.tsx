@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import NumberInput from "../NumberInput";
 import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
-import { fmtMoney, fmtSigned } from "@/lib/money";
+import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 
 type Props = {
   playerId: string;
@@ -30,14 +30,25 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
 
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(player?.name ?? "");
+  const titleId = useId();
 
-  const totalIn = useMemo(
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const totalInCents = useMemo(
     () => (player ? totalBuyIns(player) : 0),
     [player],
   );
-  const net = player ? playerNet(player) : null;
+  const netCents = player ? playerNet(player) : null;
 
   if (!player) return null;
+
+  const cashedOut = player.cashOut != null;
 
   return (
     <div
@@ -47,10 +58,15 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
       <div
         className="card w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] gap-2">
           <div className="min-w-0 flex-1">
-            <div className="label">Player</div>
+            <div className="label" id={titleId}>
+              Player
+            </div>
             {editingName ? (
               <form
                 onSubmit={(e) => {
@@ -82,10 +98,14 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
               </button>
             )}
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              {player.cashOut ? "Cashed out" : "Active"}
+              {cashedOut ? "Cashed out" : "Active"}
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -93,16 +113,12 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
           <div className="grid grid-cols-3 gap-2 text-sm">
             <Stat label="Buy-ins" value={`${player.buyIns.length}×`} />
-            <Stat label="In for" value={fmtMoney(totalIn)} />
+            <Stat label="In for" value={fmtMoneyCents(totalInCents)} />
             <Stat
-              label={player.cashOut ? "Net" : "Out for"}
-              value={
-                player.cashOut
-                  ? fmtSigned(net ?? 0)
-                  : "—"
-              }
-              positive={player.cashOut ? (net ?? 0) >= 0 : undefined}
-              muted={player.cashOut ? (net ?? 0) < 0 : undefined}
+              label={cashedOut ? "Net" : "Out for"}
+              value={cashedOut ? fmtSignedCents(netCents ?? 0) : "—"}
+              positive={cashedOut ? (netCents ?? 0) >= 0 : undefined}
+              muted={cashedOut ? (netCents ?? 0) < 0 : undefined}
             />
           </div>
 
@@ -113,7 +129,7 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
                   Cash out
                 </div>
                 <div className="font-mono font-semibold">
-                  {fmtMoney(player.cashOut.amount)}
+                  {fmtMoneyCents(player.cashOut.amount)}
                 </div>
                 <div className="text-[11px] text-[var(--text-muted)]">
                   at {fmtShortTime(player.cashOut.at)}
@@ -130,55 +146,93 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
 
           <div>
             <div className="label mb-2">Buy-ins</div>
+            {cashedOut && (
+              <div className="text-[11px] text-[var(--text-muted)] italic mb-2">
+                Cashed out — unlock by reopening.
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               {player.buyIns.length === 0 && (
                 <div className="text-sm text-[var(--text-muted)] italic">
                   No buy-ins recorded.
                 </div>
               )}
-              {player.buyIns.map((b, idx) => (
-                <div
-                  key={b.id}
-                  className="flex items-center gap-2 text-sm p-2 rounded bg-black/20"
-                >
-                  <span className="chip text-[10px] min-w-[32px] justify-center">
-                    #{idx + 1}
-                  </span>
-                  <span className="font-mono shrink-0">$</span>
-                  <NumberInput
-                    className="input flex-1 font-mono text-sm"
-                    value={b.amount}
-                    onChange={(n) => editBuyIn(playerId, b.id, n)}
-                    step={0.01}
-                    min={0}
-                  />
-                  <span className="text-[11px] text-[var(--text-muted)] shrink-0">
-                    {fmtShortTime(b.at)}
-                  </span>
-                  <button
-                    className="btn btn-ghost btn-sm !px-2 !py-0.5"
-                    onClick={() => {
-                      if (confirm("Remove this buy-in entry?"))
-                        removeBuyIn(playerId, b.id);
-                    }}
-                    title="Remove buy-in"
+              {player.buyIns.map((b, idx) =>
+                cashedOut ? (
+                  <div
+                    key={b.id}
+                    className="flex items-center gap-2 text-sm p-2 rounded bg-black/20"
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    <span className="chip text-[10px] min-w-[32px] justify-center">
+                      #{idx + 1}
+                    </span>
+                    <span className="font-mono flex-1">
+                      {fmtMoneyCents(b.amount)}
+                    </span>
+                    <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                      {fmtShortTime(b.at)}
+                    </span>
+                  </div>
+                ) : (
+                  <div
+                    key={b.id}
+                    className="flex items-center gap-2 text-sm p-2 rounded bg-black/20"
+                  >
+                    <span className="chip text-[10px] min-w-[32px] justify-center">
+                      #{idx + 1}
+                    </span>
+                    <span className="font-mono shrink-0">$</span>
+                    <NumberInput
+                      className="input flex-1 font-mono text-sm"
+                      value={fromCents(b.amount)}
+                      onChange={(n) => editBuyIn(playerId, b.id, n)}
+                      step={0.01}
+                      min={0}
+                    />
+                    <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                      {fmtShortTime(b.at)}
+                    </span>
+                    <button
+                      className="btn btn-ghost btn-sm !px-2 !py-0.5"
+                      onClick={() => {
+                        if (player.buyIns.length <= 1) {
+                          alert(
+                            "Can't remove the only buy-in. Remove the player instead.",
+                          );
+                          return;
+                        }
+                        if (confirm("Remove this buy-in entry?"))
+                          removeBuyIn(playerId, b.id);
+                      }}
+                      title="Remove buy-in"
+                      aria-label="Remove buy-in"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ),
+              )}
             </div>
-            {!player.cashOut && (
+            {!cashedOut && (
               <button
                 className="btn btn-sm mt-2"
-                onClick={() => rebuy(playerId, defaultBuyIn)}
+                onClick={() => rebuy(playerId, fromCents(defaultBuyIn))}
               >
-                + Add default {fmtMoney(defaultBuyIn)} buy-in
+                + Add default {fmtMoneyCents(defaultBuyIn)} buy-in
               </button>
             )}
           </div>
 
-          {!player.cashOut && (
+          {cashedOut ? (
+            <div className="border-t border-[var(--border)] pt-3">
+              <button
+                className="btn btn-ghost"
+                onClick={() => reopenPlayer(playerId)}
+              >
+                Reopen session
+              </button>
+            </div>
+          ) : (
             <QuickCashOut
               onSubmit={(amount) => {
                 cashOutPlayer(playerId, amount);

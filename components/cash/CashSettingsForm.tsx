@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useCash } from "@/lib/cashStore";
+import { fromCents } from "@/lib/money";
 import NumberInput from "../NumberInput";
 
 type Draft = {
   name: string;
+  /** Dollars (float). Converted to cents at save. */
   smallBlind: number;
   bigBlind: number;
   defaultBuyIn: number;
@@ -16,25 +18,38 @@ export default function CashSettingsForm() {
   const smallBlind = useCash((s) => s.smallBlind);
   const bigBlind = useCash((s) => s.bigBlind);
   const defaultBuyIn = useCash((s) => s.defaultBuyIn);
+
+  // Remount the inner form when persisted settings change, so the draft is
+  // always seeded from the latest store values. Avoids the set-state-in-effect
+  // anti-pattern.
+  const signature = `${name}|${smallBlind}|${bigBlind}|${defaultBuyIn}`;
+
+  return (
+    <SettingsFormInner
+      key={signature}
+      initial={{
+        name,
+        smallBlind: fromCents(smallBlind),
+        bigBlind: fromCents(bigBlind),
+        defaultBuyIn: fromCents(defaultBuyIn),
+      }}
+    />
+  );
+}
+
+function SettingsFormInner({ initial }: { initial: Draft }) {
   const saveSettings = useCash((s) => s.saveSettings);
   const resetGame = useCash((s) => s.resetGame);
 
-  const [draft, setDraft] = useState<Draft>({
-    name,
-    smallBlind,
-    bigBlind,
-    defaultBuyIn,
-  });
-
-  useEffect(() => {
-    setDraft({ name, smallBlind, bigBlind, defaultBuyIn });
-  }, [name, smallBlind, bigBlind, defaultBuyIn]);
+  const [draft, setDraft] = useState<Draft>(initial);
 
   const dirty =
-    draft.name !== name ||
-    draft.smallBlind !== smallBlind ||
-    draft.bigBlind !== bigBlind ||
-    draft.defaultBuyIn !== defaultBuyIn;
+    draft.name !== initial.name ||
+    draft.smallBlind !== initial.smallBlind ||
+    draft.bigBlind !== initial.bigBlind ||
+    draft.defaultBuyIn !== initial.defaultBuyIn;
+
+  const canSave = dirty && draft.name.trim().length > 0;
 
   function save() {
     saveSettings(draft);
@@ -104,7 +119,7 @@ export default function CashSettingsForm() {
           <button
             className="btn btn-primary"
             onClick={save}
-            disabled={!dirty}
+            disabled={!canSave}
           >
             Save
           </button>

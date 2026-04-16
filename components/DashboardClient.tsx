@@ -49,6 +49,7 @@ export default function DashboardClient() {
         }
       }
       if (finishOpen) return;
+      if (openPanel) return;
       if (e.code === "Space") {
         e.preventDefault();
         toggleClock();

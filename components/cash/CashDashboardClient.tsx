@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
-import { fmtMoney } from "@/lib/money";
+import { fmtMoneyCents } from "@/lib/money";
 import CashPlayerRoster from "./CashPlayerRoster";
 import EndGameDialog from "./EndGameDialog";
 import CashRecap from "./CashRecap";
@@ -46,7 +46,7 @@ export default function CashDashboardClient() {
               Blinds
             </span>
             <span className="font-mono text-xl font-semibold tabular-nums">
-              {fmtMoney(smallBlind)} / {fmtMoney(bigBlind)}
+              {fmtMoneyCents(smallBlind)} / {fmtMoneyCents(bigBlind)}
             </span>
           </div>
         </div>
@@ -75,13 +75,13 @@ export default function CashDashboardClient() {
           label="Active"
           value={`${stats.activeCount} / ${stats.totalPlayers}`}
         />
-        <StatTile label="Total in" value={fmtMoney(stats.totalIn)} />
+        <StatTile label="Total in" value={fmtMoneyCents(stats.totalIn)} />
         <StatTile
           label="In play"
-          value={fmtMoney(stats.inPlay)}
+          value={fmtMoneyCents(stats.inPlay)}
           hint={
             stats.settledCount > 0
-              ? `${fmtMoney(stats.totalOut)} cashed out`
+              ? `${fmtMoneyCents(stats.totalOut)} cashed out`
               : undefined
           }
         />

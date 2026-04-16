@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import NumberInput from "../NumberInput";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
-import { fmtMoney, fmtSigned } from "@/lib/money";
+import { fmtMoneyCents, fmtSignedCents, toCents } from "@/lib/money";
 
 type Props = {
   onClose: () => void;
@@ -15,17 +15,51 @@ export default function EndGameDialog({ onClose }: Props) {
   const endGame = useCash((s) => s.endGame);
 
   const unsettled = useMemo(() => players.filter((p) => !p.cashOut), [players]);
+  const signature = unsettled.map((p) => p.id).join("|");
 
+  // Dollar-valued draft amounts, keyed by player id. Whenever the unsettled
+  // set changes we merge by id (preserve existing, default new to 0, drop
+  // removed). We do this in render rather than an effect to avoid cascading
+  // renders — see https://react.dev/learn/you-might-not-need-an-effect .
   const [amounts, setAmounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(unsettled.map((p) => [p.id, 0])),
   );
+  const [lastSignature, setLastSignature] = useState(signature);
+  if (signature !== lastSignature) {
+    setLastSignature(signature);
+    setAmounts((prev) => {
+      const next: Record<string, number> = {};
+      for (const p of unsettled) {
+        next[p.id] = prev[p.id] ?? 0;
+      }
+      return next;
+    });
+  }
 
-  const totalIn = players.reduce((s, p) => s + totalBuyIns(p), 0);
-  const alreadyOut = players
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  const titleId = useId();
+  const ackId = useId();
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // All math in integer cents so the balance check is exact.
+  const totalInCents = players.reduce((s, p) => s + totalBuyIns(p), 0);
+  const alreadyOutCents = players
     .filter((p) => !!p.cashOut)
     .reduce((s, p) => s + (p.cashOut?.amount ?? 0), 0);
-  const pendingOut = Object.values(amounts).reduce((s, v) => s + (v ?? 0), 0);
-  const diff = totalIn - (alreadyOut + pendingOut);
+  const pendingOutCents = Object.values(amounts).reduce(
+    (s, v) => s + toCents(v ?? 0),
+    0,
+  );
+  const diffCents = totalInCents - (alreadyOutCents + pendingOutCents);
+  const balanced = diffCents === 0;
 
   function submit() {
     unsettled.forEach((p) => {
@@ -35,7 +69,9 @@ export default function EndGameDialog({ onClose }: Props) {
     if (ok) onClose();
   }
 
-  const canSubmit = unsettled.every((p) => (amounts[p.id] ?? 0) >= 0);
+  const validAmounts = unsettled.every((p) => (amounts[p.id] ?? 0) >= 0);
+  const canSubmitBalanced = validAmounts && balanced;
+  const canSubmitOverride = validAmounts && !balanced && acknowledged;
 
   return (
     <div
@@ -45,15 +81,24 @@ export default function EndGameDialog({ onClose }: Props) {
       <div
         className="card w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>
-            <div className="label">End Game</div>
+            <div className="label" id={titleId}>
+              End Game
+            </div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
               Enter each remaining player&apos;s final stack, then confirm.
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -65,10 +110,10 @@ export default function EndGameDialog({ onClose }: Props) {
             </div>
           ) : (
             unsettled.map((p) => {
-              const inFor = totalBuyIns(p);
+              const inForCents = totalBuyIns(p);
               const val = amounts[p.id] ?? 0;
-              const net = val - inFor;
-              const positive = net >= 0;
+              const netCents = toCents(val) - inForCents;
+              const positive = netCents >= 0;
               return (
                 <div
                   key={p.id}
@@ -79,7 +124,7 @@ export default function EndGameDialog({ onClose }: Props) {
                       {p.name}
                     </span>
                     <span className="text-xs text-[var(--text-muted)]">
-                      In for {fmtMoney(inFor)} ({p.buyIns.length}×)
+                      In for {fmtMoneyCents(inForCents)} ({p.buyIns.length}×)
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -101,7 +146,7 @@ export default function EndGameDialog({ onClose }: Props) {
                           : "text-[var(--text-muted)]"
                       }`}
                     >
-                      {fmtSigned(net)}
+                      {fmtSignedCents(netCents)}
                     </span>
                   </div>
                 </div>
@@ -112,34 +157,61 @@ export default function EndGameDialog({ onClose }: Props) {
 
         <div className="border-t border-[var(--border)] px-4 py-3 flex flex-col gap-2">
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <Summary label="Total in" value={fmtMoney(totalIn)} />
+            <Summary label="Total in" value={fmtMoneyCents(totalInCents)} />
             <Summary
               label="Total out"
-              value={fmtMoney(alreadyOut + pendingOut)}
+              value={fmtMoneyCents(alreadyOutCents + pendingOutCents)}
             />
             <Summary
-              label={diff === 0 ? "Balanced" : diff > 0 ? "Missing" : "Over"}
-              value={fmtMoney(Math.abs(diff))}
-              warn={diff !== 0}
+              label={
+                balanced ? "Balanced" : diffCents > 0 ? "Missing" : "Over"
+              }
+              value={fmtMoneyCents(Math.abs(diffCents))}
+              warn={!balanced}
             />
           </div>
-          {diff !== 0 && (
+          {!balanced && (
             <div className="text-[11px] text-[var(--text-muted)] italic">
               Total chips in play should equal the sum of cash-outs. A mismatch
               usually means a buy-in or final stack is off.
             </div>
           )}
+          {!balanced && (
+            <label
+              className="flex items-center gap-2 text-[11px] text-[var(--amber)] cursor-pointer"
+              htmlFor={ackId}
+            >
+              <input
+                id={ackId}
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+              />
+              <span>I understand the books are not balanced.</span>
+            </label>
+          )}
           <div className="flex justify-end gap-2 mt-1">
             <button className="btn btn-ghost" onClick={onClose}>
               Cancel
             </button>
-            <button
-              className="btn btn-primary"
-              onClick={submit}
-              disabled={!canSubmit}
-            >
-              End Game
-            </button>
+            {balanced ? (
+              <button
+                className="btn btn-primary"
+                onClick={submit}
+                disabled={!canSubmitBalanced}
+              >
+                End Game
+              </button>
+            ) : (
+              <button
+                className="btn btn-danger"
+                onClick={submit}
+                disabled={!canSubmitOverride}
+                title="End the game even though totals don't balance. You'll have to reconcile manually."
+              >
+                End anyway — I&apos;ll reconcile manually
+              </button>
+            )}
           </div>
         </div>
       </div>

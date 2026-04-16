@@ -166,6 +166,7 @@ export default function PlayerRoster() {
 
         {detailsId && (
           <PlayerDetailsModal
+            key={detailsId}
             playerId={detailsId}
             onClose={() => setDetailsId(null)}
           />

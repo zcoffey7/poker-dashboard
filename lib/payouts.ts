@@ -13,10 +13,16 @@ function floorTo(n: number, step: number) {
  *
  * If the pool isn't a $5 multiple, the pool itself is floored first and the
  * "lost" cents/dollars are returned as `remainder` (informational only).
+ *
+ * `maxPaidSpots` (optional) caps how many payout rows actually receive money,
+ * for cases where fewer players finished than there are configured payout
+ * spots. Rows beyond the cap are set to 0; any pool that would've gone to
+ * those rows is folded back into 1st place as dust.
  */
 export function computeCashPayouts(
   payouts: PayoutSpot[],
   pool: number,
+  maxPaidSpots?: number,
   increment = CASH_INCREMENT,
 ): { amounts: Record<number, number>; paidTotal: number; remainder: number } {
   const amounts: Record<number, number> = {};
@@ -25,13 +31,24 @@ export function computeCashPayouts(
     return { amounts, paidTotal: 0, remainder: pool };
   }
 
-  const totalPct = payouts.reduce((s, p) => s + p.percent, 0) || 1;
+  const sorted = [...payouts].sort((a, b) => a.place - b.place);
+  const cap =
+    maxPaidSpots != null ? Math.max(0, Math.min(maxPaidSpots, sorted.length)) : sorted.length;
+  const paidSlice = sorted.slice(0, cap);
+  const unpaidSlice = sorted.slice(cap);
+
+  // Zero out any capped-off rows so callers always get a defined value.
+  unpaidSlice.forEach((p) => (amounts[p.place] = 0));
+
+  if (cap === 0) {
+    return { amounts, paidTotal: 0, remainder: pool };
+  }
+
+  const totalPct = paidSlice.reduce((s, p) => s + p.percent, 0) || 1;
   const poolFloored = floorTo(pool, increment);
 
-  const sorted = [...payouts].sort((a, b) => a.place - b.place);
-
   let allocated = 0;
-  sorted.forEach((p, idx) => {
+  paidSlice.forEach((p, idx) => {
     if (idx === 0) return;
     const raw = (p.percent / totalPct) * poolFloored;
     const amt = Math.max(0, floorTo(raw, increment));
@@ -39,7 +56,8 @@ export function computeCashPayouts(
     allocated += amt;
   });
 
-  const first = sorted[0];
+  // Dust from $5 rounding is assigned to 1st place by design.
+  const first = paidSlice[0];
   const firstAmt = Math.max(0, poolFloored - allocated);
   amounts[first.place] = firstAmt;
 
