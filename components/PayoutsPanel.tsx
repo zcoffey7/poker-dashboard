@@ -32,7 +32,7 @@ export default function PayoutsPanel() {
     .sort((a, b) => (a.finishPlace ?? 0) - (b.finishPlace ?? 0));
 
   return (
-    <div className="card p-3 flex flex-col gap-2 h-full min-h-0">
+    <div className="card p-3 flex flex-col gap-2 sm:h-full sm:min-h-0">
       <div className="flex items-center justify-between">
         <div>
           <div className="label">Payouts</div>

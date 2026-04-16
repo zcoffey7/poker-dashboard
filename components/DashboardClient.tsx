@@ -54,7 +54,7 @@ export default function DashboardClient() {
   }, [toggleClock, nextLevel, prevLevel, openPanel]);
 
   return (
-    <div className="flex flex-col gap-3 p-3 md:p-4 h-[100dvh] overflow-hidden">
+    <div className="flex flex-col gap-3 p-3 md:p-4 min-h-[100dvh] sm:h-[100dvh] sm:overflow-hidden">
       <StatsBar />
 
       <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -75,11 +75,11 @@ export default function DashboardClient() {
       </div>
 
       <div className="flex-1 min-h-0 flex items-stretch justify-center">
-        <div className="w-full max-w-5xl flex flex-col gap-3 min-h-0">
-          <div className="flex-[2] min-h-0">
+        <div className="w-full max-w-5xl flex flex-col gap-3 sm:min-h-0">
+          <div className="sm:flex-[2] sm:min-h-0">
             <BlindClock />
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="sm:flex-1 sm:min-h-0">
             <PayoutsPanel />
           </div>
         </div>

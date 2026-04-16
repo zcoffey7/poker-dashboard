@@ -32,7 +32,7 @@ export default function BlindClock() {
   }
 
   return (
-    <div className="card p-4 flex flex-col gap-2 h-full min-h-0">
+    <div className="card p-4 flex flex-col gap-2 sm:h-full sm:min-h-0 overflow-hidden">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="label">
@@ -52,9 +52,9 @@ export default function BlindClock() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center">
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center py-2">
         <div
-          className={`text-[clamp(4rem,14vh,10rem)] leading-none font-mono font-bold tracking-tight ${
+          className={`text-[clamp(3.5rem,min(14vh,22vw),10rem)] leading-[0.9] font-mono font-bold tracking-tight ${
             isWarning ? "warn-pulse" : ""
           }`}
         >
