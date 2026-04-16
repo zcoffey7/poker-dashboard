@@ -5,6 +5,7 @@ import { useTournament } from "@/lib/store";
 import { computeStats } from "@/lib/selectors";
 import { computeCashPayouts } from "@/lib/payouts";
 import type { PayoutSpot } from "@/lib/types";
+import NumberInput from "./NumberInput";
 
 type Props = {
   payouts: PayoutSpot[];
@@ -76,16 +77,13 @@ export default function PayoutsEditor({
             <span className="chip min-w-[40px] justify-center">
               #{p.place}
             </span>
-            <input
-              type="number"
+            <NumberInput
               className="input !py-1 !text-sm w-[100px]"
               value={p.percent}
               min={0}
               max={100}
               step={0.5}
-              onChange={(e) =>
-                updatePayout(p.place, +e.target.value || 0)
-              }
+              onChange={(n) => updatePayout(p.place, n)}
             />
             <span className="text-xs text-[var(--text-muted)]">%</span>
             <span className="flex-1 text-right font-mono text-sm">

@@ -1,6 +1,7 @@
 "use client";
 
 import type { BlindLevel } from "@/lib/types";
+import NumberInput from "./NumberInput";
 
 type Props = {
   structure: BlindLevel[];
@@ -94,49 +95,37 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
               >
                 <td className="py-1.5 pr-2 font-mono">{lv.level}</td>
                 <td className="py-1.5 pr-2">
-                  <input
-                    type="number"
+                  <NumberInput
                     className="input !py-1 !text-sm w-[90px]"
                     value={lv.smallBlind}
                     disabled={lv.isBreak}
-                    onChange={(e) =>
-                      updateLevel(i, { smallBlind: +e.target.value || 0 })
-                    }
+                    onChange={(n) => updateLevel(i, { smallBlind: n })}
                   />
                 </td>
                 <td className="py-1.5 pr-2">
-                  <input
-                    type="number"
+                  <NumberInput
                     className="input !py-1 !text-sm w-[90px]"
                     value={lv.bigBlind}
                     disabled={lv.isBreak}
-                    onChange={(e) =>
-                      updateLevel(i, { bigBlind: +e.target.value || 0 })
-                    }
+                    onChange={(n) => updateLevel(i, { bigBlind: n })}
                   />
                 </td>
                 <td className="py-1.5 pr-2">
-                  <input
-                    type="number"
+                  <NumberInput
                     className="input !py-1 !text-sm w-[80px]"
                     value={lv.ante}
                     disabled={lv.isBreak}
-                    onChange={(e) =>
-                      updateLevel(i, { ante: +e.target.value || 0 })
-                    }
+                    onChange={(n) => updateLevel(i, { ante: n })}
                   />
                 </td>
                 <td className="py-1.5 pr-2">
-                  <input
-                    type="number"
+                  <NumberInput
                     className="input !py-1 !text-sm w-[70px]"
                     value={Math.round(lv.durationSec / 60)}
                     min={1}
-                    onChange={(e) =>
-                      updateLevel(i, {
-                        durationSec:
-                          Math.max(1, +e.target.value || 1) * 60,
-                      })
+                    emptyValue={1}
+                    onChange={(n) =>
+                      updateLevel(i, { durationSec: Math.max(1, n) * 60 })
                     }
                   />
                 </td>

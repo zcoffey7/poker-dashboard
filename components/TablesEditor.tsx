@@ -1,6 +1,7 @@
 "use client";
 
 import type { Table } from "@/lib/types";
+import NumberInput from "./NumberInput";
 
 function uid() {
   return `t_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
@@ -59,12 +60,12 @@ export default function TablesEditor({ tables, onChange }: Props) {
               value={t.name}
               onChange={(e) => renameTable(t.id, e.target.value)}
             />
-            <input
-              type="number"
+            <NumberInput
               className="input !py-1 !text-sm w-[80px]"
               value={t.seatCount}
               min={2}
-              onChange={(e) => setSeatCount(t.id, +e.target.value || 2)}
+              emptyValue={2}
+              onChange={(n) => setSeatCount(t.id, Math.max(2, n))}
             />
             <span className="text-xs text-[var(--text-muted)]">
               seats
