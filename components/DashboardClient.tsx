@@ -8,6 +8,8 @@ import StatsBar from "./StatsBar";
 import TablesView from "./TablesView";
 import PlayerRoster from "./PlayerRoster";
 import PayoutsPanel from "./PayoutsPanel";
+import GameRecap from "./GameRecap";
+import FinishDialog from "./FinishDialog";
 
 type Panel = "tables" | "players";
 
@@ -16,8 +18,14 @@ export default function DashboardClient() {
   const toggleClock = useTournament((s) => s.toggleClock);
   const nextLevel = useTournament((s) => s.nextLevel);
   const prevLevel = useTournament((s) => s.prevLevel);
+  const finishedAt = useTournament((s) => s.finishedAt);
+  const activeCount = useTournament(
+    (s) => s.players.filter((p) => !p.eliminated).length,
+  );
+  const hasPlayers = useTournament((s) => s.players.length > 0);
 
   const [openPanel, setOpenPanel] = useState<Panel | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -30,10 +38,17 @@ export default function DashboardClient() {
       ) {
         return;
       }
-      if (e.key === "Escape" && openPanel) {
-        setOpenPanel(null);
-        return;
+      if (e.key === "Escape") {
+        if (finishOpen) {
+          setFinishOpen(false);
+          return;
+        }
+        if (openPanel) {
+          setOpenPanel(null);
+          return;
+        }
       }
+      if (finishOpen) return;
       if (e.code === "Space") {
         e.preventDefault();
         toggleClock();
@@ -51,7 +66,7 @@ export default function DashboardClient() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleClock, nextLevel, prevLevel, openPanel]);
+  }, [toggleClock, nextLevel, prevLevel, openPanel, finishOpen]);
 
   return (
     <div className="flex flex-col gap-3 p-3 md:p-4 min-h-[100dvh] sm:h-[100dvh] sm:overflow-hidden">
@@ -72,6 +87,20 @@ export default function DashboardClient() {
             setOpenPanel((p) => (p === "players" ? null : "players"))
           }
         />
+        <button
+          className="btn"
+          onClick={() => setFinishOpen(true)}
+          disabled={!hasPlayers || activeCount === 0}
+          title={
+            !hasPlayers
+              ? "Add players first"
+              : activeCount === 0
+                ? "No active players"
+                : "Finish or chop the tournament"
+          }
+        >
+          Finish / Chop
+        </button>
       </div>
 
       <div className="flex-1 min-h-0 flex items-stretch justify-center">
@@ -101,6 +130,10 @@ export default function DashboardClient() {
           {openPanel === "players" && <PlayerRoster />}
         </SidePanel>
       )}
+
+      {finishOpen && <FinishDialog onClose={() => setFinishOpen(false)} />}
+
+      {finishedAt && <GameRecap />}
     </div>
   );
 }

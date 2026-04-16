@@ -46,6 +46,8 @@ export type TournamentSettings = {
   seatingMode: "spread" | "fill";
 };
 
+export type FinishType = "winner" | "chop";
+
 export type TournamentState = {
   name: string;
   startingStack: number;
@@ -59,4 +61,13 @@ export type TournamentState = {
   payouts: PayoutSpot[];
   clock: ClockState;
   settings: TournamentSettings;
+  startedAt?: number;
+  finishedAt?: number;
+  finishType?: FinishType;
+  /**
+   * Player id -> percentage of the prize pool (0..100) to award on a chop.
+   * Sum should be <= total payout percentage; any remainder stays unpaid.
+   * Only meaningful when finishType === "chop".
+   */
+  chopShares?: Record<string, number>;
 };
