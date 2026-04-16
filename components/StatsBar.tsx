@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useTournament } from "@/lib/store";
 import { computeStats, computeNextBreak } from "@/lib/selectors";
-import { fmtTime } from "@/lib/clock";
+import { fmtDuration } from "@/lib/clock";
 
 function Stat({
   label,
@@ -74,7 +74,7 @@ export default function StatsBar() {
         label="Next Break"
         value={
           nextBreak
-            ? fmtTime(nextBreak.secondsAway)
+            ? fmtDuration(nextBreak.secondsAway)
             : "—"
         }
         hint={
