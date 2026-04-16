@@ -6,7 +6,6 @@ import PlayerDetailsModal from "./PlayerDetailsModal";
 
 export default function PlayerRoster() {
   const players = useTournament((s) => s.players);
-  const tables = useTournament((s) => s.tables);
   const addPlayer = useTournament((s) => s.addPlayer);
   const addPlayersBulk = useTournament((s) => s.addPlayersBulk);
   const removePlayer = useTournament((s) => s.removePlayer);
@@ -16,12 +15,6 @@ export default function PlayerRoster() {
   const rebuyChips = useTournament((s) => s.rebuyChips);
   const addOnPlayer = useTournament((s) => s.addOnPlayer);
   const addOnChips = useTournament((s) => s.addOnChips);
-
-  const tableLabel = (tableId: string | null) => {
-    if (!tableId) return null;
-    const t = tables.find((tt) => tt.id === tableId);
-    return t?.name ?? null;
-  };
 
   const [name, setName] = useState("");
   const [bulk, setBulk] = useState("");
@@ -113,19 +106,12 @@ export default function PlayerRoster() {
             className="flex items-center gap-2 text-sm px-2 py-1.5 rounded hover:bg-black/20"
           >
             <button
-              className="flex-1 text-left truncate cursor-pointer hover:underline underline-offset-2"
+              className="flex-1 text-left truncate cursor-pointer hover:underline underline-offset-2 min-w-0"
               onClick={() => setDetailsId(p.id)}
               title="View details"
             >
               {p.name}
             </button>
-            {p.tableId ? (
-              <span className="chip chip-accent text-[10px]">
-                {tableLabel(p.tableId)} · Seat {p.seat}
-              </span>
-            ) : (
-              <span className="chip text-[10px]">Unseated</span>
-            )}
             {(p.rebuys ?? 0) > 0 && (
               <span
                 className="chip chip-accent text-[10px]"
