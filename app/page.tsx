@@ -1,11 +1,57 @@
-import DashboardClient from "@/components/DashboardClient";
-import Nav from "@/components/Nav";
+import Link from "next/link";
 
-export default function Page() {
+export default function LandingPage() {
   return (
-    <>
-      <Nav />
-      <DashboardClient />
-    </>
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-3xl flex flex-col gap-6">
+        <div className="text-center">
+          <div className="text-3xl sm:text-4xl font-semibold tracking-tight">
+            <span className="text-[var(--accent)]">Poker</span>Clock
+          </div>
+          <div className="text-[var(--text-muted)] mt-2 text-sm sm:text-base">
+            Pick a game mode to get started.
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ModeCard
+            href="/tournament"
+            title="Tournament"
+            description="Timed blinds, seating, payouts, rebuys/add-ons, end-of-game recap."
+            badge="Structured"
+          />
+          <ModeCard
+            href="/cash"
+            title="Cash Game"
+            description="Fixed blinds, one table, unlimited rebuys for any amount, per-player cash-outs."
+            badge="Casual"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ModeCardProps = {
+  href: string;
+  title: string;
+  description: string;
+  badge: string;
+};
+
+function ModeCard({ href, title, description, badge }: ModeCardProps) {
+  return (
+    <Link
+      href={href}
+      className="card p-6 flex flex-col gap-3 hover:border-[var(--accent)] transition-colors group"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xl font-semibold">{title}</div>
+        <span className="chip chip-accent">{badge}</span>
+      </div>
+      <div className="text-sm text-[var(--text-muted)]">{description}</div>
+      <div className="mt-auto pt-3 text-sm font-medium text-[var(--accent)] group-hover:translate-x-1 transition-transform">
+        Open {title} &raquo;
+      </div>
+    </Link>
   );
 }
