@@ -1,0 +1,48 @@
+import type { PayoutSpot } from "./types";
+
+export const CASH_INCREMENT = 5;
+
+function floorTo(n: number, step: number) {
+  return Math.floor(n / step) * step;
+}
+
+/**
+ * Compute payouts in cash-friendly increments (multiples of $5).
+ * Each spot is floored to the nearest $5 and any remainder is given to 1st place
+ * so the sum always matches the prize pool exactly (when pool itself is a $5 multiple).
+ *
+ * If the pool isn't a $5 multiple, the pool itself is floored first and the
+ * "lost" cents/dollars are returned as `remainder` (informational only).
+ */
+export function computeCashPayouts(
+  payouts: PayoutSpot[],
+  pool: number,
+  increment = CASH_INCREMENT,
+): { amounts: Record<number, number>; paidTotal: number; remainder: number } {
+  const amounts: Record<number, number> = {};
+  if (payouts.length === 0 || pool <= 0) {
+    payouts.forEach((p) => (amounts[p.place] = 0));
+    return { amounts, paidTotal: 0, remainder: pool };
+  }
+
+  const totalPct = payouts.reduce((s, p) => s + p.percent, 0) || 1;
+  const poolFloored = floorTo(pool, increment);
+
+  const sorted = [...payouts].sort((a, b) => a.place - b.place);
+
+  let allocated = 0;
+  sorted.forEach((p, idx) => {
+    if (idx === 0) return;
+    const raw = (p.percent / totalPct) * poolFloored;
+    const amt = Math.max(0, floorTo(raw, increment));
+    amounts[p.place] = amt;
+    allocated += amt;
+  });
+
+  const first = sorted[0];
+  const firstAmt = Math.max(0, poolFloored - allocated);
+  amounts[first.place] = firstAmt;
+
+  const paidTotal = allocated + firstAmt;
+  return { amounts, paidTotal, remainder: pool - paidTotal };
+}

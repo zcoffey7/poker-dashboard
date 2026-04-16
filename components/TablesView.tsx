@@ -1,0 +1,131 @@
+"use client";
+
+import { useTournament } from "@/lib/store";
+import { useMemo, useState } from "react";
+import PlayerDetailsModal from "./PlayerDetailsModal";
+
+export default function TablesView() {
+  const tables = useTournament((s) => s.tables);
+  const players = useTournament((s) => s.players);
+  const assignSeats = useTournament((s) => s.assignSeats);
+  const balanceNow = useTournament((s) => s.balanceNow);
+  const clearSeats = useTournament((s) => s.clearSeats);
+  const eliminatePlayer = useTournament((s) => s.eliminatePlayer);
+
+  const [detailsId, setDetailsId] = useState<string | null>(null);
+
+  const byTable = useMemo(() => {
+    const map: Record<string, typeof players> = {};
+    tables.forEach((t) => (map[t.id] = []));
+    players.forEach((p) => {
+      if (p.tableId && map[p.tableId]) map[p.tableId].push(p);
+    });
+    Object.keys(map).forEach((k) =>
+      map[k].sort((a, b) => (a.seat ?? 0) - (b.seat ?? 0)),
+    );
+    return map;
+  }, [tables, players]);
+
+  const unseated = players.filter((p) => !p.eliminated && !p.tableId);
+
+  return (
+    <div className="card p-4 flex flex-col gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div className="label">Tables</div>
+          <div className="text-sm text-[var(--text-muted)] mt-1">
+            {tables.filter((t) => !t.broken).length} active
+            {tables.filter((t) => t.broken).length > 0 &&
+              `, ${tables.filter((t) => t.broken).length} broken`}
+          </div>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <button className="btn btn-sm" onClick={() => clearSeats()}>
+            Clear seats
+          </button>
+          <button className="btn btn-sm" onClick={() => balanceNow()}>
+            Balance now
+          </button>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={() => assignSeats()}
+          >
+            Assign seats
+          </button>
+        </div>
+      </div>
+
+      {unseated.length > 0 && (
+        <div className="card-2 p-3">
+          <div className="label mb-2">Unseated ({unseated.length})</div>
+          <div className="flex flex-wrap gap-2">
+            {unseated.map((p) => (
+              <span key={p.id} className="chip chip-amber">
+                {p.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
+        {tables.map((t) => {
+          const seated = byTable[t.id] ?? [];
+          return (
+            <div
+              key={t.id}
+              className={`card-2 p-3 flex flex-col gap-2 ${t.broken ? "opacity-40" : ""}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="font-semibold">{t.name}</div>
+                <div className="text-xs text-[var(--text-muted)]">
+                  {seated.length} / {t.seatCount}
+                  {t.broken && " • BROKEN"}
+                </div>
+              </div>
+              {seated.length === 0 ? (
+                <div className="text-xs text-[var(--text-muted)] italic py-3 text-center">
+                  {t.broken ? "Table broken" : "No players seated"}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {seated.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 hover:bg-black/20 transition-colors min-w-0"
+                    >
+                      <span className="chip min-w-[28px] justify-center text-xs shrink-0">
+                        {p.seat}
+                      </span>
+                      <button
+                        className="flex-1 text-left truncate min-w-0 cursor-pointer hover:underline underline-offset-2"
+                        onClick={() => setDetailsId(p.id)}
+                        title="View details"
+                      >
+                        {p.name}
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm !px-2 !py-0.5 shrink-0"
+                        title="Eliminate"
+                        onClick={() => eliminatePlayer(p.id)}
+                      >
+                        Out
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {detailsId && (
+        <PlayerDetailsModal
+          playerId={detailsId}
+          onClose={() => setDetailsId(null)}
+        />
+      )}
+    </div>
+  );
+}
