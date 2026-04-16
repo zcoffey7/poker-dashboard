@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BlindLevel,
+  FinishType,
   PayoutSpot,
   Player,
   Table,
@@ -85,6 +86,14 @@ type TournamentStore = TournamentState & {
   nextLevel: () => void;
   prevLevel: () => void;
   tick: () => void;
+
+  // lifecycle
+  finishTournament: (opts: {
+    type: FinishType;
+    chopPlayerIds?: string[];
+    chopShares?: Record<string, number>;
+  }) => void;
+  unfinishTournament: () => void;
 
   // bulk
   resetTournament: () => void;
@@ -185,7 +194,7 @@ export const useTournament = create<TournamentStore>()(
           (p) => !p.eliminated && p.id !== id,
         ).length;
         const place = remainingActive + 1;
-        const updated = s.players.map((p) =>
+        let updated = s.players.map((p) =>
           p.id === id
             ? {
                 ...p,
@@ -198,6 +207,15 @@ export const useTournament = create<TournamentStore>()(
               }
             : p,
         );
+        // If exactly one player remains after this elimination, they win.
+        const autoFinish = remainingActive === 1 && !s.finishedAt;
+        if (autoFinish) {
+          updated = updated.map((p) =>
+            !p.eliminated && p.finishPlace == null
+              ? { ...p, finishPlace: 1 }
+              : p,
+          );
+        }
         let nextPlayers = updated;
         let nextTables = s.tables;
         if (s.settings.autoBalance) {
@@ -205,7 +223,17 @@ export const useTournament = create<TournamentStore>()(
           nextPlayers = res.players;
           nextTables = res.tables;
         }
-        set({ players: nextPlayers, tables: nextTables });
+        set({
+          players: nextPlayers,
+          tables: nextTables,
+          ...(autoFinish
+            ? {
+                finishedAt: Date.now(),
+                finishType: "winner" as FinishType,
+                clock: { ...s.clock, running: false },
+              }
+            : {}),
+        });
       },
       restorePlayer: (id) =>
         set((s) => ({
@@ -427,17 +455,24 @@ export const useTournament = create<TournamentStore>()(
       startClock: () =>
         set((s) => ({
           clock: { ...s.clock, running: true, lastTickAt: Date.now() },
+          startedAt: s.startedAt ?? Date.now(),
         })),
       pauseClock: () =>
         set((s) => ({ clock: { ...s.clock, running: false } })),
       toggleClock: () =>
-        set((s) => ({
-          clock: {
-            ...s.clock,
-            running: !s.clock.running,
-            lastTickAt: Date.now(),
-          },
-        })),
+        set((s) => {
+          const willRun = !s.clock.running;
+          return {
+            clock: {
+              ...s.clock,
+              running: willRun,
+              lastTickAt: Date.now(),
+            },
+            ...(willRun && s.startedAt == null
+              ? { startedAt: Date.now() }
+              : {}),
+          };
+        }),
       resetLevel: () =>
         set((s) => {
           const lv = s.blindStructure[s.clock.currentLevel];
@@ -520,6 +555,60 @@ export const useTournament = create<TournamentStore>()(
         });
       },
 
+      finishTournament: ({ type, chopPlayerIds, chopShares }) => {
+        const s = get();
+        const now = Date.now();
+        let players = s.players;
+        let shares: Record<string, number> | undefined;
+        if (type === "chop") {
+          const ids =
+            chopPlayerIds ??
+            s.players.filter((p) => !p.eliminated).map((p) => p.id);
+          if (ids.length > 0) {
+            if (chopShares && Object.keys(chopShares).length > 0) {
+              shares = { ...chopShares };
+            } else {
+              // Equal split of total payout % across remaining players.
+              const totalPct = s.payouts.reduce((sum, p) => sum + p.percent, 0);
+              const each = totalPct / ids.length;
+              shares = Object.fromEntries(ids.map((id) => [id, each]));
+            }
+            // Any remaining active players that aren't in the chop list get
+            // finish places after the chop group; chop participants tie for 1st.
+            const chopSet = new Set(ids);
+            players = s.players.map((p) => {
+              if (chopSet.has(p.id)) {
+                return { ...p, finishPlace: p.finishPlace ?? 1 };
+              }
+              return p;
+            });
+          }
+        } else {
+          // "winner": last active player gets place 1.
+          players = s.players.map((p) =>
+            !p.eliminated && p.finishPlace == null
+              ? { ...p, finishPlace: 1 }
+              : p,
+          );
+        }
+        set({
+          players,
+          finishedAt: now,
+          finishType: type,
+          chopShares: shares,
+          clock: { ...s.clock, running: false },
+        });
+      },
+
+      unfinishTournament: () =>
+        set((s) => ({
+          finishedAt: undefined,
+          finishType: undefined,
+          chopShares: undefined,
+          // Leave players/finishPlace as-is; reopening keeps assigned places.
+          clock: { ...s.clock },
+        })),
+
       resetTournament: () =>
         set({
           ...initialState,
@@ -533,6 +622,10 @@ export const useTournament = create<TournamentStore>()(
             running: false,
             lastTickAt: 0,
           },
+          startedAt: undefined,
+          finishedAt: undefined,
+          finishType: undefined,
+          chopShares: undefined,
         }),
 
       importState: (state) => set((s) => ({ ...s, ...state })),
@@ -663,13 +756,15 @@ export const useTournament = create<TournamentStore>()(
           addOnPlayer: _43,
           undoRebuy: _44,
           undoAddOn: _45,
+          finishTournament: _46,
+          unfinishTournament: _47,
           ...rest
         } = state;
         void _1;void _2;void _3;void _4;void _5;void _6;void _7;void _8;void _9;void _10;
         void _11;void _12;void _13;void _14;void _15;void _16;void _17;void _18;void _19;void _20;
         void _21;void _22;void _23;void _24;void _25;void _26;void _27;void _28;void _29;void _30;
         void _31;void _32;void _33;void _34;void _35;void _36;void _37;void _38;void _39;void _40;
-        void _41;void _42;void _43;void _44;void _45;
+        void _41;void _42;void _43;void _44;void _45;void _46;void _47;
         return rest;
       },
     },
