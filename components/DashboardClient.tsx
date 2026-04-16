@@ -54,7 +54,7 @@ export default function DashboardClient() {
   }, [toggleClock, nextLevel, prevLevel, openPanel]);
 
   return (
-    <div className="flex flex-col gap-3 p-3 md:p-4 h-screen overflow-hidden">
+    <div className="flex flex-col gap-3 p-3 md:p-4 h-[100dvh] overflow-hidden">
       <StatsBar />
 
       <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -85,7 +85,7 @@ export default function DashboardClient() {
         </div>
       </div>
 
-      <div className="text-[11px] text-[var(--text-muted)] text-center">
+      <div className="hidden sm:block text-[11px] text-[var(--text-muted)] text-center">
         <kbd className="chip">Space</kbd> play/pause ·{" "}
         <kbd className="chip">←</kbd>/<kbd className="chip">→</kbd> prev/next
         · <kbd className="chip">T</kbd> tables · <kbd className="chip">P</kbd>{" "}
@@ -139,7 +139,7 @@ function SidePanel({
       onClick={onClose}
     >
       <div
-        className="h-full w-full max-w-2xl bg-[var(--bg)] shadow-2xl flex flex-col overflow-hidden animate-slide-in"
+        className="h-[100dvh] w-full max-w-2xl bg-[var(--bg)] shadow-2xl flex flex-col overflow-hidden animate-slide-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
