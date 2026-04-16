@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useTournament } from "@/lib/store";
 import type { TournamentSettings } from "@/lib/types";
+import NumberInput from "./NumberInput";
 
 export type GeneralDraft = {
   name: string;
@@ -100,74 +101,58 @@ export default function GeneralSettings({ draft, onChange }: Props) {
           <label className="text-xs text-[var(--text-muted)]">
             Starting stack
           </label>
-          <input
-            type="number"
+          <NumberInput
             className="input"
             value={draft.startingStack}
-            onChange={(e) =>
-              onChange({ startingStack: +e.target.value || 0 })
-            }
+            onChange={(n) => onChange({ startingStack: n })}
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-[var(--text-muted)]">Buy-in ($)</label>
-          <input
-            type="number"
+          <NumberInput
             className="input"
             value={draft.buyIn}
-            onChange={(e) => onChange({ buyIn: +e.target.value || 0 })}
+            onChange={(n) => onChange({ buyIn: n })}
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-[var(--text-muted)]">
             Rebuy chips (0 to disable)
           </label>
-          <input
-            type="number"
+          <NumberInput
             className="input"
             value={draft.rebuyChips}
-            onChange={(e) =>
-              onChange({ rebuyChips: +e.target.value || 0 })
-            }
+            onChange={(n) => onChange({ rebuyChips: n })}
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-[var(--text-muted)]">
             Add-on chips (0 to disable)
           </label>
-          <input
-            type="number"
+          <NumberInput
             className="input"
             value={draft.addOnChips}
-            onChange={(e) =>
-              onChange({ addOnChips: +e.target.value || 0 })
-            }
+            onChange={(n) => onChange({ addOnChips: n })}
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-[var(--text-muted)]">
             Add-on cost ($)
           </label>
-          <input
-            type="number"
+          <NumberInput
             className="input"
             value={draft.addOnCost}
-            onChange={(e) =>
-              onChange({ addOnCost: +e.target.value || 0 })
-            }
+            onChange={(n) => onChange({ addOnCost: n })}
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-[var(--text-muted)]">
             Warning threshold (sec)
           </label>
-          <input
-            type="number"
+          <NumberInput
             className="input"
             value={draft.settings.warnSec}
-            onChange={(e) =>
-              updateSettings({ warnSec: +e.target.value || 0 })
-            }
+            onChange={(n) => updateSettings({ warnSec: n })}
           />
         </div>
         <div className="flex flex-col gap-1">
