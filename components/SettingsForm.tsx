@@ -173,7 +173,6 @@ export default function SettingsForm() {
         structure={draft.blindStructure}
         onChange={updateStructure}
       />
-      <SaveBar dirty={dirty} onSave={handleSave} onDiscard={handleDiscard} />
     </div>
   );
 }
