@@ -24,11 +24,11 @@ export default function PayoutsPanel() {
     [payouts, pool],
   );
 
-  const inTheMoney = payouts.length;
+  const paidSpots = payouts.length;
   const activeCount = stats.activeCount;
 
   const winners = players
-    .filter((p) => p.eliminated && p.finishPlace && p.finishPlace <= inTheMoney)
+    .filter((p) => p.eliminated && p.finishPlace && p.finishPlace <= paidSpots)
     .sort((a, b) => (a.finishPlace ?? 0) - (b.finishPlace ?? 0));
 
   return (
@@ -38,7 +38,7 @@ export default function PayoutsPanel() {
           <div className="label">Payouts</div>
           <div className="text-xs text-[var(--text-muted)] mt-0.5">
             ${pool.toLocaleString()} pool •{" "}
-            {inTheMoney} place{inTheMoney === 1 ? "" : "s"} paid
+            {paidSpots} place{paidSpots === 1 ? "" : "s"} paid
           </div>
         </div>
       </div>
@@ -47,7 +47,7 @@ export default function PayoutsPanel() {
           const amt = cashAmounts[p.place] ?? 0;
           const stillIn =
             activeCount > 0 &&
-            p.place > Math.max(0, activeCount - inTheMoney);
+            p.place > Math.max(0, activeCount - paidSpots);
           const winner = winners.find((w) => w.finishPlace === p.place);
           return (
             <div

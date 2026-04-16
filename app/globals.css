@@ -122,11 +122,22 @@ body {
   padding: 8px 10px;
   font-size: 14px;
   width: 100%;
-  outline: none;
 }
 .input:focus,
 .select:focus {
   border-color: var(--accent);
+}
+
+/* Keyboard-visible focus: show a clear outline for a11y without clobbering
+   mouse clicks. Color follows the app's accent palette. */
+.input:focus-visible,
+.select:focus-visible,
+.btn:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
 }
 
 .label {
@@ -204,4 +215,18 @@ body {
 }
 .animate-slide-in {
   animation: slideIn 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .warn-pulse,
+  .animate-slide-in {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
 }

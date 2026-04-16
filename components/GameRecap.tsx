@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
 import { computeStats } from "@/lib/selectors";
 import { computeCashPayouts, CASH_INCREMENT } from "@/lib/payouts";
@@ -65,20 +65,18 @@ function placeMedal(place: number | null, isCoWinner: boolean): string {
 }
 
 export default function GameRecap() {
-  const state = useTournament();
-  const {
-    name,
-    players,
-    buyIn,
-    addOnCost,
-    payouts,
-    blindStructure,
-    startedAt,
-    finishedAt,
-    finishType,
-    chopShares,
-    clock,
-  } = state;
+  // Narrow selectors so the recap only re-renders when relevant fields change.
+  const name = useTournament((s) => s.name);
+  const players = useTournament((s) => s.players);
+  const buyIn = useTournament((s) => s.buyIn);
+  const addOnCost = useTournament((s) => s.addOnCost);
+  const payouts = useTournament((s) => s.payouts);
+  const blindStructure = useTournament((s) => s.blindStructure);
+  const startedAt = useTournament((s) => s.startedAt);
+  const finishedAt = useTournament((s) => s.finishedAt);
+  const finishType = useTournament((s) => s.finishType);
+  const chopShares = useTournament((s) => s.chopShares);
+  const currentLevelIdx = useTournament((s) => s.clock.currentLevel);
   const unfinishTournament = useTournament((s) => s.unfinishTournament);
   const resetTournament = useTournament((s) => s.resetTournament);
 
@@ -87,22 +85,72 @@ export default function GameRecap() {
       computeStats(
         players,
         blindStructure,
-        clock.currentLevel,
+        currentLevelIdx,
         buyIn,
         addOnCost,
       ),
-    [players, blindStructure, clock.currentLevel, buyIn, addOnCost],
+    [players, blindStructure, currentLevelIdx, buyIn, addOnCost],
   );
   const pool = stats.prizePool;
 
+  // Only pay as many spots as there are ranked finishers. Everything else
+  // (including any unpaid percentage) falls through to 1st as dust.
+  const playersInFinalStanding = useMemo(
+    () => players.filter((p) => p.finishPlace != null).length,
+    [players],
+  );
   const { amounts: cashAmounts } = useMemo(
-    () => computeCashPayouts(payouts, pool),
-    [payouts, pool],
+    () => computeCashPayouts(payouts, pool, playersInFinalStanding),
+    [payouts, pool, playersInFinalStanding],
   );
   const chopAmounts = useMemo(
     () => (chopShares ? computeChopAmounts(chopShares, pool) : {}),
     [chopShares, pool],
   );
+
+  // Group players by finishPlace so that if multiple players share a place
+  // (e.g. a manual tie outside of a formal chop) we can split the money.
+  const placeBuckets = useMemo(() => {
+    const buckets = new Map<number, Player[]>();
+    for (const p of players) {
+      if (p.finishPlace == null) continue;
+      const existing = buckets.get(p.finishPlace);
+      if (existing) existing.push(p);
+      else buckets.set(p.finishPlace, [p]);
+    }
+    // Stable sort within a bucket by id so "lowest id" gets the rounding
+    // remainder deterministically.
+    for (const bucket of buckets.values()) {
+      bucket.sort((a, b) => a.id.localeCompare(b.id));
+    }
+    return buckets;
+  }, [players]);
+
+  // Per-player payout for the non-chop flow, accounting for shared places.
+  const placePayouts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [place, bucket] of placeBuckets) {
+      const totalForPlace = cashAmounts[place] ?? 0;
+      if (bucket.length <= 1) {
+        if (bucket[0]) map.set(bucket[0].id, totalForPlace);
+        continue;
+      }
+      const each = floorTo(totalForPlace / bucket.length, CASH_INCREMENT);
+      const distributed = each * bucket.length;
+      const remainder = Math.max(0, totalForPlace - distributed);
+      bucket.forEach((p, i) => {
+        map.set(p.id, each + (i === 0 ? remainder : 0));
+      });
+    }
+    return map;
+  }, [placeBuckets, cashAmounts]);
+
+  // Capture "now" once at mount so re-renders don't cause the "played for"
+  // durations to drift. `useState`'s initializer runs only on first render,
+  // which keeps this pure per React 19's component purity rules. GameRecap is
+  // only mounted while `finishedAt` is set, and remounts on the next finish.
+  const [mountedAt] = useState(() => Date.now());
+  const now = finishedAt ?? mountedAt;
 
   const rows: Row[] = useMemo(() => {
     const isChop = finishType === "chop" && !!chopShares;
@@ -117,17 +165,15 @@ export default function GameRecap() {
         const addOns = p.addOns ?? 0;
         const moneyIn = entries * buyIn + addOns * addOnCost;
         const isCoWinner = isChop && chopSet.has(p.id);
-        // payout
         let payout = 0;
         if (isCoWinner) {
           payout = chopAmounts[p.id] ?? 0;
         } else if (p.finishPlace != null) {
-          payout = cashAmounts[p.finishPlace] ?? 0;
+          payout = placePayouts.get(p.id) ?? 0;
         }
-        // duration: startedAt -> eliminatedAt or finishedAt
         let durationSec: number | null = null;
         if (startedAt) {
-          const end = p.eliminatedAt ?? finishedAt ?? Date.now();
+          const end = p.eliminatedAt ?? finishedAt ?? now;
           durationSec = Math.max(0, Math.round((end - startedAt) / 1000));
         }
         return {
@@ -155,12 +201,13 @@ export default function GameRecap() {
     players,
     buyIn,
     addOnCost,
-    cashAmounts,
+    placePayouts,
     chopAmounts,
     chopShares,
     finishType,
     startedAt,
     finishedAt,
+    now,
   ]);
 
   const winners = rows.filter((r) =>

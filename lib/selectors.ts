@@ -13,6 +13,23 @@ export type Stats = {
   nextLevel: BlindLevel | undefined;
 };
 
+function pickMLevel(
+  blindStructure: BlindLevel[],
+  currentLevelIdx: number,
+): BlindLevel | undefined {
+  const cur = blindStructure[currentLevelIdx];
+  if (cur && !cur.isBreak) return cur;
+  // On a break: prefer the next non-break level (blinds the players will pay).
+  for (let i = currentLevelIdx + 1; i < blindStructure.length; i++) {
+    if (!blindStructure[i].isBreak) return blindStructure[i];
+  }
+  // Otherwise fall back to the last non-break level before the break.
+  for (let i = currentLevelIdx - 1; i >= 0; i--) {
+    if (!blindStructure[i].isBreak) return blindStructure[i];
+  }
+  return undefined;
+}
+
 export function computeStats(
   players: Player[],
   blindStructure: BlindLevel[],
@@ -25,10 +42,11 @@ export function computeStats(
   const avgStack =
     active.length > 0 ? Math.round(totalChips / active.length) : 0;
   const currentLv = blindStructure[currentLevelIdx];
-  const costPerOrbit = currentLv
-    ? currentLv.smallBlind +
-      currentLv.bigBlind +
-      currentLv.ante * Math.max(1, active.length)
+  const mLevel = pickMLevel(blindStructure, currentLevelIdx);
+  const costPerOrbit = mLevel
+    ? mLevel.smallBlind +
+      mLevel.bigBlind +
+      mLevel.ante * Math.max(1, active.length)
     : 0;
   const mRatio =
     costPerOrbit > 0 ? +(avgStack / costPerOrbit).toFixed(1) : 0;
@@ -40,7 +58,9 @@ export function computeStats(
     (sum, p) => sum + (p.addOns ?? 0),
     0,
   );
-  const prizePool = totalEntries * buyIn + totalAddOns * addOnCost;
+  const buyInSafe = Math.max(0, buyIn);
+  const addOnCostSafe = Math.max(0, addOnCost);
+  const prizePool = totalEntries * buyInSafe + totalAddOns * addOnCostSafe;
   return {
     activeCount: active.length,
     totalPlayers: players.length,
@@ -60,6 +80,11 @@ export function computeNextBreak(
   currentLevelIdx: number,
   remainingSec: number,
 ): { levelsAway: number; secondsAway: number } | null {
+  const cur = blindStructure[currentLevelIdx];
+  // If we're already on a break, the "next break" is now.
+  if (cur?.isBreak) {
+    return { levelsAway: 0, secondsAway: remainingSec };
+  }
   let secs = remainingSec;
   for (let i = currentLevelIdx + 1; i < blindStructure.length; i++) {
     const lv = blindStructure[i];

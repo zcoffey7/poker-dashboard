@@ -8,6 +8,10 @@ type Props = {
   onClose: () => void;
 };
 
+// Parent components must mount this modal with `key={playerId}` so local state
+// (e.g. the name input) resets cleanly when a different player is selected,
+// rather than relying on an effect-driven sync (which React 19 flags as
+// impure via the set-state-in-effect rule).
 export default function PlayerDetailsModal({ playerId, onClose }: Props) {
   const player = useTournament((s) =>
     s.players.find((p) => p.id === playerId),
@@ -24,11 +28,7 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
   const addOnPlayer = useTournament((s) => s.addOnPlayer);
   const undoAddOn = useTournament((s) => s.undoAddOn);
 
-  const [name, setName] = useState(player?.name ?? "");
-
-  useEffect(() => {
-    if (player) setName(player.name);
-  }, [player]);
+  const [name, setName] = useState(() => player?.name ?? "");
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

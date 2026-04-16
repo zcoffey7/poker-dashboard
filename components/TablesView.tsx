@@ -122,6 +122,7 @@ export default function TablesView() {
 
       {detailsId && (
         <PlayerDetailsModal
+          key={detailsId}
           playerId={detailsId}
           onClose={() => setDetailsId(null)}
         />

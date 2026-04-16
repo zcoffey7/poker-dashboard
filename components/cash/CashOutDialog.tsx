@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import NumberInput from "../NumberInput";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
-import { fmtMoney, fmtSigned } from "@/lib/money";
+import { fmtMoneyCents, fmtSignedCents, toCents } from "@/lib/money";
 
 type Props = {
   playerId: string;
@@ -15,13 +15,26 @@ export default function CashOutDialog({ playerId, onClose }: Props) {
   const cashOutPlayer = useCash((s) => s.cashOutPlayer);
 
   const [amount, setAmount] = useState(0);
+  const titleId = useId();
 
-  const totalIn = useMemo(() => (player ? totalBuyIns(player) : 0), [player]);
-  const net = amount - totalIn;
+  const totalInCents = useMemo(
+    () => (player ? totalBuyIns(player) : 0),
+    [player],
+  );
+  const amountCents = toCents(amount);
+  const netCents = amountCents - totalInCents;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   if (!player) return null;
 
-  const positive = net >= 0;
+  const positive = netCents >= 0;
 
   return (
     <div
@@ -31,15 +44,24 @@ export default function CashOutDialog({ playerId, onClose }: Props) {
       <div
         className="card w-full max-w-sm flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div className="min-w-0">
-            <div className="label">Cash Out</div>
+            <div className="label" id={titleId}>
+              Cash Out
+            </div>
             <div className="text-sm font-semibold mt-0.5 truncate">
               {player.name}
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={onClose}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -50,7 +72,7 @@ export default function CashOutDialog({ playerId, onClose }: Props) {
               label="Buy-ins"
               value={`${player.buyIns.length}×`}
             />
-            <Stat label="In for" value={fmtMoney(totalIn)} />
+            <Stat label="In for" value={fmtMoneyCents(totalInCents)} />
           </div>
 
           <label className="flex flex-col gap-1">
@@ -69,10 +91,10 @@ export default function CashOutDialog({ playerId, onClose }: Props) {
           </label>
 
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <Stat label="Out for" value={fmtMoney(amount)} />
+            <Stat label="Out for" value={fmtMoneyCents(amountCents)} />
             <Stat
               label="Net"
-              value={fmtSigned(net)}
+              value={fmtSignedCents(netCents)}
               positive={positive}
               muted={!positive}
             />

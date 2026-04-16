@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
-import { fmtMoney, fmtSigned } from "@/lib/money";
+import { useCash, totalBuyIns } from "@/lib/cashStore";
+import { fmtMoneyCents, fmtSignedCents } from "@/lib/money";
 import { fmtDuration } from "@/lib/clock";
 
 type Row = {
@@ -45,7 +45,12 @@ export default function CashRecap() {
           durationSec,
         };
       })
-      .sort((a, b) => b.net - a.net);
+      .sort((a, b) => {
+        if (b.net !== a.net) return b.net - a.net;
+        const byName = a.name.localeCompare(b.name);
+        if (byName !== 0) return byName;
+        return a.id.localeCompare(b.id);
+      });
   }, [players, endedAt]);
 
   const totals = useMemo(() => {
@@ -76,7 +81,7 @@ export default function CashRecap() {
               {name}
             </div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              {fmtMoney(totals.totalIn)} in play
+              {fmtMoneyCents(totals.totalIn)} in play
               {totalDurationSec != null && (
                 <> · Ran for {fmtDuration(totalDurationSec)}</>
               )}
@@ -135,12 +140,12 @@ export default function CashRecap() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <Stat
                     label="In for"
-                    value={fmtMoney(totals.biggestWin.moneyIn)}
+                    value={fmtMoneyCents(totals.biggestWin.moneyIn)}
                     emphasize
                   />
                   <Stat
                     label="Out for"
-                    value={fmtMoney(totals.biggestWin.payout)}
+                    value={fmtMoneyCents(totals.biggestWin.payout)}
                     emphasize
                   />
                   <Stat
@@ -155,7 +160,7 @@ export default function CashRecap() {
                   )}
                   <Stat
                     label="Net"
-                    value={fmtSigned(totals.biggestWin.net)}
+                    value={fmtSignedCents(totals.biggestWin.net)}
                     emphasize
                     positive={positiveNet(totals.biggestWin.net)}
                   />
@@ -176,11 +181,11 @@ export default function CashRecap() {
           )}
 
           <section className="card p-3 grid grid-cols-3 gap-2 text-sm">
-            <Stat label="Total in" value={fmtMoney(totals.totalIn)} />
-            <Stat label="Total out" value={fmtMoney(totals.totalOut)} />
+            <Stat label="Total in" value={fmtMoneyCents(totals.totalIn)} />
+            <Stat label="Total out" value={fmtMoneyCents(totals.totalOut)} />
             <Stat
               label={totals.totalIn === totals.totalOut ? "Balanced" : "Diff"}
-              value={fmtMoney(Math.abs(totals.totalIn - totals.totalOut))}
+              value={fmtMoneyCents(Math.abs(totals.totalIn - totals.totalOut))}
               muted={totals.totalIn !== totals.totalOut}
             />
           </section>
@@ -209,11 +214,11 @@ function ParticipantRow({ row, place }: { row: Row; place: number }) {
         )}
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm border-t border-[var(--border)] pt-2">
-        <MiniStat label="In for" value={fmtMoney(row.moneyIn)} />
-        <MiniStat label="Out for" value={fmtMoney(row.payout)} />
+        <MiniStat label="In for" value={fmtMoneyCents(row.moneyIn)} />
+        <MiniStat label="Out for" value={fmtMoneyCents(row.payout)} />
         <MiniStat
           label="Net"
-          value={fmtSigned(row.net)}
+          value={fmtSignedCents(row.net)}
           positive={positive}
           muted={!positive}
         />

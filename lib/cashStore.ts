@@ -3,14 +3,16 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { CashGameState, CashPlayer } from "./cashTypes";
+import { toCents } from "./money";
 
 function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
 }
 
-const DEFAULT_SMALL_BLIND = 0.1;
-const DEFAULT_BIG_BLIND = 0.2;
-const DEFAULT_BUY_IN = 20;
+// Defaults in integer cents.
+const DEFAULT_SMALL_BLIND = 10;    // $0.10
+const DEFAULT_BIG_BLIND = 20;      // $0.20
+const DEFAULT_BUY_IN = 2000;       // $20.00
 const DEFAULT_NAME = "Home Cash Game";
 
 const initialState: CashGameState = {
@@ -22,6 +24,7 @@ const initialState: CashGameState = {
 };
 
 type CashStore = CashGameState & {
+  /** All amount fields in the draft are in DOLLARS (float) and converted at the boundary. */
   saveSettings: (draft: {
     name: string;
     smallBlind: number;
@@ -29,44 +32,72 @@ type CashStore = CashGameState & {
     defaultBuyIn: number;
   }) => void;
 
+  /** `initialBuyIn` in dollars. */
   addPlayer: (name: string, initialBuyIn: number) => void;
   renamePlayer: (id: string, name: string) => void;
   removePlayer: (id: string) => void;
 
+  /** `amount` in dollars. */
   rebuy: (id: string, amount: number) => void;
+  /** `amount` in dollars. */
   editBuyIn: (playerId: string, buyInId: string, amount: number) => void;
   removeBuyIn: (playerId: string, buyInId: string) => void;
 
+  /** `amount` in dollars. */
   cashOutPlayer: (id: string, amount: number) => void;
   reopenPlayer: (id: string) => void;
 
-  endGame: () => boolean; // returns true on success
+  endGame: () => boolean;
   reopenGame: () => void;
   resetGame: () => void;
 };
+
+/** Generate a unique, human-friendly variant of a name among the existing ones. */
+function dedupeName(candidate: string, existing: readonly string[]): string {
+  const taken = new Set(existing.map((n) => n.toLowerCase()));
+  if (!taken.has(candidate.toLowerCase())) return candidate;
+  for (let i = 2; i < 1000; i++) {
+    const next = `${candidate} (${i})`;
+    if (!taken.has(next.toLowerCase())) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[cash] Duplicate player name "${candidate}" — using "${next}"`,
+        );
+      }
+      return next;
+    }
+  }
+  return `${candidate} (${uid("dup")})`;
+}
 
 export const useCash = create<CashStore>()(
   persist(
     (set, get) => ({
       ...initialState,
 
-      saveSettings: (draft) =>
+      saveSettings: (draft) => {
+        const trimmed = draft.name.trim() || "Cash Game";
         set({
-          name: draft.name,
-          smallBlind: Math.max(0, draft.smallBlind),
-          bigBlind: Math.max(0, draft.bigBlind),
-          defaultBuyIn: Math.max(0, draft.defaultBuyIn),
-        }),
+          name: trimmed,
+          smallBlind: Math.max(0, toCents(draft.smallBlind)),
+          bigBlind: Math.max(0, toCents(draft.bigBlind)),
+          defaultBuyIn: Math.max(0, toCents(draft.defaultBuyIn)),
+        });
+      },
 
       addPlayer: (name, initialBuyIn) => {
         const trimmed = name.trim();
         if (!trimmed) return;
         const s = get();
-        const amount = Math.max(0, initialBuyIn);
+        const unique = dedupeName(
+          trimmed,
+          s.players.map((p) => p.name),
+        );
+        const amountCents = Math.max(0, toCents(initialBuyIn));
         const player: CashPlayer = {
           id: uid("cp"),
-          name: trimmed,
-          buyIns: [{ id: uid("bi"), amount, at: Date.now() }],
+          name: unique,
+          buyIns: [{ id: uid("bi"), amount: amountCents, at: Date.now() }],
         };
         set({
           players: [...s.players, player],
@@ -90,53 +121,62 @@ export const useCash = create<CashStore>()(
         })),
 
       rebuy: (id, amount) => {
-        const amt = Math.max(0, amount);
+        const amtCents = Math.max(0, toCents(amount));
         set((s) => ({
-          players: s.players.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  buyIns: [
-                    ...p.buyIns,
-                    { id: uid("bi"), amount: amt, at: Date.now() },
-                  ],
-                }
-              : p,
-          ),
+          players: s.players.map((p) => {
+            if (p.id !== id) return p;
+            // Guard: cashed-out players are read-only until reopened.
+            if (p.cashOut != null) return p;
+            return {
+              ...p,
+              buyIns: [
+                ...p.buyIns,
+                { id: uid("bi"), amount: amtCents, at: Date.now() },
+              ],
+            };
+          }),
         }));
       },
 
       editBuyIn: (playerId, buyInId, amount) => {
-        const amt = Math.max(0, amount);
+        const amtCents = Math.max(0, toCents(amount));
         set((s) => ({
-          players: s.players.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  buyIns: p.buyIns.map((b) =>
-                    b.id === buyInId ? { ...b, amount: amt } : b,
-                  ),
-                }
-              : p,
-          ),
+          players: s.players.map((p) => {
+            if (p.id !== playerId) return p;
+            if (p.cashOut != null) return p;
+            return {
+              ...p,
+              buyIns: p.buyIns.map((b) =>
+                b.id === buyInId ? { ...b, amount: amtCents } : b,
+              ),
+            };
+          }),
         }));
       },
 
       removeBuyIn: (playerId, buyInId) => {
         set((s) => ({
-          players: s.players.map((p) =>
-            p.id === playerId
-              ? { ...p, buyIns: p.buyIns.filter((b) => b.id !== buyInId) }
-              : p,
-          ),
+          players: s.players.map((p) => {
+            if (p.id !== playerId) return p;
+            if (p.cashOut != null) return p;
+            // Refuse removal if it would leave the player with 0 buy-ins;
+            // use Remove Player instead.
+            if (p.buyIns.length <= 1) return p;
+            return {
+              ...p,
+              buyIns: p.buyIns.filter((b) => b.id !== buyInId),
+            };
+          }),
         }));
       },
 
       cashOutPlayer: (id, amount) => {
-        const amt = Math.max(0, amount);
+        const amtCents = Math.max(0, toCents(amount));
         set((s) => ({
           players: s.players.map((p) =>
-            p.id === id ? { ...p, cashOut: { amount: amt, at: Date.now() } } : p,
+            p.id === id
+              ? { ...p, cashOut: { amount: amtCents, at: Date.now() } }
+              : p,
           ),
         }));
       },
@@ -168,7 +208,34 @@ export const useCash = create<CashStore>()(
     {
       name: "poker-cash-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        // v1 stored amounts as dollar floats. Convert to integer cents.
+        if (!persisted || typeof persisted !== "object") return persisted;
+        if (version >= 2) return persisted;
+        const state = persisted as Partial<CashGameState>;
+        const toC = (n: unknown): number => {
+          const v = typeof n === "number" ? n : Number(n);
+          if (!Number.isFinite(v)) return 0;
+          return Math.round(v * 100);
+        };
+        return {
+          ...state,
+          smallBlind: toC(state.smallBlind),
+          bigBlind: toC(state.bigBlind),
+          defaultBuyIn: toC(state.defaultBuyIn),
+          players: (state.players ?? []).map((p) => ({
+            ...p,
+            buyIns: (p.buyIns ?? []).map((b) => ({
+              ...b,
+              amount: toC(b.amount),
+            })),
+            cashOut: p.cashOut
+              ? { ...p.cashOut, amount: toC(p.cashOut.amount) }
+              : p.cashOut,
+          })),
+        } as CashGameState;
+      },
       partialize: (state) => {
         const {
           saveSettings: _1,
@@ -193,10 +260,12 @@ export const useCash = create<CashStore>()(
   ),
 );
 
+/** Returns the total of all buy-ins in integer cents. */
 export function totalBuyIns(player: CashPlayer): number {
   return player.buyIns.reduce((sum, b) => sum + b.amount, 0);
 }
 
+/** Returns net in integer cents, or null if not yet cashed out. */
 export function playerNet(player: CashPlayer): number | null {
   if (!player.cashOut) return null;
   return player.cashOut.amount - totalBuyIns(player);
