@@ -66,7 +66,7 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="card w-full max-w-md p-5 flex flex-col gap-4"
+        className="card w-full max-w-md p-5 flex flex-col gap-4 max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
