@@ -3,6 +3,7 @@
 import { useTournament } from "@/lib/store";
 import { useMemo, useState } from "react";
 import PlayerDetailsModal from "./PlayerDetailsModal";
+import MovePlayerModal from "./MovePlayerModal";
 
 export default function TablesView() {
   const tables = useTournament((s) => s.tables);
@@ -13,6 +14,7 @@ export default function TablesView() {
   const eliminatePlayer = useTournament((s) => s.eliminatePlayer);
 
   const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [moveId, setMoveId] = useState<string | null>(null);
 
   const byTable = useMemo(() => {
     const map: Record<string, typeof players> = {};
@@ -60,9 +62,15 @@ export default function TablesView() {
           <div className="label mb-2">Unseated ({unseated.length})</div>
           <div className="flex flex-wrap gap-2">
             {unseated.map((p) => (
-              <span key={p.id} className="chip chip-amber">
+              <button
+                key={p.id}
+                type="button"
+                className="chip chip-amber cursor-pointer hover:brightness-110"
+                onClick={() => setMoveId(p.id)}
+                title="Seat player"
+              >
                 {p.name}
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -105,6 +113,13 @@ export default function TablesView() {
                         {p.name}
                       </button>
                       <button
+                        className="btn btn-sm !px-2 !py-0.5 shrink-0"
+                        title="Move to another table or seat"
+                        onClick={() => setMoveId(p.id)}
+                      >
+                        Move
+                      </button>
+                      <button
                         className="btn btn-danger btn-sm !px-2 !py-0.5 shrink-0"
                         title="Eliminate"
                         onClick={() => eliminatePlayer(p.id)}
@@ -125,6 +140,14 @@ export default function TablesView() {
           key={detailsId}
           playerId={detailsId}
           onClose={() => setDetailsId(null)}
+        />
+      )}
+
+      {moveId && (
+        <MovePlayerModal
+          key={moveId}
+          playerId={moveId}
+          onClose={() => setMoveId(null)}
         />
       )}
     </div>
