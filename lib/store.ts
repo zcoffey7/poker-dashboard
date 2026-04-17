@@ -64,6 +64,10 @@ type TournamentStore = TournamentState & {
   assignSeats: () => void;
   balanceNow: () => void;
   clearSeats: () => void;
+  movePlayer: (
+    id: string,
+    dest: { tableId: string | null; seat: number | null },
+  ) => void;
 
   // blind structure
   addLevel: (level?: Partial<BlindLevel>) => void;
@@ -439,6 +443,54 @@ export const useTournament = create<TournamentStore>()(
           })),
           tables: s.tables.map((t) => ({ ...t, broken: false })),
         })),
+      movePlayer: (id, dest) => {
+        const s = get();
+        const mover = s.players.find((p) => p.id === id);
+        if (!mover || mover.eliminated) return;
+
+        if (dest.tableId == null) {
+          if (mover.tableId == null && mover.seat == null) return;
+          set({
+            players: s.players.map((p) =>
+              p.id === id ? { ...p, tableId: null, seat: null } : p,
+            ),
+          });
+          return;
+        }
+
+        const table = s.tables.find((t) => t.id === dest.tableId);
+        if (!table || table.broken) return;
+        if (
+          dest.seat == null ||
+          !Number.isInteger(dest.seat) ||
+          dest.seat < 1 ||
+          dest.seat > table.seatCount
+        ) {
+          return;
+        }
+
+        if (mover.tableId === dest.tableId && mover.seat === dest.seat) return;
+
+        const occupant = s.players.find(
+          (p) =>
+            p.id !== id &&
+            !p.eliminated &&
+            p.tableId === dest.tableId &&
+            p.seat === dest.seat,
+        );
+
+        set({
+          players: s.players.map((p) => {
+            if (p.id === id) {
+              return { ...p, tableId: dest.tableId, seat: dest.seat };
+            }
+            if (occupant && p.id === occupant.id) {
+              return { ...p, tableId: null, seat: null };
+            }
+            return p;
+          }),
+        });
+      },
 
       addLevel: (partial) => {
         const s = get();
@@ -1031,13 +1083,14 @@ export const useTournament = create<TournamentStore>()(
           undoAddOn: _45,
           finishTournament: _46,
           unfinishTournament: _47,
+          movePlayer: _48,
           ...rest
         } = state;
         void _1;void _2;void _3;void _4;void _5;void _6;void _7;void _8;void _9;void _10;
         void _11;void _12;void _13;void _14;void _15;void _16;void _17;void _18;void _19;void _20;
         void _21;void _22;void _23;void _24;void _25;void _26;void _27;void _28;void _29;void _30;
         void _31;void _32;void _33;void _34;void _35;void _36;void _37;void _38;void _39;void _40;
-        void _41;void _42;void _43;void _44;void _45;void _46;void _47;
+        void _41;void _42;void _43;void _44;void _45;void _46;void _47;void _48;
         return rest;
       },
     },
