@@ -10,6 +10,7 @@ import PlayerRoster from "./PlayerRoster";
 import PayoutsPanel from "./PayoutsPanel";
 import GameRecap from "./GameRecap";
 import FinishDialog from "./FinishDialog";
+import RebalancePopup from "./RebalancePopup";
 
 type Panel = "tables" | "players";
 
@@ -23,6 +24,9 @@ export default function DashboardClient() {
     (s) => s.players.filter((p) => !p.eliminated).length,
   );
   const hasPlayers = useTournament((s) => s.players.length > 0);
+  const hasPendingRebalance = useTournament(
+    (s) => (s.pendingRebalanceMoves?.length ?? 0) > 0,
+  );
 
   const [openPanel, setOpenPanel] = useState<Panel | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
@@ -38,6 +42,7 @@ export default function DashboardClient() {
       ) {
         return;
       }
+      if (hasPendingRebalance) return;
       if (e.key === "Escape") {
         if (finishOpen) {
           setFinishOpen(false);
@@ -67,7 +72,14 @@ export default function DashboardClient() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggleClock, nextLevel, prevLevel, openPanel, finishOpen]);
+  }, [
+    toggleClock,
+    nextLevel,
+    prevLevel,
+    openPanel,
+    finishOpen,
+    hasPendingRebalance,
+  ]);
 
   return (
     <div className="flex flex-col gap-3 p-3 md:p-4 min-h-[100dvh] sm:h-[100dvh] sm:overflow-hidden">
@@ -135,6 +147,8 @@ export default function DashboardClient() {
       {finishOpen && <FinishDialog onClose={() => setFinishOpen(false)} />}
 
       {finishedAt && <GameRecap />}
+
+      <RebalancePopup />
     </div>
   );
 }
