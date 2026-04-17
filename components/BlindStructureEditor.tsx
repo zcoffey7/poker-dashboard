@@ -90,7 +90,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
           <tbody>
             {structure.map((lv, i) => (
               <tr
-                key={`${i}-${lv.smallBlind}-${lv.bigBlind}-${lv.isBreak ? 1 : 0}-${lv.durationSec}`}
+                key={i}
                 className={`border-t border-[var(--border)] ${lv.isBreak ? "bg-[var(--surface2)]" : ""}`}
               >
                 <td className="py-1.5 pr-2 font-mono">{lv.level}</td>
