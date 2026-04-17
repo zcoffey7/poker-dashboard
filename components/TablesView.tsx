@@ -22,9 +22,9 @@ export default function TablesView() {
     players.forEach((p) => {
       if (p.tableId && map[p.tableId]) map[p.tableId].push(p);
     });
-    Object.keys(map).forEach((k) =>
-      map[k].sort((a, b) => (a.seat ?? 0) - (b.seat ?? 0)),
-    );
+    Object.keys(map).forEach((k) => {
+      map[k] = map[k].toSorted((a, b) => (a.seat ?? 0) - (b.seat ?? 0));
+    });
     return map;
   }, [tables, players]);
 
@@ -35,9 +35,9 @@ export default function TablesView() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <div className="label">Tables</div>
-          <div className="text-sm text-[var(--text-muted)] mt-1">
+          <div className="text-sm text-muted mt-1">
             {tables.filter((t) => !t.broken).length} active
-            {tables.filter((t) => t.broken).length > 0 &&
+            {tables.some((t) => t.broken) &&
               `, ${tables.filter((t) => t.broken).length} broken`}
           </div>
         </div>
@@ -86,13 +86,13 @@ export default function TablesView() {
             >
               <div className="flex items-center justify-between">
                 <div className="font-semibold">{t.name}</div>
-                <div className="text-xs text-[var(--text-muted)]">
+                <div className="text-xs text-muted">
                   {seated.length} / {t.seatCount}
                   {t.broken && " • BROKEN"}
                 </div>
               </div>
               {seated.length === 0 ? (
-                <div className="text-xs text-[var(--text-muted)] italic py-3 text-center">
+                <div className="text-xs text-muted italic py-3 text-center">
                   {t.broken ? "Table broken" : "No players seated"}
                 </div>
               ) : (
@@ -113,14 +113,14 @@ export default function TablesView() {
                         {p.name}
                       </button>
                       <button
-                        className="btn btn-sm !px-2 !py-0.5 shrink-0"
+                        className="btn btn-sm px-2! py-0.5! shrink-0"
                         title="Move to another table or seat"
                         onClick={() => setMoveId(p.id)}
                       >
                         Move
                       </button>
                       <button
-                        className="btn btn-danger btn-sm !px-2 !py-0.5 shrink-0"
+                        className="btn btn-danger btn-sm px-2! py-0.5! shrink-0"
                         title="Eliminate"
                         onClick={() => eliminatePlayer(p.id)}
                       >

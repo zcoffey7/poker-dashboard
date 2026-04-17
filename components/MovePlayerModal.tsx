@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTournament } from "@/lib/store";
 
-type Props = {
+type Props = Readonly<{
   playerId: string;
   onClose: () => void;
-};
+}>;
 
 const UNSEATED = "__unseated__";
 
@@ -29,12 +29,26 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
   const [tableId, setTableId] = useState<string | null>(initialTableId);
   const [seat, setSeat] = useState<number>(initialSeat);
 
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (!dialog.open) dialog.showModal();
+
+    function onBackdropMouseDown(e: MouseEvent) {
+      if (!dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      const clickedOutside =
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom;
+      if (clickedOutside) onClose();
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    dialog.addEventListener("mousedown", onBackdropMouseDown);
+    return () => dialog.removeEventListener("mousedown", onBackdropMouseDown);
   }, [onClose]);
 
   const selectedTable = tables.find((t) => t.id === tableId);
@@ -92,93 +106,90 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
+    <dialog
+      ref={dialogRef}
+      aria-label="Move player"
+      className="card fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(100vw-2rem,24rem)] p-5 flex-col gap-4 text-text open:flex backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+      onClose={onClose}
     >
-      <div
-        className="card w-full max-w-sm p-5 flex flex-col gap-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="label mb-1">Move player</div>
-            <div className="text-lg font-semibold truncate">{player.name}</div>
-            <div className="text-xs text-[var(--text-muted)] mt-1">
-              Currently: {currentDescription}
-            </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="label mb-1">Move player</div>
+          <div className="text-lg font-semibold truncate">{player.name}</div>
+          <div className="text-xs text-muted mt-1">
+            Currently: {currentDescription}
           </div>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={onClose}
-            title="Close"
-          >
-            ×
-          </button>
         </div>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={onClose}
+          title="Close"
+        >
+          ×
+        </button>
+      </div>
 
+      <div className="flex flex-col gap-2">
+        <label className="label" htmlFor="move-table">
+          Table
+        </label>
+        <select
+          id="move-table"
+          className="input"
+          value={tableId ?? UNSEATED}
+          onChange={(e) => handleTableChange(e.target.value)}
+        >
+          <option value={UNSEATED}>Unseated</option>
+          {activeTables.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {!isUnseatedChoice && selectedTable && (
         <div className="flex flex-col gap-2">
-          <label className="label" htmlFor="move-table">
-            Table
+          <label className="label" htmlFor="move-seat">
+            Seat
           </label>
           <select
-            id="move-table"
+            id="move-seat"
             className="input"
-            value={tableId ?? UNSEATED}
-            onChange={(e) => handleTableChange(e.target.value)}
+            value={clampedSeat}
+            onChange={(e) => setSeat(Number(e.target.value))}
           >
-            <option value={UNSEATED}>Unseated</option>
-            {activeTables.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
+            {Array.from({ length: selectedTable.seatCount }, (_, i) => {
+              const n = i + 1;
+              const occ = occupants.get(n);
+              return (
+                <option key={n} value={n}>
+                  Seat {n}
+                  {occ ? ` — occupied by ${occ}` : ""}
+                </option>
+              );
+            })}
           </select>
+          {bumpName && (
+            <div className="text-xs text-muted">
+              {bumpName} will be bumped to Unseated.
+            </div>
+          )}
         </div>
+      )}
 
-        {!isUnseatedChoice && selectedTable && (
-          <div className="flex flex-col gap-2">
-            <label className="label" htmlFor="move-seat">
-              Seat
-            </label>
-            <select
-              id="move-seat"
-              className="input"
-              value={clampedSeat}
-              onChange={(e) => setSeat(Number(e.target.value))}
-            >
-              {Array.from({ length: selectedTable.seatCount }, (_, i) => {
-                const n = i + 1;
-                const occ = occupants.get(n);
-                return (
-                  <option key={n} value={n}>
-                    Seat {n}
-                    {occ ? ` — occupied by ${occ}` : ""}
-                  </option>
-                );
-              })}
-            </select>
-            {bumpName && (
-              <div className="text-xs text-[var(--text-muted)]">
-                {bumpName} will be bumped to Unseated.
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 border-t border-[var(--border)] pt-4">
-          <button className="btn btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleConfirm}
-            disabled={isSameAsCurrent}
-          >
-            Move
-          </button>
-        </div>
+      <div className="flex justify-end gap-2 border-t border-border pt-4">
+        <button className="btn btn-ghost" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={handleConfirm}
+          disabled={isSameAsCurrent}
+        >
+          Move
+        </button>
       </div>
-    </div>
+    </dialog>
   );
 }
