@@ -33,17 +33,27 @@ export default function StatsBar() {
   const clock = useTournament((s) => s.clock);
   const buyIn = useTournament((s) => s.buyIn);
   const addOnCost = useTournament((s) => s.addOnCost);
+  const startingStack = useTournament((s) => s.startingStack);
+  const rebuyChips = useTournament((s) => s.rebuyChips);
+  const addOnChips = useTournament((s) => s.addOnChips);
 
   const stats = useMemo(
     () =>
-      computeStats(
-        players,
-        blindStructure,
-        clock.currentLevel,
-        buyIn,
-        addOnCost,
-      ),
-    [players, blindStructure, clock.currentLevel, buyIn, addOnCost],
+      computeStats(players, blindStructure, clock.currentLevel, buyIn, addOnCost, {
+        startingStack,
+        rebuyChips,
+        addOnChips,
+      }),
+    [
+      players,
+      blindStructure,
+      clock.currentLevel,
+      buyIn,
+      addOnCost,
+      startingStack,
+      rebuyChips,
+      addOnChips,
+    ],
   );
   const nextBreak = useMemo(
     () => computeNextBreak(blindStructure, clock.currentLevel, clock.remainingSec),
@@ -51,7 +61,7 @@ export default function StatsBar() {
   );
 
   return (
-    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+    <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
       <Stat
         label="Players"
         value={`${stats.activeCount} / ${stats.totalPlayers}`}
@@ -63,8 +73,11 @@ export default function StatsBar() {
       />
       <Stat
         label="Avg Stack"
-        value={stats.avgStack.toLocaleString()}
-        hint={stats.mRatio > 0 ? `M: ${stats.mRatio}` : undefined}
+        value={
+          stats.avgBigBlinds > 0
+            ? `${stats.avgStack.toLocaleString()} (${stats.avgBigBlinds} BB)`
+            : stats.avgStack.toLocaleString()
+        }
       />
       <Stat
         label="Prize Pool"
@@ -81,21 +94,6 @@ export default function StatsBar() {
           nextBreak
             ? `${nextBreak.levelsAway} level${nextBreak.levelsAway === 1 ? "" : "s"} away`
             : "No more breaks"
-        }
-      />
-      <Stat
-        label="Level"
-        value={
-          stats.currentLevel
-            ? stats.currentLevel.isBreak
-              ? "BREAK"
-              : `${stats.currentLevel.smallBlind.toLocaleString()}/${stats.currentLevel.bigBlind.toLocaleString()}`
-            : "—"
-        }
-        hint={
-          stats.currentLevel?.ante
-            ? `Ante ${stats.currentLevel.ante.toLocaleString()}`
-            : undefined
         }
       />
     </div>

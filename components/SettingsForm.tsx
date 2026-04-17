@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
 import type {
   BlindLevel,
@@ -48,6 +48,14 @@ function snapshot(): Draft {
  * on a set-state-in-effect sync (which React 19 flags as impure).
  */
 export default function SettingsForm() {
+  // Zustand's `persist` middleware rehydrates the store from localStorage on
+  // the client, so the server render (no localStorage → defaults) never
+  // matches the client render (persisted values). Gate the whole form behind a
+  // mount flag so React sees identical output on the server and the first
+  // client render, then swaps in the real form after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const storedName = useTournament((s) => s.name);
   const storedTables = useTournament((s) => s.tables);
   const storedPayouts = useTournament((s) => s.payouts);
@@ -59,16 +67,21 @@ export default function SettingsForm() {
   const storedAddOnChips = useTournament((s) => s.addOnChips);
   const storedAddOnCost = useTournament((s) => s.addOnCost);
 
+  // Must match the `Draft` shape exactly — `dirty` detection compares
+  // `JSON.stringify(draft)` against this string, and a mismatched shape would
+  // make the form permanently look "unsaved" after every save.
   const storedKey = useMemo(
     () =>
       JSON.stringify({
-        name: storedName,
-        startingStack: storedStartingStack,
-        buyIn: storedBuyIn,
-        rebuyChips: storedRebuyChips,
-        addOnChips: storedAddOnChips,
-        addOnCost: storedAddOnCost,
-        settings: storedSettings,
+        general: {
+          name: storedName,
+          startingStack: storedStartingStack,
+          buyIn: storedBuyIn,
+          rebuyChips: storedRebuyChips,
+          addOnChips: storedAddOnChips,
+          addOnCost: storedAddOnCost,
+          settings: storedSettings,
+        },
         tables: storedTables,
         payouts: storedPayouts,
         blindStructure: storedStructure,
@@ -86,6 +99,17 @@ export default function SettingsForm() {
       storedAddOnCost,
     ],
   );
+
+  if (!mounted) {
+    return (
+      <div
+        className="card-2 p-6 text-sm text-muted"
+        aria-busy="true"
+      >
+        Loading settings…
+      </div>
+    );
+  }
 
   return <SettingsFormInner key={storedKey} baselineKey={storedKey} />;
 }

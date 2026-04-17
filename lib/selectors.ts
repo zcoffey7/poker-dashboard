@@ -5,6 +5,7 @@ export type Stats = {
   totalPlayers: number;
   totalChips: number;
   avgStack: number;
+  avgBigBlinds: number;
   mRatio: number;
   prizePool: number;
   totalEntries: number;
@@ -30,34 +31,56 @@ function pickMLevel(
   return undefined;
 }
 
+export type ChipSchedule = {
+  startingStack?: number;
+  rebuyChips?: number;
+  addOnChips?: number;
+};
+
 export function computeStats(
   players: Player[],
   blindStructure: BlindLevel[],
   currentLevelIdx: number,
   buyIn: number,
   addOnCost = 0,
+  chipSchedule: ChipSchedule = {},
 ): Stats {
   const active = players.filter((p) => !p.eliminated);
-  const totalChips = active.reduce((sum, p) => sum + p.chips, 0);
-  const avgStack =
-    active.length > 0 ? Math.round(totalChips / active.length) : 0;
-  const currentLv = blindStructure[currentLevelIdx];
-  const mLevel = pickMLevel(blindStructure, currentLevelIdx);
-  const costPerOrbit = mLevel
-    ? mLevel.smallBlind +
-      mLevel.bigBlind +
-      mLevel.ante * Math.max(1, active.length)
-    : 0;
-  const mRatio =
-    costPerOrbit > 0 ? +(avgStack / costPerOrbit).toFixed(1) : 0;
-  const totalEntries = players.reduce(
-    (sum, p) => sum + 1 + (p.rebuys ?? 0),
-    0,
-  );
+  const totalRebuys = players.reduce((sum, p) => sum + (p.rebuys ?? 0), 0);
   const totalAddOns = players.reduce(
     (sum, p) => sum + (p.addOns ?? 0),
     0,
   );
+  // Total chips in play is fixed by buy-ins, rebuys, and add-ons — chips change
+  // hands during play but are never created or destroyed (busted players hand
+  // their stack to whoever eliminated them). Summing `active[].chips` directly
+  // would double-penalize eliminations and keep the average flat instead of
+  // letting it climb as the field shrinks.
+  const startingStackSafe = Math.max(0, chipSchedule.startingStack ?? 0);
+  const rebuyChipsSafe = Math.max(0, chipSchedule.rebuyChips ?? 0);
+  const addOnChipsSafe = Math.max(0, chipSchedule.addOnChips ?? 0);
+  const totalChips =
+    players.length * startingStackSafe +
+    totalRebuys * rebuyChipsSafe +
+    totalAddOns * addOnChipsSafe;
+  const avgStack =
+    active.length > 0 ? Math.round(totalChips / active.length) : 0;
+  const currentLv = blindStructure[currentLevelIdx];
+  const mLevel = pickMLevel(blindStructure, currentLevelIdx);
+  // Big blind ante structure: exactly one ante is posted per hand (by the BB),
+  // not one per player. Over a full orbit, each player is SB once, BB once,
+  // and posts the ante once when they're BB — so per-player cost per orbit is
+  // simply SB + BB + ante, independent of table size.
+  const costPerOrbit = mLevel
+    ? mLevel.smallBlind + mLevel.bigBlind + mLevel.ante
+    : 0;
+  const mRatio =
+    costPerOrbit > 0 ? +(avgStack / costPerOrbit).toFixed(1) : 0;
+  const avgBigBlinds =
+    mLevel && mLevel.bigBlind > 0
+      ? Math.round(avgStack / mLevel.bigBlind)
+      : 0;
+  const totalEntries = players.length + totalRebuys;
   const buyInSafe = Math.max(0, buyIn);
   const addOnCostSafe = Math.max(0, addOnCost);
   const prizePool = totalEntries * buyInSafe + totalAddOns * addOnCostSafe;
@@ -66,6 +89,7 @@ export function computeStats(
     totalPlayers: players.length,
     totalChips,
     avgStack,
+    avgBigBlinds,
     mRatio,
     prizePool,
     totalEntries,
