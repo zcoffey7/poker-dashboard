@@ -61,6 +61,18 @@ export type TournamentSettings = {
 
 export type FinishType = "winner" | "chop" | "elimination";
 
+export type RebalanceMove = {
+  playerId: string;
+  playerName: string;
+  fromTableId: string | null;
+  fromTableName: string | null;
+  fromSeat: number | null;
+  toTableId: string;
+  toTableName: string;
+  toSeat: number;
+  reason: "break" | "balance";
+};
+
 export type TournamentState = {
   name: string;
   startingStack: number;
@@ -83,4 +95,10 @@ export type TournamentState = {
    * Only meaningful when finishType === "chop".
    */
   chopShares?: Record<string, number>;
+  /**
+   * Moves produced by the most recent `balanceTables` run that the user
+   * hasn't acknowledged yet. When non-empty the dashboard shows a modal
+   * listing every player who needs to get up and where to sit.
+   */
+  pendingRebalanceMoves?: RebalanceMove[];
 };
