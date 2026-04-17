@@ -7,6 +7,7 @@ import type {
   FinishType,
   PayoutSpot,
   Player,
+  RebalanceMove,
   Table,
   TournamentSettings,
   TournamentState,
@@ -28,6 +29,55 @@ import { playLevelUp, playWarning } from "./clock";
 
 function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
+}
+
+/**
+ * Compare two player lists from before/after `balanceTables` and emit a
+ * `RebalanceMove` for every living player whose table or seat changed.
+ * Uses `tablesAfter` so table names + broken-status reflect the post-balance
+ * world, which is what we want to show in the popup.
+ */
+function diffSeating(
+  before: Player[],
+  after: Player[],
+  tablesBefore: Table[],
+  tablesAfter: Table[],
+): RebalanceMove[] {
+  const beforeById = new Map(before.map((p) => [p.id, p]));
+  const tableBeforeById = new Map(tablesBefore.map((t) => [t.id, t]));
+  const tableAfterById = new Map(tablesAfter.map((t) => [t.id, t]));
+
+  const moves: RebalanceMove[] = [];
+  for (const p of after) {
+    if (p.eliminated) continue;
+    const prev = beforeById.get(p.id);
+    if (!prev) continue;
+    if (prev.tableId === p.tableId && prev.seat === p.seat) continue;
+    if (p.tableId == null || p.seat == null) continue;
+
+    const toTable = tableAfterById.get(p.tableId);
+    if (!toTable) continue;
+
+    const fromTable =
+      prev.tableId != null ? tableBeforeById.get(prev.tableId) : undefined;
+    const fromBrokenNow =
+      prev.tableId != null
+        ? (tableAfterById.get(prev.tableId)?.broken ?? false)
+        : false;
+
+    moves.push({
+      playerId: p.id,
+      playerName: p.name,
+      fromTableId: prev.tableId,
+      fromTableName: fromTable?.name ?? null,
+      fromSeat: prev.seat,
+      toTableId: p.tableId,
+      toTableName: toTable.name,
+      toSeat: p.seat,
+      reason: fromBrokenNow ? "break" : "balance",
+    });
+  }
+  return moves;
 }
 
 type TournamentStore = TournamentState & {
@@ -68,6 +118,7 @@ type TournamentStore = TournamentState & {
     id: string,
     dest: { tableId: string | null; seat: number | null },
   ) => void;
+  acknowledgeRebalance: () => void;
 
   // blind structure
   addLevel: (level?: Partial<BlindLevel>) => void;
@@ -282,15 +333,20 @@ export const useTournament = create<TournamentStore>()(
         }
         let nextPlayers = updated;
         let nextTables = s.tables;
+        let rebalanceMoves: RebalanceMove[] = [];
         if (s.settings.autoBalance) {
           const res = balanceTables(updated, s.tables);
           nextPlayers = res.players;
           nextTables = res.tables;
+          rebalanceMoves = diffSeating(updated, res.players, s.tables, res.tables);
         }
         const autoFinish = autoFinishWinner || autoFinishElim;
         set({
           players: nextPlayers,
           tables: nextTables,
+          ...(rebalanceMoves.length > 0
+            ? { pendingRebalanceMoves: rebalanceMoves }
+            : {}),
           ...(autoFinish
             ? {
                 finishedAt: now,
@@ -432,8 +488,14 @@ export const useTournament = create<TournamentStore>()(
       balanceNow: () => {
         const s = get();
         const res = balanceTables(s.players, s.tables);
-        set({ players: res.players, tables: res.tables });
+        const moves = diffSeating(s.players, res.players, s.tables, res.tables);
+        set({
+          players: res.players,
+          tables: res.tables,
+          ...(moves.length > 0 ? { pendingRebalanceMoves: moves } : {}),
+        });
       },
+      acknowledgeRebalance: () => set({ pendingRebalanceMoves: undefined }),
       clearSeats: () =>
         set((s) => ({
           players: s.players.map((p) => ({
@@ -863,6 +925,7 @@ export const useTournament = create<TournamentStore>()(
           finishedAt: undefined,
           finishType: undefined,
           chopShares: undefined,
+          pendingRebalanceMoves: undefined,
         }),
 
       importState: (state) =>
