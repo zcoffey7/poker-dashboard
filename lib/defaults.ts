@@ -37,8 +37,8 @@ export const DEFAULT_CHIP_DENOMS: ChipDenom[] = [
   { id: "c1", value: 100, color: "white" },
   { id: "c2", value: 500, color: "green" },
   { id: "c3", value: 1000, color: "blue" },
-  { id: "c4", value: 5000, color: "red" },
-  { id: "c5", value: 25000, color: "black" },
+  { id: "c4", value: 25000, color: "red" },
+  { id: "c5", value: 5000, color: "black" },
 ];
 
 export const DEFAULT_TABLES: Table[] = [
