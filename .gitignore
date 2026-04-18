@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# personal stats (private)
+stats/PokerSummary.csv
+stats/poker-summary.html
