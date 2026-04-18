@@ -38,6 +38,24 @@ export type PayoutSpot = {
   percent: number;
 };
 
+export type ChipColor =
+  | "white"
+  | "red"
+  | "green"
+  | "black"
+  | "blue"
+  | "purple"
+  | "yellow"
+  | "orange"
+  | "pink"
+  | "gray";
+
+export type ChipDenom = {
+  id: string;
+  value: number;
+  color: ChipColor;
+};
+
 export type ClockState = {
   currentLevel: number;
   remainingSec: number;
@@ -84,6 +102,7 @@ export type TournamentState = {
   players: Player[];
   blindStructure: BlindLevel[];
   payouts: PayoutSpot[];
+  chipDenoms: ChipDenom[];
   clock: ClockState;
   settings: TournamentSettings;
   startedAt?: number;
