@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   BlindLevel,
+  ChipDenom,
   FinishType,
   PayoutSpot,
   Player,
@@ -17,6 +18,7 @@ import {
   DEFAULT_ADD_ON_COST,
   DEFAULT_BLIND_STRUCTURE,
   DEFAULT_BUY_IN,
+  DEFAULT_CHIP_DENOMS,
   DEFAULT_PAYOUTS,
   DEFAULT_REBUY_CHIPS,
   DEFAULT_SETTINGS,
@@ -164,6 +166,7 @@ type TournamentStore = TournamentState & {
     tables: Table[];
     payouts: PayoutSpot[];
     blindStructure: BlindLevel[];
+    chipDenoms: ChipDenom[];
   }) => void;
 };
 
@@ -180,6 +183,7 @@ const initialState: TournamentState = {
   players: [],
   blindStructure: DEFAULT_BLIND_STRUCTURE,
   payouts: DEFAULT_PAYOUTS,
+  chipDenoms: DEFAULT_CHIP_DENOMS,
   clock: {
     currentLevel: 0,
     remainingSec: initialLevel.durationSec,
@@ -912,6 +916,7 @@ export const useTournament = create<TournamentStore>()(
           ...initialState,
           blindStructure: DEFAULT_BLIND_STRUCTURE,
           payouts: DEFAULT_PAYOUTS,
+          chipDenoms: DEFAULT_CHIP_DENOMS,
           tables: DEFAULT_TABLES,
           settings: DEFAULT_SETTINGS,
           clock: {
@@ -952,6 +957,8 @@ export const useTournament = create<TournamentStore>()(
           if (Array.isArray(state.blindStructure))
             next.blindStructure = state.blindStructure;
           if (Array.isArray(state.payouts)) next.payouts = state.payouts;
+          if (Array.isArray(state.chipDenoms))
+            next.chipDenoms = state.chipDenoms;
           if (state.settings && typeof state.settings === "object") {
             next.settings = { ...s.settings, ...state.settings };
           }
@@ -1030,6 +1037,10 @@ export const useTournament = create<TournamentStore>()(
           tables: draft.tables,
           payouts,
           blindStructure,
+          chipDenoms: draft.chipDenoms.map((c) => ({
+            ...c,
+            value: Math.max(0, c.value),
+          })),
           players,
           clock: {
             ...s.clock,
@@ -1042,7 +1053,7 @@ export const useTournament = create<TournamentStore>()(
     {
       name: "poker-tournament-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 5,
       migrate: (persistedState, version) => {
         if (!persistedState) return persistedState as TournamentState;
         let state = persistedState as Partial<TournamentState>;
@@ -1078,6 +1089,37 @@ export const useTournament = create<TournamentStore>()(
                     : null,
               },
             };
+          }
+        }
+        if (version < 4) {
+          state = {
+            ...state,
+            chipDenoms:
+              Array.isArray(state.chipDenoms) && state.chipDenoms.length > 0
+                ? state.chipDenoms
+                : DEFAULT_CHIP_DENOMS,
+          };
+        }
+        if (version < 5) {
+          // v5 swaps the default colors for 1000 (black → blue) and
+          // 25000 (blue → black). Only touch chipDenoms that still match the
+          // old v4 defaults so we don't clobber user customizations.
+          const OLD_V4_DEFAULTS: ChipDenom[] = [
+            { id: "c1", value: 100, color: "white" },
+            { id: "c2", value: 500, color: "green" },
+            { id: "c3", value: 1000, color: "black" },
+            { id: "c4", value: 5000, color: "red" },
+            { id: "c5", value: 25000, color: "blue" },
+          ];
+          const cur = state.chipDenoms ?? [];
+          const matchesOld =
+            cur.length === OLD_V4_DEFAULTS.length &&
+            cur.every((c, i) => {
+              const o = OLD_V4_DEFAULTS[i];
+              return c.value === o.value && c.color === o.color;
+            });
+          if (matchesOld) {
+            state = { ...state, chipDenoms: DEFAULT_CHIP_DENOMS };
           }
         }
         return state as TournamentState;

@@ -1,5 +1,6 @@
 import type {
   BlindLevel,
+  ChipDenom,
   PayoutSpot,
   Table,
   TournamentSettings,
@@ -30,6 +31,14 @@ export const DEFAULT_PAYOUTS: PayoutSpot[] = [
   { place: 1, percent: 50 },
   { place: 2, percent: 30 },
   { place: 3, percent: 20 },
+];
+
+export const DEFAULT_CHIP_DENOMS: ChipDenom[] = [
+  { id: "c1", value: 100, color: "white" },
+  { id: "c2", value: 500, color: "green" },
+  { id: "c3", value: 1000, color: "blue" },
+  { id: "c4", value: 5000, color: "red" },
+  { id: "c5", value: 25000, color: "black" },
 ];
 
 export const DEFAULT_TABLES: Table[] = [
