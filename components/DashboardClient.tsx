@@ -5,6 +5,7 @@ import { useClockTick } from "@/lib/clock";
 import { useTournament } from "@/lib/store";
 import BlindClock from "./BlindClock";
 import StatsBar from "./StatsBar";
+import ChipLegend from "./ChipLegend";
 import TablesView from "./TablesView";
 import PlayerRoster from "./PlayerRoster";
 import PayoutsPanel from "./PayoutsPanel";
@@ -82,7 +83,7 @@ export default function DashboardClient() {
   ]);
 
   return (
-    <div className="flex flex-col gap-3 p-3 md:p-4 min-h-[100dvh] sm:h-[100dvh] sm:overflow-hidden">
+    <div className="flex flex-col gap-3 p-3 md:p-4 min-h-[100dvh] md:h-full md:min-h-0 md:overflow-hidden">
       <StatsBar />
 
       <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -116,22 +117,18 @@ export default function DashboardClient() {
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 flex items-stretch justify-center">
-        <div className="w-full max-w-5xl flex flex-col gap-3 sm:min-h-0">
-          <div className="sm:flex-[2] sm:min-h-0">
+      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-5 gap-2">
+        <div className="md:col-span-1 min-w-0">
+          <ChipLegend />
+        </div>
+        <div className="md:col-span-4 flex flex-col gap-3 md:min-h-0 min-w-0">
+          <div className="md:flex-[2] md:min-h-0">
             <BlindClock />
           </div>
-          <div className="sm:flex-1 sm:min-h-0">
+          <div className="md:flex-1 md:min-h-0">
             <PayoutsPanel />
           </div>
         </div>
-      </div>
-
-      <div className="hidden sm:block text-[11px] text-[var(--text-muted)] text-center">
-        <kbd className="chip">Space</kbd> play/pause ·{" "}
-        <kbd className="chip">←</kbd>/<kbd className="chip">→</kbd> prev/next
-        · <kbd className="chip">T</kbd> tables · <kbd className="chip">P</kbd>{" "}
-        players · <kbd className="chip">Esc</kbd> close
       </div>
 
       {openPanel && (

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
 import type {
   BlindLevel,
+  ChipDenom,
   PayoutSpot,
   Table,
   TournamentSettings,
@@ -14,12 +15,14 @@ import GeneralSettings, {
 import TablesEditor from "./TablesEditor";
 import PayoutsEditor from "./PayoutsEditor";
 import BlindStructureEditor from "./BlindStructureEditor";
+import ChipDenomEditor from "./ChipDenomEditor";
 
 type Draft = {
   general: GeneralDraft;
   tables: Table[];
   payouts: PayoutSpot[];
   blindStructure: BlindLevel[];
+  chipDenoms: ChipDenom[];
 };
 
 function snapshot(): Draft {
@@ -37,6 +40,7 @@ function snapshot(): Draft {
     tables: s.tables.map((t) => ({ ...t })),
     payouts: s.payouts.map((p) => ({ ...p })),
     blindStructure: s.blindStructure.map((lv) => ({ ...lv })),
+    chipDenoms: s.chipDenoms.map((c) => ({ ...c })),
   };
 }
 
@@ -60,6 +64,7 @@ export default function SettingsForm() {
   const storedTables = useTournament((s) => s.tables);
   const storedPayouts = useTournament((s) => s.payouts);
   const storedStructure = useTournament((s) => s.blindStructure);
+  const storedChipDenoms = useTournament((s) => s.chipDenoms);
   const storedSettings = useTournament((s) => s.settings);
   const storedStartingStack = useTournament((s) => s.startingStack);
   const storedBuyIn = useTournament((s) => s.buyIn);
@@ -85,12 +90,14 @@ export default function SettingsForm() {
         tables: storedTables,
         payouts: storedPayouts,
         blindStructure: storedStructure,
+        chipDenoms: storedChipDenoms,
       }),
     [
       storedName,
       storedTables,
       storedPayouts,
       storedStructure,
+      storedChipDenoms,
       storedSettings,
       storedStartingStack,
       storedBuyIn,
@@ -145,6 +152,10 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
       setDraft((d) => ({ ...d, blindStructure })),
     [],
   );
+  const updateChipDenoms = useCallback(
+    (chipDenoms: ChipDenom[]) => setDraft((d) => ({ ...d, chipDenoms })),
+    [],
+  );
 
   function handleSave() {
     if (draft.tables.length === 0) {
@@ -167,6 +178,7 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
       tables: draft.tables,
       payouts: draft.payouts,
       blindStructure: draft.blindStructure,
+      chipDenoms: draft.chipDenoms,
     });
     // The store update bumps storedKey → parent remounts us with fresh state.
   }
@@ -188,6 +200,10 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
           onChange={updatePayouts}
         />
       </div>
+      <ChipDenomEditor
+        chipDenoms={draft.chipDenoms}
+        onChange={updateChipDenoms}
+      />
       <BlindStructureEditor
         structure={draft.blindStructure}
         onChange={updateStructure}
