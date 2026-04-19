@@ -57,5 +57,6 @@ export const DEFAULT_TOURNAMENT_NAME = "Home Game Tournament";
 export const DEFAULT_STARTING_STACK = 30000;
 export const DEFAULT_BUY_IN = 20;
 export const DEFAULT_REBUY_CHIPS = 30000;
+export const DEFAULT_REBUY_COST = DEFAULT_BUY_IN;
 export const DEFAULT_ADD_ON_CHIPS = 25000;
 export const DEFAULT_ADD_ON_COST = 10;

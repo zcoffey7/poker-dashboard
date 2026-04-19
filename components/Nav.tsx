@@ -25,8 +25,6 @@ export default function Nav() {
 
   const tournamentName = useTournament((s) => s.name);
   const cashName = useCash((s) => s.name);
-  const soundEnabled = useTournament((s) => s.settings.soundEnabled);
-  const updateSettings = useTournament((s) => s.updateSettings);
 
   const name =
     mode === "tournament"
@@ -42,20 +40,12 @@ export default function Nav() {
 
   const items: NavItem[] = [];
   if (mode !== "none") {
-    items.push(
-      {
-        kind: "link",
-        href: basePath,
-        label: "Dashboard",
-        active: dashboardActive,
-      },
-      {
-        kind: "link",
-        href: `${basePath}/settings`,
-        label: "Settings",
-        active: settingsActive,
-      },
-    );
+    items.push({
+      kind: "link",
+      href: basePath,
+      label: "Dashboard",
+      active: dashboardActive,
+    });
   }
   items.push({
     kind: "link",
@@ -63,12 +53,12 @@ export default function Nav() {
     label: mode === "none" ? "Home" : "Switch mode",
     active: pathname === "/",
   });
-  if (mode === "tournament") {
+  if (mode !== "none") {
     items.push({
-      kind: "action",
-      label: soundEnabled ? "Mute sounds" : "Unmute sounds",
-      title: soundEnabled ? "Mute sounds" : "Unmute sounds",
-      onClick: () => updateSettings({ soundEnabled: !soundEnabled }),
+      kind: "link",
+      href: `${basePath}/settings`,
+      label: "Settings",
+      active: settingsActive,
     });
   }
 

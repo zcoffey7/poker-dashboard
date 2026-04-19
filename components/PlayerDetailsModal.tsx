@@ -19,6 +19,7 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
   const tables = useTournament((s) => s.tables);
   const buyIn = useTournament((s) => s.buyIn);
   const rebuyChips = useTournament((s) => s.rebuyChips);
+  const rebuyCost = useTournament((s) => s.rebuyCost);
   const addOnChips = useTournament((s) => s.addOnChips);
   const addOnCost = useTournament((s) => s.addOnCost);
 
@@ -42,7 +43,6 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
 
   const rebuys = player.rebuys ?? 0;
   const addOns = player.addOns ?? 0;
-  const rebuyCost = buyIn;
 
   const buyInTotal = buyIn;
   const rebuyTotal = rebuys * rebuyCost;

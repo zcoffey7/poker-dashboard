@@ -96,6 +96,7 @@ export type TournamentState = {
   startingStack: number;
   buyIn: number;
   rebuyChips: number;
+  rebuyCost: number;
   addOnChips: number;
   addOnCost: number;
   tables: Table[];

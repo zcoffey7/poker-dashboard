@@ -9,6 +9,7 @@ export type GeneralDraft = {
   startingStack: number;
   buyIn: number;
   rebuyChips: number;
+  rebuyCost: number;
   addOnChips: number;
   addOnCost: number;
   settings: TournamentSettings;
@@ -58,22 +59,32 @@ export default function GeneralSettings({ draft, onChange }: Props) {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-[var(--text-muted)]">
+            Warning threshold (sec)
+          </label>
+          <NumberInput
+            className="input"
+            value={draft.settings.warnSec}
+            onChange={(n) => updateSettings({ warnSec: n })}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-[var(--text-muted)]">
+            Rebuy cost ($)
+          </label>
+          <NumberInput
+            className="input"
+            value={draft.rebuyCost}
+            onChange={(n) => onChange({ rebuyCost: n })}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-[var(--text-muted)]">
             Rebuy chips (0 to disable)
           </label>
           <NumberInput
             className="input"
             value={draft.rebuyChips}
             onChange={(n) => onChange({ rebuyChips: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Add-on chips (0 to disable)
-          </label>
-          <NumberInput
-            className="input"
-            value={draft.addOnChips}
-            onChange={(n) => onChange({ addOnChips: n })}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -88,12 +99,12 @@ export default function GeneralSettings({ draft, onChange }: Props) {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-xs text-[var(--text-muted)]">
-            Warning threshold (sec)
+            Add-on chips (0 to disable)
           </label>
           <NumberInput
             className="input"
-            value={draft.settings.warnSec}
-            onChange={(n) => updateSettings({ warnSec: n })}
+            value={draft.addOnChips}
+            onChange={(n) => onChange({ addOnChips: n })}
           />
         </div>
         <div className="flex flex-col gap-1">

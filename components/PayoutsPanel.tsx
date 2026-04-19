@@ -12,10 +12,19 @@ export default function PayoutsPanel() {
   const currentLevel = useTournament((s) => s.clock.currentLevel);
   const buyIn = useTournament((s) => s.buyIn);
   const addOnCost = useTournament((s) => s.addOnCost);
+  const rebuyCost = useTournament((s) => s.rebuyCost);
   const stats = useMemo(
     () =>
-      computeStats(players, blindStructure, currentLevel, buyIn, addOnCost),
-    [players, blindStructure, currentLevel, buyIn, addOnCost],
+      computeStats(
+        players,
+        blindStructure,
+        currentLevel,
+        buyIn,
+        addOnCost,
+        {},
+        rebuyCost,
+      ),
+    [players, blindStructure, currentLevel, buyIn, addOnCost, rebuyCost],
   );
 
   const pool = stats.prizePool;

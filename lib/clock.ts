@@ -19,32 +19,58 @@ function ensureCtx(): AudioContext | null {
   return audioCtx;
 }
 
-export function playBeep(freq = 880, durationMs = 200, volume = 0.15) {
+type Waveform = OscillatorType;
+
+export function playBeep(
+  freq = 880,
+  durationMs = 200,
+  volume = 0.9,
+  waveform: Waveform = "sine",
+) {
   const ctx = ensureCtx();
   if (!ctx) return;
+  // Stack a fundamental sine with a brighter harmonic so the tone has body
+  // *and* enough high-frequency cut-through to be heard across a room.
   const osc = ctx.createOscillator();
+  const oscHarm = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.type = "sine";
+  osc.type = waveform;
   osc.frequency.value = freq;
-  gain.gain.value = volume;
+  oscHarm.type = "square";
+  oscHarm.frequency.value = freq * 2;
+  const harmGain = ctx.createGain();
+  harmGain.gain.value = 0.25;
   osc.connect(gain);
+  oscHarm.connect(harmGain).connect(gain);
   gain.connect(ctx.destination);
+
   const now = ctx.currentTime;
-  gain.gain.setValueAtTime(volume, now);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000);
+  const attack = 0.01;
+  const dur = durationMs / 1000;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(volume, now + attack);
+  gain.gain.setValueAtTime(volume, now + Math.max(attack, dur * 0.7));
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   osc.start(now);
-  osc.stop(now + durationMs / 1000 + 0.02);
+  oscHarm.start(now);
+  osc.stop(now + dur + 0.02);
+  oscHarm.stop(now + dur + 0.02);
 }
 
 export function playLevelUp() {
-  playBeep(660, 180);
-  setTimeout(() => playBeep(880, 180), 200);
-  setTimeout(() => playBeep(1100, 300), 400);
+  playBeep(660, 220, 0.95, "triangle");
+  setTimeout(() => playBeep(880, 220, 0.95, "triangle"), 220);
+  setTimeout(() => playBeep(1100, 360, 1, "triangle"), 440);
 }
 
 export function playWarning() {
-  playBeep(440, 120);
-  setTimeout(() => playBeep(440, 120), 180);
+  // Attention-grabbing rising arpeggio: maxed-out volume with a bright
+  // waveform so it cuts through conversation from across the room when
+  // blinds are about to go up. Total duration ~1.6s.
+  playBeep(700, 320, 1, "square");
+  setTimeout(() => playBeep(700, 320, 1, "square"), 320);
+  setTimeout(() => playBeep(880, 360, 1, "square"), 700);
+  setTimeout(() => playBeep(1175, 560, 1, "square"), 1080);
 }
 
 export function useClockTick() {
