@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useTournament } from "@/lib/store";
 import type { ChipColor, ChipDenom } from "@/lib/types";
+import { chipImageForValue } from "@/lib/chipImages";
 
 type ChipPalette = {
   face: string;
@@ -85,28 +86,47 @@ export const CHIP_COLOR_MAP: Record<ChipColor, ChipPalette> = {
   },
 };
 
-export const CHIP_COLOR_OPTIONS: { value: ChipColor; label: string }[] = [
-  { value: "white", label: "White" },
-  { value: "red", label: "Red" },
-  { value: "green", label: "Green" },
-  { value: "black", label: "Black" },
-  { value: "blue", label: "Blue" },
-  { value: "purple", label: "Purple" },
-  { value: "yellow", label: "Yellow" },
-  { value: "orange", label: "Orange" },
-  { value: "pink", label: "Pink" },
-  { value: "gray", label: "Gray" },
+/**
+ * Each option pairs a chip color with the denomination it represents in the
+ * Monte Carlo Poker Club default chip set. `value` is used by editors to lock
+ * the dollar amount to the chip the user actually picked.
+ */
+export const CHIP_COLOR_OPTIONS: {
+  value: ChipColor;
+  label: string;
+  chipValue: number;
+}[] = [
+  { value: "white", label: "Monte Carlo 100", chipValue: 100 },
+  { value: "green", label: "Monte Carlo 500", chipValue: 500 },
+  { value: "blue", label: "Monte Carlo 1000", chipValue: 1000 },
+  { value: "black", label: "Monte Carlo 5000", chipValue: 5000 },
+  { value: "red", label: "Monte Carlo 25000", chipValue: 25000 },
 ];
 
 type ChipDiskProps = Readonly<{
   color: ChipColor;
   size?: number;
   stripes?: number;
+  /**
+   * Optional photo of an actual chip face. When provided we render the photo
+   * instead of the stylized colored disk — the photo already shows the
+   * denomination so callers should skip any value overlay in that case.
+   */
+  imageSrc?: string;
+  /** Accessible alt text when `imageSrc` is provided. */
+  imageAlt?: string;
 }>;
 
-export function ChipDisk({ color, size = 56, stripes = 6 }: ChipDiskProps) {
+export function ChipDisk({
+  color,
+  size = 56,
+  stripes = 6,
+  imageSrc,
+  imageAlt,
+}: ChipDiskProps) {
   const palette = CHIP_COLOR_MAP[color];
   const stripeEls = useMemo(() => {
+    if (imageSrc) return null;
     const out: React.ReactNode[] = [];
     for (let i = 0; i < stripes; i++) {
       const rotation = (360 / stripes) * i;
@@ -125,7 +145,26 @@ export function ChipDisk({ color, size = 56, stripes = 6 }: ChipDiskProps) {
       );
     }
     return out;
-  }, [palette.stripe, size, stripes]);
+  }, [imageSrc, palette.stripe, size, stripes]);
+
+  if (imageSrc) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageSrc}
+        alt={imageAlt ?? ""}
+        width={size}
+        height={size}
+        className="shrink-0 block"
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          filter: "drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35))",
+        }}
+        draggable={false}
+      />
+    );
+  }
 
   return (
     <div
@@ -167,6 +206,7 @@ export default function ChipLegend() {
       <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto scrollbar-thin">
         {sorted.map((d) => {
           const palette = CHIP_COLOR_MAP[d.color];
+          const imageSrc = chipImageForValue(d.value);
           return (
             <div
               key={d.id}
@@ -174,13 +214,20 @@ export default function ChipLegend() {
               title={`${d.value.toLocaleString()} chip (${d.color})`}
             >
               <div className="relative shrink-0">
-                <ChipDisk color={d.color} size={88} />
-                <div
-                  className="absolute inset-0 flex items-center justify-center font-mono tabular-nums font-bold text-sm sm:text-base leading-none"
-                  style={{ color: palette.text }}
-                >
-                  {formatChipFace(d.value)}
-                </div>
+                <ChipDisk
+                  color={d.color}
+                  size={88}
+                  imageSrc={imageSrc}
+                  imageAlt={`$${d.value.toLocaleString()} chip`}
+                />
+                {!imageSrc && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center font-mono tabular-nums font-bold text-sm sm:text-base leading-none"
+                    style={{ color: palette.text }}
+                  >
+                    {formatChipFace(d.value)}
+                  </div>
+                )}
               </div>
               <div className="font-mono tabular-nums text-2xl md:text-3xl font-bold">
                 {d.value.toLocaleString()}

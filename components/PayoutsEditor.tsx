@@ -10,6 +10,7 @@ import NumberInput from "./NumberInput";
 type Props = {
   payouts: PayoutSpot[];
   buyIn: number;
+  rebuyCost: number;
   addOnCost: number;
   onChange: (payouts: PayoutSpot[]) => void;
 };
@@ -17,6 +18,7 @@ type Props = {
 export default function PayoutsEditor({
   payouts,
   buyIn,
+  rebuyCost,
   addOnCost,
   onChange,
 }: Props) {
@@ -25,8 +27,16 @@ export default function PayoutsEditor({
   const currentLevel = useTournament((s) => s.clock.currentLevel);
   const stats = useMemo(
     () =>
-      computeStats(players, blindStructure, currentLevel, buyIn, addOnCost),
-    [players, blindStructure, currentLevel, buyIn, addOnCost],
+      computeStats(
+        players,
+        blindStructure,
+        currentLevel,
+        buyIn,
+        addOnCost,
+        {},
+        rebuyCost,
+      ),
+    [players, blindStructure, currentLevel, buyIn, addOnCost, rebuyCost],
   );
 
   const total = payouts.reduce((s, p) => s + p.percent, 0);

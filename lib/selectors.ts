@@ -44,6 +44,7 @@ export function computeStats(
   buyIn: number,
   addOnCost = 0,
   chipSchedule: ChipSchedule = {},
+  rebuyCost = 0,
 ): Stats {
   const active = players.filter((p) => !p.eliminated);
   const totalRebuys = players.reduce((sum, p) => sum + (p.rebuys ?? 0), 0);
@@ -83,7 +84,14 @@ export function computeStats(
   const totalEntries = players.length + totalRebuys;
   const buyInSafe = Math.max(0, buyIn);
   const addOnCostSafe = Math.max(0, addOnCost);
-  const prizePool = totalEntries * buyInSafe + totalAddOns * addOnCostSafe;
+  const rebuyCostSafe = Math.max(0, rebuyCost);
+  // Price entries, rebuys, and add-ons separately so the rebuy dollar amount
+  // (configurable in settings) drives the prize pool independently of the
+  // initial buy-in.
+  const prizePool =
+    players.length * buyInSafe +
+    totalRebuys * rebuyCostSafe +
+    totalAddOns * addOnCostSafe;
   return {
     activeCount: active.length,
     totalPlayers: players.length,

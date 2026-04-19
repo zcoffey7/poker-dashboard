@@ -33,6 +33,7 @@ function snapshot(): Draft {
       startingStack: s.startingStack,
       buyIn: s.buyIn,
       rebuyChips: s.rebuyChips,
+      rebuyCost: s.rebuyCost,
       addOnChips: s.addOnChips,
       addOnCost: s.addOnCost,
       settings: s.settings,
@@ -69,6 +70,7 @@ export default function SettingsForm() {
   const storedStartingStack = useTournament((s) => s.startingStack);
   const storedBuyIn = useTournament((s) => s.buyIn);
   const storedRebuyChips = useTournament((s) => s.rebuyChips);
+  const storedRebuyCost = useTournament((s) => s.rebuyCost);
   const storedAddOnChips = useTournament((s) => s.addOnChips);
   const storedAddOnCost = useTournament((s) => s.addOnCost);
 
@@ -83,6 +85,7 @@ export default function SettingsForm() {
           startingStack: storedStartingStack,
           buyIn: storedBuyIn,
           rebuyChips: storedRebuyChips,
+          rebuyCost: storedRebuyCost,
           addOnChips: storedAddOnChips,
           addOnCost: storedAddOnCost,
           settings: storedSettings,
@@ -102,6 +105,7 @@ export default function SettingsForm() {
       storedStartingStack,
       storedBuyIn,
       storedRebuyChips,
+      storedRebuyCost,
       storedAddOnChips,
       storedAddOnCost,
     ],
@@ -172,6 +176,7 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
       startingStack: draft.general.startingStack,
       buyIn: draft.general.buyIn,
       rebuyChips: draft.general.rebuyChips,
+      rebuyCost: draft.general.rebuyCost,
       addOnChips: draft.general.addOnChips,
       addOnCost: draft.general.addOnCost,
       settings,
@@ -196,6 +201,7 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
         <PayoutsEditor
           payouts={draft.payouts}
           buyIn={draft.general.buyIn}
+          rebuyCost={draft.general.rebuyCost}
           addOnCost={draft.general.addOnCost}
           onChange={updatePayouts}
         />

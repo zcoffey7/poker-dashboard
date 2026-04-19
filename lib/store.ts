@@ -21,6 +21,7 @@ import {
   DEFAULT_CHIP_DENOMS,
   DEFAULT_PAYOUTS,
   DEFAULT_REBUY_CHIPS,
+  DEFAULT_REBUY_COST,
   DEFAULT_SETTINGS,
   DEFAULT_STARTING_STACK,
   DEFAULT_TABLES,
@@ -88,6 +89,7 @@ type TournamentStore = TournamentState & {
   setStartingStack: (n: number) => void;
   setBuyIn: (n: number) => void;
   setRebuyChips: (n: number) => void;
+  setRebuyCost: (n: number) => void;
   setAddOnChips: (n: number) => void;
   setAddOnCost: (n: number) => void;
   updateSettings: (partial: Partial<TournamentSettings>) => void;
@@ -160,6 +162,7 @@ type TournamentStore = TournamentState & {
     startingStack: number;
     buyIn: number;
     rebuyChips: number;
+    rebuyCost: number;
     addOnChips: number;
     addOnCost: number;
     settings: TournamentSettings;
@@ -177,6 +180,7 @@ const initialState: TournamentState = {
   startingStack: DEFAULT_STARTING_STACK,
   buyIn: DEFAULT_BUY_IN,
   rebuyChips: DEFAULT_REBUY_CHIPS,
+  rebuyCost: DEFAULT_REBUY_COST,
   addOnChips: DEFAULT_ADD_ON_CHIPS,
   addOnCost: DEFAULT_ADD_ON_COST,
   tables: DEFAULT_TABLES,
@@ -255,6 +259,7 @@ export const useTournament = create<TournamentStore>()(
       setStartingStack: (n) => set({ startingStack: Math.max(0, n) }),
       setBuyIn: (n) => set({ buyIn: Math.max(0, n) }),
       setRebuyChips: (n) => set({ rebuyChips: Math.max(0, n) }),
+      setRebuyCost: (n) => set({ rebuyCost: Math.max(0, n) }),
       setAddOnChips: (n) => set({ addOnChips: Math.max(0, n) }),
       setAddOnCost: (n) => set({ addOnCost: Math.max(0, n) }),
       updateSettings: (partial) =>
@@ -948,6 +953,8 @@ export const useTournament = create<TournamentStore>()(
             next.buyIn = Math.max(0, state.buyIn);
           if (typeof state.rebuyChips === "number")
             next.rebuyChips = Math.max(0, state.rebuyChips);
+          if (typeof state.rebuyCost === "number")
+            next.rebuyCost = Math.max(0, state.rebuyCost);
           if (typeof state.addOnChips === "number")
             next.addOnChips = Math.max(0, state.addOnChips);
           if (typeof state.addOnCost === "number")
@@ -1031,6 +1038,7 @@ export const useTournament = create<TournamentStore>()(
           startingStack: Math.max(0, draft.startingStack),
           buyIn: Math.max(0, draft.buyIn),
           rebuyChips: Math.max(0, draft.rebuyChips),
+          rebuyCost: Math.max(0, draft.rebuyCost),
           addOnChips: Math.max(0, draft.addOnChips),
           addOnCost: Math.max(0, draft.addOnCost),
           settings: draft.settings,
@@ -1053,7 +1061,7 @@ export const useTournament = create<TournamentStore>()(
     {
       name: "poker-tournament-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 5,
+      version: 6,
       migrate: (persistedState, version) => {
         if (!persistedState) return persistedState as TournamentState;
         let state = persistedState as Partial<TournamentState>;
@@ -1122,6 +1130,17 @@ export const useTournament = create<TournamentStore>()(
             state = { ...state, chipDenoms: DEFAULT_CHIP_DENOMS };
           }
         }
+        if (version < 6) {
+          // v6 introduces a separate `rebuyCost` (dollars) so rebuys aren't
+          // implicitly priced at `buyIn`. Default to the existing buy-in so
+          // prize-pool math and player totals don't change for users
+          // upgrading from v5 or earlier.
+          state = {
+            ...state,
+            rebuyCost:
+              state.rebuyCost ?? state.buyIn ?? DEFAULT_REBUY_COST,
+          };
+        }
         return state as TournamentState;
       },
       onRehydrateStorage: () => (rehydrated, error) => {
@@ -1189,13 +1208,14 @@ export const useTournament = create<TournamentStore>()(
           finishTournament: _46,
           unfinishTournament: _47,
           movePlayer: _48,
+          setRebuyCost: _49,
           ...rest
         } = state;
         void _1;void _2;void _3;void _4;void _5;void _6;void _7;void _8;void _9;void _10;
         void _11;void _12;void _13;void _14;void _15;void _16;void _17;void _18;void _19;void _20;
         void _21;void _22;void _23;void _24;void _25;void _26;void _27;void _28;void _29;void _30;
         void _31;void _32;void _33;void _34;void _35;void _36;void _37;void _38;void _39;void _40;
-        void _41;void _42;void _43;void _44;void _45;void _46;void _47;void _48;
+        void _41;void _42;void _43;void _44;void _45;void _46;void _47;void _48;void _49;
         return rest;
       },
     },

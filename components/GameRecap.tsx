@@ -70,6 +70,7 @@ export default function GameRecap() {
   const players = useTournament((s) => s.players);
   const buyIn = useTournament((s) => s.buyIn);
   const addOnCost = useTournament((s) => s.addOnCost);
+  const rebuyCost = useTournament((s) => s.rebuyCost);
   const payouts = useTournament((s) => s.payouts);
   const blindStructure = useTournament((s) => s.blindStructure);
   const startedAt = useTournament((s) => s.startedAt);
@@ -88,8 +89,10 @@ export default function GameRecap() {
         currentLevelIdx,
         buyIn,
         addOnCost,
+        {},
+        rebuyCost,
       ),
-    [players, blindStructure, currentLevelIdx, buyIn, addOnCost],
+    [players, blindStructure, currentLevelIdx, buyIn, addOnCost, rebuyCost],
   );
   const pool = stats.prizePool;
 
@@ -161,9 +164,10 @@ export default function GameRecap() {
 
     return players
       .map((p: Player) => {
-        const entries = 1 + (p.rebuys ?? 0);
+        const rebuys = p.rebuys ?? 0;
+        const entries = 1 + rebuys;
         const addOns = p.addOns ?? 0;
-        const moneyIn = entries * buyIn + addOns * addOnCost;
+        const moneyIn = buyIn + rebuys * rebuyCost + addOns * addOnCost;
         const isCoWinner = isChop && chopSet.has(p.id);
         let payout = 0;
         if (isCoWinner) {
@@ -200,6 +204,7 @@ export default function GameRecap() {
   }, [
     players,
     buyIn,
+    rebuyCost,
     addOnCost,
     placePayouts,
     chopAmounts,

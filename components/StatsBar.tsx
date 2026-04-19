@@ -33,23 +33,33 @@ export default function StatsBar() {
   const clock = useTournament((s) => s.clock);
   const buyIn = useTournament((s) => s.buyIn);
   const addOnCost = useTournament((s) => s.addOnCost);
+  const rebuyCost = useTournament((s) => s.rebuyCost);
   const startingStack = useTournament((s) => s.startingStack);
   const rebuyChips = useTournament((s) => s.rebuyChips);
   const addOnChips = useTournament((s) => s.addOnChips);
 
   const stats = useMemo(
     () =>
-      computeStats(players, blindStructure, clock.currentLevel, buyIn, addOnCost, {
-        startingStack,
-        rebuyChips,
-        addOnChips,
-      }),
+      computeStats(
+        players,
+        blindStructure,
+        clock.currentLevel,
+        buyIn,
+        addOnCost,
+        {
+          startingStack,
+          rebuyChips,
+          addOnChips,
+        },
+        rebuyCost,
+      ),
     [
       players,
       blindStructure,
       clock.currentLevel,
       buyIn,
       addOnCost,
+      rebuyCost,
       startingStack,
       rebuyChips,
       addOnChips,
