@@ -195,19 +195,17 @@
     <main class="page stack stack-24" id="root"></main>
 
     <script>
+      const MIN_GAMES = 5;
       const PLAYERS = [
-        { name: "Coffey", games: 21, buyIn: 1250, cashOut: 1655, net: 405, netAvg: 19.29 },
-        { name: "Swain", games: 3, buyIn: 110, cashOut: 345, net: 235, netAvg: 78.33 },
-        { name: "Mercer", games: 19, buyIn: 735, cashOut: 905, net: 170, netAvg: 8.95 },
-        { name: "Souse", games: 19, buyIn: 760, cashOut: 920, net: 160, netAvg: 8.42 },
-        { name: "Martell", games: 12, buyIn: 350, cashOut: 455, net: 105, netAvg: 8.75 },
-        { name: "Toby", games: 12, buyIn: 430, cashOut: 440, net: 10, netAvg: 0.83 },
-        { name: "Donnelly", games: 3, buyIn: 120, cashOut: 85, net: -35, netAvg: -11.67 },
-        { name: "Marshall", games: 4, buyIn: 210, cashOut: 80, net: -130, netAvg: -32.50 },
+        { name: "Souse", games: 20, buyIn: 780, cashOut: 1045, net: 265, netAvg: 13.25 },
+        { name: "Mercer", games: 20, buyIn: 795, cashOut: 1030, net: 235, netAvg: 11.75 },
+        { name: "Coffey", games: 22, buyIn: 1450, cashOut: 1655, net: 205, netAvg: 9.32 },
+        { name: "Toby", games: 13, buyIn: 470, cashOut: 595, net: 125, netAvg: 9.62 },
+        { name: "Martell", games: 13, buyIn: 395, cashOut: 455, net: 60, netAvg: 4.62 },
         { name: "Xander", games: 11, buyIn: 465, cashOut: 335, net: -130, netAvg: -11.82 },
         { name: "Brods", games: 5, buyIn: 225, cashOut: 70, net: -155, netAvg: -31.00 },
-        { name: "Vallis", games: 14, buyIn: 655, cashOut: 465, net: -190, netAvg: -13.57 },
-        { name: "Ham", games: 18, buyIn: 675, cashOut: 315, net: -360, netAvg: -20.00 },
+        { name: "Vallis", games: 15, buyIn: 735, cashOut: 465, net: -270, netAvg: -18.00 },
+        { name: "Ham", games: 19, buyIn: 695, cashOut: 375, net: -320, netAvg: -16.84 },
         { name: "Randell", games: 12, buyIn: 580, cashOut: 215, net: -365, netAvg: -30.42 },
       ];
 
@@ -217,8 +215,12 @@
       const losers = PLAYERS.filter((p) => p.net < 0).length;
       const sorted = [...PLAYERS].sort((a, b) => b.net - a.net);
       const maxAbs = Math.max(...PLAYERS.map((p) => Math.abs(p.net)));
+      const maxAbsPlayer = PLAYERS.find((p) => Math.abs(p.net) === maxAbs);
       const maxNet = Math.max(...PLAYERS.map((p) => p.net));
       const minNet = Math.min(...PLAYERS.map((p) => p.net));
+      const byNetAvg = [...PLAYERS].sort((a, b) => b.netAvg - a.netAvg);
+      const bestAvg = byNetAvg[0];
+      const worstAvg = byNetAvg[byNetAvg.length - 1];
 
       function fmtSigned(n) {
         if (n === 0) return "$0";
@@ -250,7 +252,7 @@
           el(
             "p",
             { class: "subtle", style: "margin:0" },
-            `${PLAYERS.length} regulars (3+ sessions) across ${totalGames} player-games. Sorted by net P/L; bars scale to the largest absolute swing (Coffey, $${maxAbs}).`
+            `${PLAYERS.length} regulars (${MIN_GAMES}+ sessions) across ${totalGames} player-games. Sorted by net P/L; bars scale to the largest absolute swing (${maxAbsPlayer.name}, $${maxAbs}).`
           )
         );
       }
@@ -382,7 +384,7 @@
           el(
             "p",
             { class: "subtle small", style: "margin:0" },
-            "Net per game reveals true skill independent of attendance — Swain leads at +$78/game (only 3 sessions), while Marshall is the deepest hole at -$32.50/game."
+            `Net per game reveals true skill independent of attendance — ${bestAvg.name} leads at ${fmtAvg(bestAvg.netAvg)}/game (${bestAvg.games} sessions), while ${worstAvg.name} is the deepest hole at ${fmtAvg(worstAvg.netAvg)}/game.`
           ),
           el("table", {}, head, body)
         );
