@@ -39,6 +39,10 @@ jobs:
           mkdir -p out/standings
           cp stats/poker-summary.html out/standings/index.html
           cp stats/PokerSummary.csv out/standings/PokerSummary.csv
+          cp stats/manifest.webmanifest out/standings/manifest.webmanifest
+          cp stats/standings-icon-180.png out/standings/standings-icon-180.png
+          cp stats/standings-icon-192.png out/standings/standings-icon-192.png
+          cp stats/standings-icon-512.png out/standings/standings-icon-512.png
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
