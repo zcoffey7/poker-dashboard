@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 export default function LandingPage() {
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6">
@@ -25,6 +27,14 @@ export default function LandingPage() {
             description="Fixed blinds, one table, unlimited rebuys for any amount, per-player cash-outs."
             badge="Casual"
           />
+        </div>
+        <div className="text-center">
+          <a
+            href={`${basePath}/standings/`}
+            className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
+          >
+            View season standings &raquo;
+          </a>
         </div>
       </div>
     </div>

@@ -34,6 +34,12 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
         run: npm run build
 
+      - name: Bundle standings page
+        run: |
+          mkdir -p out/standings
+          cp stats/poker-summary.html out/standings/index.html
+          cp stats/PokerSummary.csv out/standings/PokerSummary.csv
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
