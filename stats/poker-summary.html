@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#181818" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Poker Ledger — Cumulative Standings</title>
     <style>
       :root {
@@ -21,6 +24,9 @@
         --gain-soft: #1f8a651f;
         --loss: #cf2d56e8;
         --loss-soft: #cf2d561f;
+        --name-col: 88px;
+        --value-col: 64px;
+        --row-gap: 14px;
       }
       * { box-sizing: border-box; }
       html, body {
@@ -33,11 +39,15 @@
         font-size: 14px;
         line-height: 20px;
         -webkit-font-smoothing: antialiased;
+        -webkit-text-size-adjust: 100%;
       }
       .page {
         max-width: 960px;
         margin: 0 auto;
         padding: 40px 32px 64px;
+        padding-left: max(32px, env(safe-area-inset-left));
+        padding-right: max(32px, env(safe-area-inset-right));
+        padding-bottom: max(64px, env(safe-area-inset-bottom));
       }
       h1 {
         font-size: 24px;
@@ -91,8 +101,8 @@
 
       .chart .row {
         display: grid;
-        grid-template-columns: 88px 1fr 64px;
-        gap: 14px;
+        grid-template-columns: var(--name-col) 1fr var(--value-col);
+        gap: var(--row-gap);
         align-items: center;
       }
       .chart .row .name {
@@ -135,8 +145,8 @@
       .loss-text { color: var(--loss); }
       .axis-row {
         display: grid;
-        grid-template-columns: 88px 1fr 64px;
-        gap: 14px;
+        grid-template-columns: var(--name-col) 1fr var(--value-col);
+        gap: var(--row-gap);
         margin-top: 4px;
       }
       .axis-labels {
@@ -157,13 +167,16 @@
         font-size: 12px;
       }
 
+      .table-wrap {
+        border: 1px solid var(--stroke-tertiary);
+        border-radius: 8px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
       table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        border: 1px solid var(--stroke-tertiary);
-        border-radius: 8px;
-        overflow: hidden;
         font-variant-numeric: tabular-nums;
       }
       thead th {
@@ -174,6 +187,9 @@
         background: var(--bg-chrome);
         padding: 8px 12px;
         border-bottom: 1px solid var(--stroke-tertiary);
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
       }
       thead th:nth-child(2) { text-align: left; }
       tbody td {
@@ -181,6 +197,7 @@
         text-align: right;
         border-bottom: 1px solid var(--stroke-tertiary);
         font-size: 13px;
+        white-space: nowrap;
       }
       tbody tr:last-child td { border-bottom: 0; }
       tbody td:nth-child(2) { text-align: left; font-weight: 500; }
@@ -188,6 +205,36 @@
       tbody tr.loss td { background: var(--loss-soft); }
       tbody tr:nth-child(even):not(.gain):not(.loss) td {
         background: var(--fill-quaternary);
+      }
+
+      @media (max-width: 720px) {
+        :root {
+          --name-col: 72px;
+          --value-col: 58px;
+          --row-gap: 10px;
+        }
+        body { font-size: 13px; line-height: 18px; }
+        .page { padding: 24px 16px 48px; }
+        h1 { font-size: 20px; line-height: 26px; }
+        h2 { font-size: 16px; line-height: 22px; }
+        .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .stat { padding: 12px 14px; }
+        .stat .v { font-size: 18px; line-height: 22px; }
+        .stat .l { font-size: 11px; }
+        .bar-track { height: 22px; }
+        .chart .row .name { font-size: 13px; }
+        .chart .row .value { font-size: 11px; }
+        .axis-labels { font-size: 11px; }
+        thead th, tbody td { padding: 7px 9px; font-size: 12px; }
+      }
+
+      @media (max-width: 380px) {
+        :root {
+          --name-col: 60px;
+          --value-col: 54px;
+          --row-gap: 8px;
+        }
+        .page { padding: 20px 12px 40px; }
       }
     </style>
   </head>
@@ -197,15 +244,15 @@
     <script>
       const MIN_GAMES = 5;
       const PLAYERS = [
-        { name: "Souse", games: 21, buyIn: 865, cashOut: 1130, net: 265, netAvg: 12.62 },
-        { name: "Mercer", games: 21, buyIn: 835, cashOut: 1090, net: 255, netAvg: 12.14 },
-        { name: "Coffey", games: 23, buyIn: 1550, cashOut: 1655, net: 105, netAvg: 4.57 },
-        { name: "Xander", games: 12, buyIn: 505, cashOut: 595, net: 90, netAvg: 7.50 },
-        { name: "Toby", games: 14, buyIn: 550, cashOut: 635, net: 85, netAvg: 6.07 },
-        { name: "Martell", games: 13, buyIn: 395, cashOut: 455, net: 60, netAvg: 4.62 },
-        { name: "Brods", games: 5, buyIn: 225, cashOut: 70, net: -155, netAvg: -31.00 },
-        { name: "Vallis", games: 16, buyIn: 775, cashOut: 465, net: -310, netAvg: -19.38 },
-        { name: "Ham", games: 20, buyIn: 735, cashOut: 375, net: -360, netAvg: -18.00 },
+        { name: "Souse", games: 22, buyIn: 890, cashOut: 1155, net: 265, netAvg: 12.05 },
+        { name: "Toby", games: 15, buyIn: 590, cashOut: 810, net: 220, netAvg: 14.67 },
+        { name: "Mercer", games: 22, buyIn: 955, cashOut: 1160, net: 205, netAvg: 9.32 },
+        { name: "Xander", games: 13, buyIn: 545, cashOut: 725, net: 180, netAvg: 13.85 },
+        { name: "Coffey", games: 24, buyIn: 1590, cashOut: 1725, net: 135, netAvg: 5.63 },
+        { name: "Martell", games: 14, buyIn: 475, cashOut: 455, net: -20, netAvg: -1.43 },
+        { name: "Brods", games: 6, buyIn: 305, cashOut: 80, net: -225, netAvg: -37.50 },
+        { name: "Vallis", games: 17, buyIn: 815, cashOut: 465, net: -350, netAvg: -20.59 },
+        { name: "Ham", games: 21, buyIn: 815, cashOut: 460, net: -355, netAvg: -16.90 },
         { name: "Randell", games: 13, buyIn: 620, cashOut: 255, net: -365, netAvg: -28.08 },
       ];
 
@@ -386,7 +433,7 @@
             { class: "subtle small", style: "margin:0" },
             `Net per game reveals true skill independent of attendance — ${bestAvg.name} leads at ${fmtAvg(bestAvg.netAvg)}/game (${bestAvg.games} sessions), while ${worstAvg.name} is the deepest hole at ${fmtAvg(worstAvg.netAvg)}/game.`
           ),
-          el("table", {}, head, body)
+          el("div", { class: "table-wrap" }, el("table", {}, head, body))
         );
       }
 
