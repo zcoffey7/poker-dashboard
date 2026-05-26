@@ -81,6 +81,29 @@
         border-top: 1px solid var(--stroke-tertiary);
         margin: 0;
       }
+      .title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .refresh-btn {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        border: 1px solid var(--stroke-tertiary);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        touch-action: manipulation;
+      }
+      .refresh-btn:hover { border-color: var(--stroke-primary); }
+      .refresh-btn:active { background: var(--fill-tertiary); }
 
       .stats {
         display: grid;
@@ -250,40 +273,8 @@
 
     <script>
       const MIN_GAMES = 5;
-      const PLAYERS = [
-        { name: "Souse", games: 22, buyIn: 890, cashOut: 1155, net: 265, netAvg: 12.05 },
-        { name: "Toby", games: 15, buyIn: 590, cashOut: 810, net: 220, netAvg: 14.67 },
-        { name: "Mercer", games: 22, buyIn: 955, cashOut: 1160, net: 205, netAvg: 9.32 },
-        { name: "Xander", games: 13, buyIn: 545, cashOut: 725, net: 180, netAvg: 13.85 },
-        { name: "Coffey", games: 24, buyIn: 1590, cashOut: 1725, net: 135, netAvg: 5.63 },
-        { name: "Martell", games: 14, buyIn: 475, cashOut: 455, net: -20, netAvg: -1.43 },
-        { name: "Brods", games: 6, buyIn: 305, cashOut: 80, net: -225, netAvg: -37.50 },
-        { name: "Vallis", games: 17, buyIn: 815, cashOut: 465, net: -350, netAvg: -20.59 },
-        { name: "Ham", games: 21, buyIn: 815, cashOut: 460, net: -355, netAvg: -16.90 },
-        { name: "Randell", games: 13, buyIn: 620, cashOut: 255, net: -365, netAvg: -28.08 },
-      ];
+      const DATA_URL = "./PokerSummary.csv";
 
-      const totalGames = PLAYERS.reduce((s, p) => s + p.games, 0);
-      const totalBuyIn = PLAYERS.reduce((s, p) => s + p.buyIn, 0);
-      const winners = PLAYERS.filter((p) => p.net > 0).length;
-      const losers = PLAYERS.filter((p) => p.net < 0).length;
-      const sorted = [...PLAYERS].sort((a, b) => b.net - a.net);
-      const maxAbs = Math.max(...PLAYERS.map((p) => Math.abs(p.net)));
-      const maxAbsPlayer = PLAYERS.find((p) => Math.abs(p.net) === maxAbs);
-      const maxNet = Math.max(...PLAYERS.map((p) => p.net));
-      const minNet = Math.min(...PLAYERS.map((p) => p.net));
-      const byNetAvg = [...PLAYERS].sort((a, b) => b.netAvg - a.netAvg);
-      const bestAvg = byNetAvg[0];
-      const worstAvg = byNetAvg[byNetAvg.length - 1];
-
-      function fmtSigned(n) {
-        if (n === 0) return "$0";
-        return (n > 0 ? "+$" : "-$") + Math.abs(n);
-      }
-      function fmtAvg(n) {
-        if (n === 0) return "$0";
-        return (n > 0 ? "+$" : "-$") + Math.abs(n).toFixed(2);
-      }
       function el(tag, attrs = {}, ...children) {
         const node = document.createElement(tag);
         for (const [k, v] of Object.entries(attrs)) {
@@ -298,20 +289,94 @@
         return node;
       }
 
-      function header() {
+      function fmtSigned(n) {
+        if (n === 0) return "$0";
+        return (n > 0 ? "+$" : "-$") + Math.abs(n);
+      }
+      function fmtAvg(n) {
+        if (n === 0) return "$0";
+        return (n > 0 ? "+$" : "-$") + Math.abs(n).toFixed(2);
+      }
+
+      function parseCsv(text) {
+        const lines = text.replace(/\r\n?/g, "\n").split("\n").filter((l) => l.trim());
+        const rows = lines.slice(1).map((line) => line.split(",").map((s) => s.trim()));
+        const players = [];
+        for (const cols of rows) {
+          if (cols.length < 8) continue;
+          const games = parseInt(cols[0], 10);
+          const name = cols[1];
+          if (!name || name === "TOTAL") continue;
+          if (!Number.isFinite(games) || games < MIN_GAMES) continue;
+          players.push({
+            name,
+            games,
+            buyIn: parseFloat(cols[2]) || 0,
+            cashOut: parseFloat(cols[4]) || 0,
+            net: parseFloat(cols[6]) || 0,
+            netAvg: parseFloat(cols[7]) || 0,
+          });
+        }
+        return players;
+      }
+
+      async function loadData() {
+        // Cache-busting via query string AND `cache: no-store`.
+        // Defeats iOS standalone-webapp's aggressive WebKit cache so
+        // the standings always reflect the latest CSV in the repo.
+        const url = `${DATA_URL}?t=${Date.now()}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Failed to load data (HTTP ${res.status})`);
+        const text = await res.text();
+        const lastModified = res.headers.get("last-modified");
+        return { players: parseCsv(text), lastModified };
+      }
+
+      function fmtRelative(date) {
+        if (!date) return null;
+        const diff = (Date.now() - date.getTime()) / 1000;
+        if (diff < 60) return "just now";
+        if (diff < 3600) return Math.round(diff / 60) + " min ago";
+        if (diff < 86400) return Math.round(diff / 3600) + " h ago";
+        const days = Math.round(diff / 86400);
+        return days + " day" + (days === 1 ? "" : "s") + " ago";
+      }
+
+      function header(ctx, onRefresh) {
+        const { players, totals, lastModifiedDate } = ctx;
+        const updatedLabel = lastModifiedDate
+          ? `Updated ${fmtRelative(lastModifiedDate)}`
+          : "Live data";
+        const refreshBtn = el(
+          "button",
+          {
+            type: "button",
+            class: "refresh-btn",
+            "aria-label": "Refresh standings",
+          },
+          "↻ Refresh"
+        );
+        refreshBtn.addEventListener("click", onRefresh);
         return el(
           "section",
           { class: "stack stack-4" },
-          el("h1", {}, "Poker Ledger — Cumulative Standings"),
+          el(
+            "div",
+            { class: "title-row" },
+            el("h1", {}, "Poker Ledger — Cumulative Standings"),
+            refreshBtn
+          ),
           el(
             "p",
             { class: "subtle", style: "margin:0" },
-            `${PLAYERS.length} regulars (${MIN_GAMES}+ sessions) across ${totalGames} player-games. Sorted by net P/L; bars scale to the largest absolute swing (${maxAbsPlayer.name}, $${maxAbs}).`
-          )
+            `${players.length} regulars (${MIN_GAMES}+ sessions) across ${totals.totalGames} player-games. Sorted by net P/L; bars scale to the largest absolute swing (${totals.maxAbsPlayer.name}, $${totals.maxAbs}).`
+          ),
+          el("p", { class: "tertiary small", style: "margin:0" }, updatedLabel)
         );
       }
 
-      function stats() {
+      function stats(ctx) {
+        const { totals } = ctx;
         const make = (v, l, tone) =>
           el(
             "div",
@@ -322,14 +387,16 @@
         return el(
           "section",
           { class: "stats" },
-          make("$" + totalBuyIn.toLocaleString(), "Pool Turnover"),
-          make(String(totalGames), "Player-Games"),
-          make(String(winners), "In the Green", "success"),
-          make(String(losers), "In the Red", "danger")
+          make("$" + totals.totalBuyIn.toLocaleString(), "Pool Turnover"),
+          make(String(totals.totalGames), "Player-Games"),
+          make(String(totals.winners), "In the Green", "success"),
+          make(String(totals.losers), "In the Red", "danger")
         );
       }
 
-      function chart() {
+      function chart(ctx) {
+        const { sorted, totals } = ctx;
+        const { maxNet, minNet } = totals;
         const headerRow = el(
           "div",
           { class: "row header" },
@@ -345,7 +412,7 @@
 
         const rows = sorted.map((p) => {
           const scale = p.net >= 0 ? maxNet : Math.abs(minNet);
-          const ratio = Math.abs(p.net) / scale;
+          const ratio = scale > 0 ? Math.abs(p.net) / scale : 0;
           const widthPct = ratio * 50;
           const isPositive = p.net > 0;
           const isZero = p.net === 0;
@@ -359,19 +426,17 @@
               })
             );
           }
+          const valueTone = isZero
+            ? "tertiary"
+            : isPositive
+              ? "gain-text"
+              : "loss-text";
           return el(
             "div",
             { class: "row" },
             el("div", { class: "name" }, p.name),
             track,
-            el(
-              "div",
-              {
-                class:
-                  "value " + (isZero ? "tertiary" : isPositive ? "gain-text" : "loss-text"),
-              },
-              fmtSigned(p.net)
-            )
+            el("div", { class: "value " + valueTone }, fmtSigned(p.net))
           );
         });
 
@@ -402,7 +467,8 @@
         );
       }
 
-      function table() {
+      function table(ctx) {
+        const { sorted, totals } = ctx;
         const head = el(
           "thead",
           {},
@@ -417,10 +483,11 @@
         const body = el(
           "tbody",
           {},
-          ...sorted.map((p, i) =>
-            el(
+          ...sorted.map((p, i) => {
+            const rowClass = p.net > 0 ? "gain" : p.net < 0 ? "loss" : "";
+            return el(
               "tr",
-              { class: p.net > 0 ? "gain" : p.net < 0 ? "loss" : "" },
+              { class: rowClass },
               el("td", {}, String(i + 1)),
               el("td", {}, p.name),
               el("td", {}, String(p.games)),
@@ -428,8 +495,8 @@
               el("td", {}, "$" + p.cashOut),
               el("td", {}, fmtSigned(p.net)),
               el("td", {}, fmtAvg(p.netAvg))
-            )
-          )
+            );
+          })
         );
         return el(
           "section",
@@ -438,19 +505,103 @@
           el(
             "p",
             { class: "subtle small", style: "margin:0" },
-            `Net per game reveals true skill independent of attendance — ${bestAvg.name} leads at ${fmtAvg(bestAvg.netAvg)}/game (${bestAvg.games} sessions), while ${worstAvg.name} is the deepest hole at ${fmtAvg(worstAvg.netAvg)}/game.`
+            `Net per game reveals true skill independent of attendance — ${totals.bestAvg.name} leads at ${fmtAvg(totals.bestAvg.netAvg)}/game (${totals.bestAvg.games} sessions), while ${totals.worstAvg.name} is the deepest hole at ${fmtAvg(totals.worstAvg.netAvg)}/game.`
           ),
           el("div", { class: "table-wrap" }, el("table", {}, head, body))
         );
       }
 
-      const root = document.getElementById("root");
-      root.appendChild(header());
-      root.appendChild(stats());
-      root.appendChild(el("hr", { class: "divider" }));
-      root.appendChild(chart());
-      root.appendChild(el("hr", { class: "divider" }));
-      root.appendChild(table());
+      function computeTotals(players) {
+        const totalGames = players.reduce((s, p) => s + p.games, 0);
+        const totalBuyIn = players.reduce((s, p) => s + p.buyIn, 0);
+        const winners = players.filter((p) => p.net > 0).length;
+        const losers = players.filter((p) => p.net < 0).length;
+        const maxAbs = Math.max(...players.map((p) => Math.abs(p.net)));
+        const maxAbsPlayer = players.find((p) => Math.abs(p.net) === maxAbs);
+        const maxNet = Math.max(...players.map((p) => p.net));
+        const minNet = Math.min(...players.map((p) => p.net));
+        const byNetAvg = [...players].sort((a, b) => b.netAvg - a.netAvg);
+        return {
+          totalGames,
+          totalBuyIn,
+          winners,
+          losers,
+          maxAbs,
+          maxAbsPlayer,
+          maxNet,
+          minNet,
+          bestAvg: byNetAvg[0],
+          worstAvg: byNetAvg[byNetAvg.length - 1],
+        };
+      }
+
+      function renderShell(message, isError) {
+        const root = document.getElementById("root");
+        root.innerHTML = "";
+        root.appendChild(
+          el(
+            "section",
+            { class: "stack stack-6" },
+            el("h1", {}, "Poker Ledger — Cumulative Standings"),
+            el(
+              "p",
+              { class: (isError ? "loss-text" : "subtle") + " small", style: "margin:0" },
+              message
+            )
+          )
+        );
+      }
+
+      async function render() {
+        renderShell("Loading latest standings…", false);
+        let data;
+        try {
+          data = await loadData();
+        } catch (e) {
+          renderShell(
+            "Couldn’t load the latest standings. Pull down to refresh or check your connection. (" +
+              e.message +
+              ")",
+            true
+          );
+          return;
+        }
+
+        const players = data.players;
+        if (!players.length) {
+          renderShell(
+            "No players meet the minimum-session threshold yet.",
+            false
+          );
+          return;
+        }
+
+        const totals = computeTotals(players);
+        const sorted = [...players].sort((a, b) => b.net - a.net);
+        const lastModifiedDate = data.lastModified ? new Date(data.lastModified) : null;
+        const ctx = { players, sorted, totals, lastModifiedDate };
+
+        const root = document.getElementById("root");
+        root.innerHTML = "";
+        root.appendChild(header(ctx, render));
+        root.appendChild(stats(ctx));
+        root.appendChild(el("hr", { class: "divider" }));
+        root.appendChild(chart(ctx));
+        root.appendChild(el("hr", { class: "divider" }));
+        root.appendChild(table(ctx));
+      }
+
+      render();
+
+      // Re-fetch whenever the standalone webapp regains focus (e.g. user
+      // taps the home-screen icon after backgrounding it). This keeps the
+      // standings fresh without needing a manual reload.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") render();
+      });
+      window.addEventListener("pageshow", (e) => {
+        if (e.persisted) render();
+      });
     </script>
   </body>
 </html>
