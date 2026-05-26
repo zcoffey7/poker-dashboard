@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#181818" />
+    <meta name="theme-color" content="#0a0a0f" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,144 +16,262 @@
     <title>Poker Ledger — Cumulative Standings</title>
     <style>
       :root {
-        --bg-editor: #181818;
-        --bg-chrome: #141414;
-        --bg-elevated: #1d1d1d;
-        --text-primary: #e4e4e4eb;
-        --text-secondary: #e4e4e48d;
-        --text-tertiary: #e4e4e45e;
-        --stroke-primary: #e4e4e433;
-        --stroke-secondary: #e4e4e41f;
-        --stroke-tertiary: #e4e4e414;
-        --fill-tertiary: #e4e4e411;
-        --fill-quaternary: #e4e4e40a;
-        --gain: #1f8a65e8;
-        --gain-soft: #1f8a651f;
-        --loss: #cf2d56e8;
-        --loss-soft: #cf2d561f;
-        --name-col: 88px;
-        --value-col: 64px;
-        --row-gap: 14px;
+        --bg-base: #0a0a0f;
+        --bg-card: rgba(255, 255, 255, 0.035);
+        --bg-card-hover: rgba(255, 255, 255, 0.06);
+        --border: rgba(255, 255, 255, 0.08);
+        --border-strong: rgba(255, 255, 255, 0.14);
+        --text: rgba(255, 255, 255, 0.96);
+        --text-2: rgba(255, 255, 255, 0.62);
+        --text-3: rgba(255, 255, 255, 0.4);
+        --gain: #34d399;
+        --gain-2: #10b981;
+        --gain-soft: rgba(52, 211, 153, 0.12);
+        --gain-glow: rgba(52, 211, 153, 0.4);
+        --loss: #fb7185;
+        --loss-2: #f43f5e;
+        --loss-soft: rgba(251, 113, 133, 0.12);
+        --loss-glow: rgba(251, 113, 133, 0.4);
+        --gold: #fbbf24;
       }
-      * { box-sizing: border-box; }
+
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
       html, body {
         margin: 0;
         padding: 0;
-        background: var(--bg-editor);
-        color: var(--text-primary);
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        font-size: 14px;
-        line-height: 20px;
+        background:
+          radial-gradient(1200px 600px at 50% -200px, rgba(139, 92, 246, 0.10), transparent 60%),
+          radial-gradient(900px 500px at 100% 110%, rgba(52, 211, 153, 0.05), transparent 60%),
+          var(--bg-base);
+        background-attachment: fixed;
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "SF Pro Text", "Inter", system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.45;
         -webkit-font-smoothing: antialiased;
         -webkit-text-size-adjust: 100%;
+        min-height: 100vh;
       }
+
       .page {
-        max-width: 960px;
+        max-width: 880px;
         margin: 0 auto;
-        padding: 40px 32px 64px;
-        padding-left: max(32px, env(safe-area-inset-left));
-        padding-right: max(32px, env(safe-area-inset-right));
-        padding-bottom: max(64px, env(safe-area-inset-bottom));
+        padding-top: max(24px, calc(env(safe-area-inset-top) + 18px));
+        padding-bottom: max(48px, calc(env(safe-area-inset-bottom) + 32px));
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
       }
+
+      .stack > * + * { margin-top: var(--gap, 20px); }
+      .stack-28 { --gap: 28px; }
+      .stack-20 { --gap: 20px; }
+      .stack-14 { --gap: 14px; }
+      .stack-10 { --gap: 10px; }
+      .stack-6 { --gap: 6px; }
+      .stack-4 { --gap: 4px; }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-3);
+      }
+      .eyebrow::before {
+        content: "";
+        display: inline-block;
+        width: 22px;
+        height: 1px;
+        background: var(--text-3);
+      }
+
       h1 {
-        font-size: 24px;
-        line-height: 30px;
-        font-weight: 590;
-        margin: 0 0 4px;
+        font-size: clamp(28px, 7.6vw, 40px);
+        line-height: 1.05;
+        letter-spacing: -0.025em;
+        font-weight: 700;
+        margin: 0;
+        background: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.74) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
       h2 {
         font-size: 18px;
-        line-height: 24px;
-        font-weight: 590;
+        line-height: 22px;
+        letter-spacing: -0.01em;
+        font-weight: 650;
         margin: 0;
+        color: var(--text);
       }
-      .subtle { color: var(--text-secondary); }
-      .tertiary { color: var(--text-tertiary); }
+      p { margin: 0; }
+      .subtle { color: var(--text-2); }
+      .tertiary { color: var(--text-3); }
       .small { font-size: 12px; line-height: 16px; }
-      .stack > * + * { margin-top: var(--gap, 16px); }
-      .stack-24 { --gap: 24px; }
-      .stack-12 { --gap: 12px; }
-      .stack-6 { --gap: 6px; }
-      .stack-4 { --gap: 4px; }
-      hr.divider {
-        border: 0;
-        border-top: 1px solid var(--stroke-tertiary);
-        margin: 0;
-      }
-      .title-row {
+      .gain-text { color: var(--gain); }
+      .loss-text { color: var(--loss); }
+      .tabular { font-variant-numeric: tabular-nums; }
+
+      .meta-row {
         display: flex;
         align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 11px;
+        border-radius: 999px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-2);
+        font-variant-numeric: tabular-nums;
+      }
+      .pill .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--gain);
+        box-shadow: 0 0 8px var(--gain-glow);
+      }
+
+      button.refresh {
+        appearance: none;
+        -webkit-appearance: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-strong);
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+        touch-action: manipulation;
+        min-height: 36px;
+      }
+      button.refresh:hover { background: var(--bg-card-hover); border-color: rgba(255, 255, 255, 0.22); }
+      button.refresh:active { transform: scale(0.97); }
+      button.refresh .icon { font-size: 14px; line-height: 1; }
+      button.refresh.spinning .icon { animation: spin 0.7s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .kpi {
+        position: relative;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        overflow: hidden;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      .kpi .kpi-label {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-3);
+      }
+      .kpi .kpi-value {
+        margin-top: 8px;
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.015em;
+        font-variant-numeric: tabular-nums;
+      }
+      .kpi.success {
+        background: linear-gradient(180deg, rgba(52, 211, 153, 0.08), rgba(52, 211, 153, 0.015));
+        border-color: rgba(52, 211, 153, 0.2);
+      }
+      .kpi.success .kpi-value { color: var(--gain); }
+      .kpi.danger {
+        background: linear-gradient(180deg, rgba(251, 113, 133, 0.08), rgba(251, 113, 133, 0.015));
+        border-color: rgba(251, 113, 133, 0.2);
+      }
+      .kpi.danger .kpi-value { color: var(--loss); }
+
+      section.card {
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        border-radius: 20px;
+        padding: 18px;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      .section-head {
+        display: flex;
+        align-items: baseline;
         justify-content: space-between;
         gap: 12px;
       }
-      .refresh-btn {
-        appearance: none;
-        -webkit-appearance: none;
-        background: var(--bg-elevated);
-        color: var(--text-primary);
-        border: 1px solid var(--stroke-tertiary);
-        border-radius: 999px;
-        padding: 6px 12px;
-        font: inherit;
-        font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        white-space: nowrap;
-        touch-action: manipulation;
+      .section-sub {
+        color: var(--text-2);
+        font-size: 13px;
+        line-height: 1.55;
       }
-      .refresh-btn:hover { border-color: var(--stroke-primary); }
-      .refresh-btn:active { background: var(--fill-tertiary); }
+      .section-sub strong { font-weight: 650; }
 
-      .stats {
+      .chart-rows { display: flex; flex-direction: column; }
+      .chart-row {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-      }
-      .stat {
-        border: 1px solid var(--stroke-tertiary);
-        background: var(--bg-elevated);
-        border-radius: 8px;
-        padding: 14px 16px;
-      }
-      .stat .v {
-        font-size: 22px;
-        line-height: 26px;
-        font-weight: 590;
-      }
-      .stat .l {
-        margin-top: 2px;
-        font-size: 12px;
-        color: var(--text-secondary);
-      }
-      .stat.success .v { color: var(--gain); }
-      .stat.danger .v { color: var(--loss); }
-
-      .chart .row {
-        display: grid;
-        grid-template-columns: var(--name-col) 1fr var(--value-col);
-        gap: var(--row-gap);
+        grid-template-columns: var(--col-name, 96px) 1fr var(--col-value, 60px);
         align-items: center;
+        gap: 10px;
+        padding: 5px 0;
       }
-      .chart .row .name {
-        text-align: right;
-        font-weight: 500;
+      .player-handle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
       }
-      .chart .row .value {
+      .avatar {
+        flex-shrink: 0;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .player-handle .pname {
+        font-size: 13px;
         font-weight: 600;
-        font-size: 12px;
-      }
-      .chart .row.header .name,
-      .chart .row.header .value {
-        color: var(--text-tertiary);
-        font-weight: 400;
-        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        letter-spacing: -0.01em;
       }
       .bar-track {
         position: relative;
-        height: 26px;
-        background: var(--fill-quaternary);
-        border-radius: 3px;
+        height: 22px;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 6px;
+        overflow: hidden;
       }
       .bar-track .axis {
         position: absolute;
@@ -161,115 +279,161 @@
         top: 0;
         bottom: 0;
         width: 1px;
-        background: var(--stroke-secondary);
+        background: rgba(255, 255, 255, 0.12);
       }
       .bar {
         position: absolute;
         top: 3px;
         bottom: 3px;
-        border-radius: 2px;
+        border-radius: 4px;
+        width: 0;
+        transition: width 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
       }
-      .bar.gain { background: var(--gain); }
-      .bar.loss { background: var(--loss); }
-      .gain-text { color: var(--gain); }
-      .loss-text { color: var(--loss); }
-      .axis-row {
-        display: grid;
-        grid-template-columns: var(--name-col) 1fr var(--value-col);
-        gap: var(--row-gap);
-        margin-top: 4px;
+      .bar.gain {
+        background: linear-gradient(90deg, var(--gain-2), var(--gain));
+        box-shadow: 0 0 12px var(--gain-glow);
       }
-      .axis-labels {
-        display: flex;
-        justify-content: space-between;
-        color: var(--text-tertiary);
-        font-size: 12px;
+      .bar.loss {
+        background: linear-gradient(270deg, var(--loss-2), var(--loss));
+        box-shadow: 0 0 12px var(--loss-glow);
       }
-      .header-axis {
-        position: relative;
-        height: 16px;
-      }
-      .header-axis .label {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        color: var(--text-tertiary);
-        font-size: 12px;
-      }
-
-      .table-wrap {
-        border: 1px solid var(--stroke-tertiary);
-        border-radius: 8px;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
+      .chart-value {
+        font-size: 13px;
+        font-weight: 700;
+        text-align: right;
+        letter-spacing: -0.01em;
         font-variant-numeric: tabular-nums;
       }
-      thead th {
-        text-align: right;
-        font-weight: 500;
-        font-size: 12px;
-        color: var(--text-secondary);
-        background: var(--bg-chrome);
-        padding: 8px 12px;
-        border-bottom: 1px solid var(--stroke-tertiary);
-        white-space: nowrap;
-        position: sticky;
-        top: 0;
+      .axis-labels {
+        display: grid;
+        grid-template-columns: var(--col-name, 96px) 1fr var(--col-value, 60px);
+        gap: 10px;
+        margin-top: 6px;
       }
-      thead th:nth-child(2) { text-align: left; }
-      tbody td {
-        padding: 8px 12px;
-        text-align: right;
-        border-bottom: 1px solid var(--stroke-tertiary);
-        font-size: 13px;
-        white-space: nowrap;
-      }
-      tbody tr:last-child td { border-bottom: 0; }
-      tbody td:nth-child(2) { text-align: left; font-weight: 500; }
-      tbody tr.gain td { background: var(--gain-soft); }
-      tbody tr.loss td { background: var(--loss-soft); }
-      tbody tr:nth-child(even):not(.gain):not(.loss) td {
-        background: var(--fill-quaternary);
+      .axis-labels .scale {
+        display: flex;
+        justify-content: space-between;
+        color: var(--text-3);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
       }
 
-      @media (max-width: 720px) {
-        :root {
-          --name-col: 72px;
-          --value-col: 58px;
-          --row-gap: 10px;
-        }
-        body { font-size: 13px; line-height: 18px; }
-        .page { padding: 24px 16px 48px; }
-        h1 { font-size: 20px; line-height: 26px; }
-        h2 { font-size: 16px; line-height: 22px; }
-        .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .stat { padding: 12px 14px; }
-        .stat .v { font-size: 18px; line-height: 22px; }
-        .stat .l { font-size: 11px; }
-        .bar-track { height: 22px; }
-        .chart .row .name { font-size: 13px; }
-        .chart .row .value { font-size: 11px; }
-        .axis-labels { font-size: 11px; }
-        thead th, tbody td { padding: 7px 9px; font-size: 12px; }
+      .player-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .pcard {
+        display: grid;
+        grid-template-columns: 22px 36px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.015);
+      }
+      .pcard.gain {
+        background: linear-gradient(180deg, rgba(52, 211, 153, 0.06), rgba(52, 211, 153, 0.01));
+        border-color: rgba(52, 211, 153, 0.18);
+      }
+      .pcard.loss {
+        background: linear-gradient(180deg, rgba(251, 113, 133, 0.06), rgba(251, 113, 133, 0.01));
+        border-color: rgba(251, 113, 133, 0.18);
+      }
+      .pcard .rank {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-3);
+        font-variant-numeric: tabular-nums;
+        text-align: center;
+        letter-spacing: -0.02em;
+      }
+      .pcard .avatar { width: 36px; height: 36px; font-size: 14px; }
+      .pcard.leader .avatar {
+        outline: 1.5px solid rgba(251, 191, 36, 0.65);
+        outline-offset: 2px;
+      }
+      .pcard .pinfo { min-width: 0; }
+      .pinfo-top {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .pname-l {
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .pcard .headline-stat {
+        font-size: 15px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.01em;
+        white-space: nowrap;
+      }
+      .pinfo-bot {
+        margin-top: 2px;
+        font-size: 12px;
+        color: var(--text-2);
+        font-variant-numeric: tabular-nums;
+      }
+      .pinfo-bot .meta {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+      }
+
+      .error {
+        border: 1px solid rgba(251, 113, 133, 0.25);
+        background: rgba(251, 113, 133, 0.06);
+        border-radius: 14px;
+        padding: 14px 16px;
+        color: var(--loss);
+        font-size: 13px;
       }
 
       @media (max-width: 380px) {
-        :root {
-          --name-col: 60px;
-          --value-col: 54px;
-          --row-gap: 8px;
-        }
-        .page { padding: 20px 12px 40px; }
+        .chart-row, .axis-labels { --col-name: 80px; --col-value: 54px; gap: 8px; }
+        .player-handle .pname { font-size: 12px; }
+        .avatar { width: 22px; height: 22px; font-size: 10px; }
+        .chart-value { font-size: 12px; }
+        .pcard { grid-template-columns: 20px 32px 1fr auto; gap: 10px; padding: 11px 12px; }
+        .pcard .avatar { width: 32px; height: 32px; font-size: 13px; }
+        .pname-l, .pcard .headline-stat { font-size: 14px; }
+        .pinfo-bot { font-size: 11px; }
+        .kpi { padding: 12px 14px; }
+        .kpi .kpi-value { font-size: 22px; }
+        section.card { padding: 16px; border-radius: 18px; }
+      }
+
+      @media (min-width: 640px) {
+        .page { padding-left: 32px; padding-right: 32px; }
+        section.card { padding: 24px; }
+        .chart-row, .axis-labels { --col-name: 160px; --col-value: 76px; gap: 16px; }
+        .avatar { width: 30px; height: 30px; font-size: 12px; }
+        .player-handle .pname { font-size: 14px; }
+        .chart-value { font-size: 14px; }
+        .bar-track { height: 24px; }
+        .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .kpi { padding: 16px 18px; }
+        .kpi .kpi-value { font-size: 28px; }
+        .pcard { grid-template-columns: 28px 40px 1fr auto; padding: 14px 16px; }
+        .pcard .avatar { width: 40px; height: 40px; font-size: 15px; }
+        .pname-l, .pcard .headline-stat { font-size: 16px; }
       }
     </style>
   </head>
   <body>
-    <main class="page stack stack-24" id="root"></main>
+    <main class="page stack stack-20" id="root"></main>
 
     <script>
       const MIN_GAMES = 5;
@@ -283,7 +447,7 @@
           else node.setAttribute(k, v);
         }
         for (const c of children.flat()) {
-          if (c == null) continue;
+          if (c == null || c === false) continue;
           node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
         }
         return node;
@@ -291,11 +455,47 @@
 
       function fmtSigned(n) {
         if (n === 0) return "$0";
-        return (n > 0 ? "+$" : "-$") + Math.abs(n);
+        return (n > 0 ? "+$" : "-$") + Math.abs(n).toLocaleString();
       }
       function fmtAvg(n) {
-        if (n === 0) return "$0";
+        if (n === 0) return "$0.00";
         return (n > 0 ? "+$" : "-$") + Math.abs(n).toFixed(2);
+      }
+      function fmtMoney(n) {
+        return "$" + Math.abs(n).toLocaleString();
+      }
+
+      // Curated palette of 12 visually distinct hues. We deliberately skip
+      // the 130-175° range (would clash with the emerald gain bars) and the
+      // 335-10° range (would clash with the rose loss bars) so an avatar
+      // never reads as a P/L signal. Ordered to maximize contrast between
+      // neighboring palette slots.
+      const HUE_PALETTE = [15, 220, 45, 280, 60, 200, 180, 305, 30, 255, 100, 240];
+
+      function assignHues(players) {
+        // Stable alphabetical assignment so a player's color doesn't change
+        // when the display order changes (e.g. re-sorted by net P/L).
+        const byName = [...players].sort((a, b) => a.name.localeCompare(b.name));
+        byName.forEach((p, i) => {
+          p.hue = HUE_PALETTE[i % HUE_PALETTE.length];
+        });
+      }
+
+      function avatar(player) {
+        const hue = player.hue ?? 220;
+        const hue2 = (hue + 32) % 360;
+        const initial = (player.name.trim()[0] || "?").toUpperCase();
+        return el(
+          "div",
+          {
+            class: "avatar",
+            style:
+              `background: linear-gradient(135deg, hsl(${hue}, 66%, 38%), hsl(${hue2}, 58%, 22%));` +
+              `color: hsl(${hue}, 90%, 90%);` +
+              `box-shadow: inset 0 0 0 1px hsl(${hue}, 62%, 30%);`,
+          },
+          initial,
+        );
       }
 
       function parseCsv(text) {
@@ -317,6 +517,7 @@
             netAvg: parseFloat(cols[7]) || 0,
           });
         }
+        assignHues(players);
         return players;
       }
 
@@ -342,73 +543,70 @@
         return days + " day" + (days === 1 ? "" : "s") + " ago";
       }
 
-      function header(ctx, onRefresh) {
+      function buildHeader(ctx, onRefresh) {
         const { players, totals, lastModifiedDate } = ctx;
         const updatedLabel = lastModifiedDate
           ? `Updated ${fmtRelative(lastModifiedDate)}`
           : "Live data";
+
         const refreshBtn = el(
           "button",
           {
             type: "button",
-            class: "refresh-btn",
+            class: "refresh",
             "aria-label": "Refresh standings",
           },
-          "↻ Refresh"
+          el("span", { class: "icon", "aria-hidden": "true" }, "↻"),
+          el("span", {}, "Refresh"),
         );
-        refreshBtn.addEventListener("click", onRefresh);
+        refreshBtn.addEventListener("click", () => {
+          refreshBtn.classList.add("spinning");
+          onRefresh();
+        });
+
+        const updated = el(
+          "span",
+          { class: "pill" },
+          el("span", { class: "dot", "aria-hidden": "true" }),
+          updatedLabel,
+        );
+
         return el(
-          "section",
-          { class: "stack stack-4" },
-          el(
-            "div",
-            { class: "title-row" },
-            el("h1", {}, "Poker Ledger — Cumulative Standings"),
-            refreshBtn
-          ),
+          "header",
+          { class: "stack stack-10" },
+          el("div", { class: "eyebrow" }, "Poker Ledger"),
+          el("h1", {}, "Cumulative Standings"),
           el(
             "p",
-            { class: "subtle", style: "margin:0" },
-            `${players.length} regulars (${MIN_GAMES}+ sessions) across ${totals.totalGames} player-games. Sorted by net P/L; bars scale to the largest absolute swing (${totals.maxAbsPlayer.name}, $${totals.maxAbs}).`
+            { class: "subtle", style: "max-width: 62ch" },
+            `${players.length} regulars (${MIN_GAMES}+ sessions) across ${totals.totalGames} player-games. Sorted by net P/L; bars scale to the largest swing per side (${totals.maxAbsPlayer.name}, ${fmtMoney(totals.maxAbs)}).`,
           ),
-          el("p", { class: "tertiary small", style: "margin:0" }, updatedLabel)
+          el("div", { class: "meta-row" }, updated, refreshBtn),
         );
       }
 
-      function stats(ctx) {
+      function buildKpis(ctx) {
         const { totals } = ctx;
-        const make = (v, l, tone) =>
+        const make = (label, value, tone) =>
           el(
             "div",
-            { class: "stat" + (tone ? " " + tone : "") },
-            el("div", { class: "v" }, v),
-            el("div", { class: "l" }, l)
+            { class: "kpi" + (tone ? " " + tone : "") },
+            el("div", { class: "kpi-label" }, label),
+            el("div", { class: "kpi-value" }, value),
           );
         return el(
           "section",
-          { class: "stats" },
-          make("$" + totals.totalBuyIn.toLocaleString(), "Pool Turnover"),
-          make(String(totals.totalGames), "Player-Games"),
-          make(String(totals.winners), "In the Green", "success"),
-          make(String(totals.losers), "In the Red", "danger")
+          { class: "kpis", "aria-label": "Summary statistics" },
+          make("Pool Turnover", "$" + totals.totalBuyIn.toLocaleString()),
+          make("Player-Games", String(totals.totalGames)),
+          make("In the Green", String(totals.winners), "success"),
+          make("In the Red", String(totals.losers), "danger"),
         );
       }
 
-      function chart(ctx) {
+      function buildChart(ctx) {
         const { sorted, totals } = ctx;
         const { maxNet, minNet } = totals;
-        const headerRow = el(
-          "div",
-          { class: "row header" },
-          el("div", { class: "name" }, "Player"),
-          el(
-            "div",
-            { class: "header-axis" },
-            el("div", { class: "axis" }),
-            el("div", { class: "label" }, "$0")
-          ),
-          el("div", { class: "value", style: "text-align:left" }, "Net")
-        );
 
         const rows = sorted.map((p) => {
           const scale = p.net >= 0 ? maxNet : Math.abs(minNet);
@@ -416,98 +614,118 @@
           const widthPct = ratio * 50;
           const isPositive = p.net > 0;
           const isZero = p.net === 0;
+
           const track = el("div", { class: "bar-track" }, el("div", { class: "axis" }));
           if (!isZero) {
             const left = isPositive ? 50 : 50 - widthPct;
-            track.appendChild(
-              el("div", {
-                class: "bar " + (isPositive ? "gain" : "loss"),
-                style: `left:${left}%; width:${widthPct}%`,
-              })
+            const bar = el("div", {
+              class: "bar " + (isPositive ? "gain" : "loss"),
+              style: `left:${left}%; width:0%`,
+            });
+            track.appendChild(bar);
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                bar.style.width = widthPct + "%";
+              }),
             );
           }
-          const valueTone = isZero
-            ? "tertiary"
-            : isPositive
-              ? "gain-text"
-              : "loss-text";
+          const valueTone = isZero ? "tertiary" : isPositive ? "gain-text" : "loss-text";
           return el(
             "div",
-            { class: "row" },
-            el("div", { class: "name" }, p.name),
+            { class: "chart-row" },
+            el(
+              "div",
+              { class: "player-handle" },
+              avatar(p),
+              el("div", { class: "pname" }, p.name),
+            ),
             track,
-            el("div", { class: "value " + valueTone }, fmtSigned(p.net))
+            el("div", { class: "chart-value " + valueTone }, fmtSigned(p.net)),
           );
         });
 
-        const axisRow = el(
-          "div",
-          { class: "axis-row" },
-          el("div"),
+        return el(
+          "section",
+          { class: "card stack stack-14" },
+          el(
+            "div",
+            { class: "section-head" },
+            el("h2", {}, "Net P/L by Player"),
+            el("span", { class: "tertiary small" }, "Centered on $0"),
+          ),
+          el("div", { class: "chart-rows" }, ...rows),
           el(
             "div",
             { class: "axis-labels" },
-            el("span", {}, `-$${Math.abs(minNet)}`),
-            el("span", {}, `+$${maxNet}`)
+            el("div"),
+            el(
+              "div",
+              { class: "scale" },
+              el("span", {}, `-${fmtMoney(Math.abs(minNet))}`),
+              el("span", {}, "$0"),
+              el("span", {}, `+${fmtMoney(maxNet)}`),
+            ),
+            el("div"),
           ),
-          el("div")
-        );
-
-        return el(
-          "section",
-          { class: "stack stack-12" },
-          el("h2", {}, "Net P/L by Player"),
-          el(
-            "div",
-            { class: "chart stack stack-4" },
-            headerRow,
-            el("div", { class: "stack stack-4" }, ...rows),
-            axisRow
-          )
         );
       }
 
-      function table(ctx) {
-        const { sorted, totals } = ctx;
-        const head = el(
-          "thead",
-          {},
-          el(
-            "tr",
-            {},
-            ...["#", "Player", "GP", "Buy-In", "Cash Out", "Net", "Net / Game"].map(
-              (h) => el("th", {}, h)
-            )
-          )
-        );
-        const body = el(
-          "tbody",
-          {},
-          ...sorted.map((p, i) => {
-            const rowClass = p.net > 0 ? "gain" : p.net < 0 ? "loss" : "";
-            return el(
-              "tr",
-              { class: rowClass },
-              el("td", {}, String(i + 1)),
-              el("td", {}, p.name),
-              el("td", {}, String(p.games)),
-              el("td", {}, "$" + p.buyIn),
-              el("td", {}, "$" + p.cashOut),
-              el("td", {}, fmtSigned(p.net)),
-              el("td", {}, fmtAvg(p.netAvg))
-            );
-          })
-        );
+      function buildPlayerList(ctx) {
+        const { sortedByAvg, totals } = ctx;
+
+        const items = sortedByAvg.map((p, i) => {
+          const rowClass = p.netAvg > 0 ? "gain" : p.netAvg < 0 ? "loss" : "";
+          const tone = p.netAvg > 0 ? "gain-text" : p.netAvg < 0 ? "loss-text" : "tertiary";
+          const isLeader = i === 0 && p.netAvg > 0;
+          return el(
+            "li",
+            { class: "pcard " + rowClass + (isLeader ? " leader" : "") },
+            el("div", { class: "rank" }, "#" + (i + 1)),
+            avatar(p),
+            el(
+              "div",
+              { class: "pinfo" },
+              el(
+                "div",
+                { class: "pinfo-top" },
+                el("span", { class: "pname-l" }, p.name),
+                el(
+                  "span",
+                  { class: "headline-stat " + tone },
+                  fmtAvg(p.netAvg) + "/g",
+                ),
+              ),
+              el(
+                "div",
+                { class: "pinfo-bot" },
+                el(
+                  "span",
+                  { class: "meta" },
+                  `${p.games} GP · ${fmtMoney(p.buyIn)} → ${fmtMoney(p.cashOut)}`,
+                ),
+              ),
+            ),
+          );
+        });
+
         return el(
           "section",
-          { class: "stack stack-12" },
-          el("h2", {}, "Per-Session Performance"),
+          { class: "card stack stack-14" },
+          el(
+            "div",
+            { class: "section-head" },
+            el("h2", {}, "Per-Session Performance"),
+          ),
           el(
             "p",
-            { class: "subtle small", style: "margin:0" },
-            `Net per game reveals true skill independent of attendance — ${totals.bestAvg.name} leads at ${fmtAvg(totals.bestAvg.netAvg)}/game (${totals.bestAvg.games} sessions), while ${totals.worstAvg.name} is the deepest hole at ${fmtAvg(totals.worstAvg.netAvg)}/game.`
+            { class: "section-sub" },
+            "Net per game reveals true skill independent of attendance — ",
+            el("strong", { class: "gain-text" }, totals.bestAvg.name),
+            ` leads at ${fmtAvg(totals.bestAvg.netAvg)}/g (${totals.bestAvg.games} sessions), while `,
+            el("strong", { class: "loss-text" }, totals.worstAvg.name),
+            ` is the deepest hole at ${fmtAvg(totals.worstAvg.netAvg)}/g.`,
           ),
-          el("div", { class: "table-wrap" }, el("table", {}, head, body))
+          el("ol", { class: "player-list" }, ...items),
         );
       }
 
@@ -540,15 +758,16 @@
         root.innerHTML = "";
         root.appendChild(
           el(
-            "section",
-            { class: "stack stack-6" },
-            el("h1", {}, "Poker Ledger — Cumulative Standings"),
+            "header",
+            { class: "stack stack-10" },
+            el("div", { class: "eyebrow" }, "Poker Ledger"),
+            el("h1", {}, "Cumulative Standings"),
             el(
               "p",
-              { class: (isError ? "loss-text" : "subtle") + " small", style: "margin:0" },
-              message
-            )
-          )
+              { class: isError ? "error" : "subtle small" },
+              message,
+            ),
+          ),
         );
       }
 
@@ -562,33 +781,29 @@
             "Couldn’t load the latest standings. Pull down to refresh or check your connection. (" +
               e.message +
               ")",
-            true
+            true,
           );
           return;
         }
 
         const players = data.players;
         if (!players.length) {
-          renderShell(
-            "No players meet the minimum-session threshold yet.",
-            false
-          );
+          renderShell("No players meet the minimum-session threshold yet.", false);
           return;
         }
 
         const totals = computeTotals(players);
         const sorted = [...players].sort((a, b) => b.net - a.net);
+        const sortedByAvg = [...players].sort((a, b) => b.netAvg - a.netAvg);
         const lastModifiedDate = data.lastModified ? new Date(data.lastModified) : null;
-        const ctx = { players, sorted, totals, lastModifiedDate };
+        const ctx = { players, sorted, sortedByAvg, totals, lastModifiedDate };
 
         const root = document.getElementById("root");
         root.innerHTML = "";
-        root.appendChild(header(ctx, render));
-        root.appendChild(stats(ctx));
-        root.appendChild(el("hr", { class: "divider" }));
-        root.appendChild(chart(ctx));
-        root.appendChild(el("hr", { class: "divider" }));
-        root.appendChild(table(ctx));
+        root.appendChild(buildHeader(ctx, render));
+        root.appendChild(buildKpis(ctx));
+        root.appendChild(buildChart(ctx));
+        root.appendChild(buildPlayerList(ctx));
       }
 
       render();
