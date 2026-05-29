@@ -170,6 +170,7 @@ test("running the page's own parseCsv/computeTotals/assignHues against the serve
   const minGamesMatch = scriptSrc.match(/const\s+MIN_GAMES\s*=\s*(\d+)/);
   assert.ok(paletteMatch, "expected HUE_PALETTE constant in script");
   assert.ok(minGamesMatch, "expected MIN_GAMES constant in script");
+  const MIN_GAMES = parseInt(minGamesMatch[1], 10);
 
   // Build a tiny harness that lifts the page's actual functions into a Function
   // scope. This way the test exercises *live* page code; if parseCsv changes,
@@ -189,27 +190,105 @@ test("running the page's own parseCsv/computeTotals/assignHues against the serve
       cache: "no-store",
     })
   ).text();
+
+  // Independent "oracle" parse of the CSV. Intentionally minimal so it serves
+  // as ground truth against the page's parseCsv. Every expected value below
+  // is derived from this — no hardcoded names, sums, or counts — so the test
+  // stays green as the standings evolve tournament by tournament.
+  const allRows = csv
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .filter((l) => l.trim())
+    .slice(1)
+    .map((l) => l.split(",").map((s) => s.trim()))
+    .filter((c) => c.length >= 8 && c[1])
+    .map((c) => ({
+      name: c[1],
+      games: parseInt(c[0], 10),
+      buyIn: parseFloat(c[2]) || 0,
+      cashOut: parseFloat(c[4]) || 0,
+      net: parseFloat(c[6]) || 0,
+      netAvg: parseFloat(c[7]) || 0,
+    }));
+  const totalRow = allRows.find((r) => r.name === "TOTAL");
+  const dataRows = allRows.filter((r) => r.name !== "TOTAL");
+  const qualifying = dataRows.filter((r) => r.games >= MIN_GAMES);
+
+  assert.ok(totalRow, "CSV should contain a TOTAL row");
+  assert.ok(qualifying.length > 0, "at least one player should clear MIN_GAMES");
+
+  // CSV-authoring sanity check: the TOTAL row should match the sum of data
+  // rows. Catches arithmetic slips at data-entry time before they ship.
+  const sumAllGames = dataRows.reduce((s, r) => s + r.games, 0);
+  const sumAllBuyIn = dataRows.reduce((s, r) => s + r.buyIn, 0);
+  const sumAllCashOut = dataRows.reduce((s, r) => s + r.cashOut, 0);
+  assert.equal(sumAllGames, totalRow.games, "CSV TOTAL games row");
+  assert.equal(sumAllBuyIn.toFixed(2), totalRow.buyIn.toFixed(2), "CSV TOTAL buy-in row");
+  assert.equal(sumAllCashOut.toFixed(2), totalRow.cashOut.toFixed(2), "CSV TOTAL cash-out row");
+
   const players = parseCsv(csv);
 
-  assert.equal(players.length, 10, "expected 10 qualifying players (>= 5 sessions, excluding TOTAL row)");
+  // 1. parseCsv returns exactly the qualifying set (TOTAL excluded, MIN_GAMES respected).
+  assert.equal(players.length, qualifying.length, "parseCsv should yield every qualifying player and only those");
+  assert.ok(
+    players.every((p) => p.games >= MIN_GAMES),
+    "every parsed player should clear MIN_GAMES",
+  );
+  assert.ok(
+    players.every((p) => p.name && p.name !== "TOTAL"),
+    "TOTAL row should be excluded from parsed players",
+  );
+  assert.deepEqual(
+    new Set(players.map((p) => p.name)),
+    new Set(qualifying.map((r) => r.name)),
+    "parsed player names should match the qualifying CSV rows",
+  );
 
+  // 2. Each player's fields round-trip from the CSV verbatim.
+  for (const p of players) {
+    const csvRow = qualifying.find((r) => r.name === p.name);
+    assert.equal(p.games, csvRow.games, `${p.name}: games`);
+    assert.equal(p.buyIn, csvRow.buyIn, `${p.name}: buyIn`);
+    assert.equal(p.cashOut, csvRow.cashOut, `${p.name}: cashOut`);
+    assert.equal(p.net, csvRow.net, `${p.name}: net`);
+    assert.equal(p.netAvg, csvRow.netAvg, `${p.name}: netAvg`);
+  }
+
+  // 3. Sortedness invariants for the two views the page renders.
   const byNet = [...players].sort((a, b) => b.net - a.net);
-  assert.equal(byNet[0].name, "Coffey", "top of Net P/L by total");
-  assert.equal(byNet.at(-1).name, "Randell", "bottom of Net P/L by total");
-
+  for (let i = 1; i < byNet.length; i++) {
+    assert.ok(byNet[i - 1].net >= byNet[i].net, "byNet should be sorted descending by net");
+  }
   const byAvg = [...players].sort((a, b) => b.netAvg - a.netAvg);
-  assert.equal(byAvg[0].name, "Coffey", "top of Per-Session Performance (highest Net/g)");
-  assert.equal(byAvg.at(-1).name, "Brods", "bottom of Per-Session Performance (lowest Net/g)");
+  for (let i = 1; i < byAvg.length; i++) {
+    assert.ok(byAvg[i - 1].netAvg >= byAvg[i].netAvg, "byAvg should be sorted descending by netAvg");
+  }
 
+  // 4. computeTotals is consistent with what we'd derive from the qualifying rows.
   const totals = computeTotals(players);
-  assert.equal(totals.winners, 5);
-  assert.equal(totals.losers, 5);
-  assert.equal(totals.totalGames, 178);
-  assert.equal(totals.totalBuyIn, 8090);
-  assert.equal(totals.bestAvg.name, "Coffey");
-  assert.equal(totals.worstAvg.name, "Brods");
-  assert.equal(totals.maxAbsPlayer.name, "Coffey", "Coffey holds the largest absolute swing ($485)");
+  const expectedTotalGames = qualifying.reduce((s, r) => s + r.games, 0);
+  const expectedTotalBuyIn = qualifying.reduce((s, r) => s + r.buyIn, 0);
+  const expectedWinners = qualifying.filter((r) => r.net > 0).length;
+  const expectedLosers = qualifying.filter((r) => r.net < 0).length;
+  const expectedMaxAbs = Math.max(...qualifying.map((r) => Math.abs(r.net)));
+  assert.equal(totals.totalGames, expectedTotalGames, "computeTotals.totalGames");
+  assert.equal(totals.totalBuyIn, expectedTotalBuyIn, "computeTotals.totalBuyIn");
+  assert.equal(totals.winners, expectedWinners, "computeTotals.winners");
+  assert.equal(totals.losers, expectedLosers, "computeTotals.losers");
+  assert.equal(totals.maxAbs, expectedMaxAbs, "computeTotals.maxAbs");
+  assert.equal(
+    Math.abs(totals.maxAbsPlayer.net),
+    expectedMaxAbs,
+    "maxAbsPlayer should be the player with the largest absolute swing",
+  );
+  assert.equal(totals.bestAvg.name, byAvg[0].name, "bestAvg should be the top of byAvg");
+  assert.equal(
+    totals.worstAvg.name,
+    byAvg[byAvg.length - 1].name,
+    "worstAvg should be the bottom of byAvg",
+  );
 
+  // 5. Hue assignment: distinct, and steers clear of the gain/loss bar palettes.
   const hues = new Set(players.map((p) => p.hue));
   assert.equal(hues.size, players.length, "every player should get a distinct avatar hue");
   for (const hue of hues) {
