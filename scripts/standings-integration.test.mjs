@@ -198,17 +198,17 @@ test("running the page's own parseCsv/computeTotals/assignHues against the serve
   assert.equal(byNet.at(-1).name, "Randell", "bottom of Net P/L by total");
 
   const byAvg = [...players].sort((a, b) => b.netAvg - a.netAvg);
-  assert.equal(byAvg[0].name, "Toby", "top of Per-Session Performance (highest Net/g)");
+  assert.equal(byAvg[0].name, "Coffey", "top of Per-Session Performance (highest Net/g)");
   assert.equal(byAvg.at(-1).name, "Brods", "bottom of Per-Session Performance (lowest Net/g)");
 
   const totals = computeTotals(players);
   assert.equal(totals.winners, 5);
   assert.equal(totals.losers, 5);
-  assert.equal(totals.totalGames, 174);
-  assert.equal(totals.totalBuyIn, 7910);
-  assert.equal(totals.bestAvg.name, "Toby");
+  assert.equal(totals.totalGames, 178);
+  assert.equal(totals.totalBuyIn, 8090);
+  assert.equal(totals.bestAvg.name, "Coffey");
   assert.equal(totals.worstAvg.name, "Brods");
-  assert.equal(totals.maxAbsPlayer.name, "Randell", "Randell holds the largest absolute swing ($395)");
+  assert.equal(totals.maxAbsPlayer.name, "Coffey", "Coffey holds the largest absolute swing ($485)");
 
   const hues = new Set(players.map((p) => p.hue));
   assert.equal(hues.size, players.length, "every player should get a distinct avatar hue");
