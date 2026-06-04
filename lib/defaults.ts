@@ -11,26 +11,22 @@ export const DEFAULT_BLIND_STRUCTURE: BlindLevel[] = [
   { level: 2, smallBlind: 200, bigBlind: 400, ante: 0, durationSec: 20 * 60 },
   { level: 3, smallBlind: 300, bigBlind: 600, ante: 0, durationSec: 20 * 60 },
   { level: 4, smallBlind: 400, bigBlind: 800, ante: 0, durationSec: 20 * 60 },
-  { level: 5, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
-  { level: 6, smallBlind: 500, bigBlind: 1000, ante: 1000, durationSec: 20 * 60 },
-  { level: 7, smallBlind: 600, bigBlind: 1200, ante: 1200, durationSec: 20 * 60 },
-  { level: 8, smallBlind: 800, bigBlind: 1600, ante: 1600, durationSec: 20 * 60 },
-  { level: 9, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
-  { level: 10, smallBlind: 1000, bigBlind: 2000, ante: 2000, durationSec: 20 * 60 },
-  { level: 11, smallBlind: 2000, bigBlind: 4000, ante: 4000, durationSec: 20 * 60 },
-  { level: 12, smallBlind: 3000, bigBlind: 6000, ante: 6000, durationSec: 20 * 60 },
-  { level: 13, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
-  { level: 14, smallBlind: 4000, bigBlind: 8000, ante: 8000, durationSec: 20 * 60 },
-  { level: 15, smallBlind: 5000, bigBlind: 10000, ante: 10000, durationSec: 20 * 60 },
-  { level: 16, smallBlind: 10000, bigBlind: 20000, ante: 20000, durationSec: 20 * 60 },
-  { level: 17, smallBlind: 20000, bigBlind: 40000, ante: 40000, durationSec: 20 * 60 },
-  { level: 18, smallBlind: 30000, bigBlind: 60000, ante: 60000, durationSec: 20 * 60 },
+  { level: 5, smallBlind: 500, bigBlind: 1000, ante: 0, durationSec: 20 * 60 },
+  { level: 6, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
+  { level: 7, smallBlind: 500, bigBlind: 1500, ante: 0, durationSec: 20 * 60 },
+  { level: 8, smallBlind: 1000, bigBlind: 2000, ante: 0, durationSec: 20 * 60 },
+  { level: 9, smallBlind: 2000, bigBlind: 4000, ante: 0, durationSec: 20 * 60 },
+  { level: 10, smallBlind: 3000, bigBlind: 6000, ante: 0, durationSec: 20 * 60 },
+  { level: 11, smallBlind: 4000, bigBlind: 8000, ante: 0, durationSec: 20 * 60 },
+  { level: 12, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
+  { level: 13, smallBlind: 5000, bigBlind: 10000, ante: 0, durationSec: 20 * 60 },
+  { level: 14, smallBlind: 10000, bigBlind: 20000, ante: 0, durationSec: 20 * 60 },
+  { level: 15, smallBlind: 20000, bigBlind: 40000, ante: 0, durationSec: 20 * 60 },
+  { level: 16, smallBlind: 30000, bigBlind: 60000, ante: 0, durationSec: 20 * 60 },
 ];
 
 export const DEFAULT_PAYOUTS: PayoutSpot[] = [
-  { place: 1, percent: 50 },
-  { place: 2, percent: 30 },
-  { place: 3, percent: 20 },
+  { place: 1, percent: 100 },
 ];
 
 export const DEFAULT_CHIP_DENOMS: ChipDenom[] = [
@@ -43,7 +39,6 @@ export const DEFAULT_CHIP_DENOMS: ChipDenom[] = [
 
 export const DEFAULT_TABLES: Table[] = [
   { id: "t1", name: "Table 1", seatCount: 9 },
-  { id: "t2", name: "Table 2", seatCount: 9 },
 ];
 
 export const DEFAULT_SETTINGS: TournamentSettings = {
