@@ -401,6 +401,48 @@
         font-size: 13px;
       }
 
+      .tabs {
+        display: inline-flex;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px;
+        gap: 2px;
+        margin-top: 4px;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      .tab {
+        appearance: none;
+        -webkit-appearance: none;
+        background: transparent;
+        border: 0;
+        color: var(--text-2);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.005em;
+        padding: 8px 14px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+        touch-action: manipulation;
+        min-height: 36px;
+      }
+      .tab:hover { color: var(--text); }
+      .tab.active {
+        background: var(--bg-card-hover);
+        color: var(--text);
+        box-shadow: inset 0 0 0 1px var(--border-strong);
+      }
+      .tab:focus-visible {
+        outline: 2px solid var(--gain);
+        outline-offset: 2px;
+      }
+
+      .empty-state h2 { letter-spacing: -0.01em; }
+      .empty-state .section-sub { max-width: 52ch; }
+
       @media (max-width: 380px) {
         .chart-row, .axis-labels { --col-name: 80px; --col-value: 54px; gap: 8px; }
         .player-handle .pname { font-size: 12px; }
@@ -413,6 +455,7 @@
         .kpi { padding: 12px 14px; }
         .kpi .kpi-value { font-size: 22px; }
         section.card { padding: 16px; border-radius: 18px; }
+        .tab { padding: 7px 11px; font-size: 12px; min-height: 34px; }
       }
 
       @media (min-width: 640px) {
@@ -437,7 +480,37 @@
 
     <script>
       const MIN_GAMES = 5;
-      const DATA_URL = "./PokerSummary.csv";
+      // Mode CSVs (Tournament/Cash) start fresh and accumulate one session at
+      // a time, so a 5-game floor would hide every player for weeks. While
+      // those tabs are still building up, show every player who has played
+      // at least once.
+      const MIN_GAMES_MODE = 1;
+
+      const TABS = [
+        {
+          id: "overall",
+          label: "Overall",
+          url: "./PokerSummary.csv",
+          minGames: MIN_GAMES,
+          eyebrow: "All sessions, rolling totals",
+        },
+        {
+          id: "tournament",
+          label: "Tournament",
+          url: "./PokerTournamentSummary.csv",
+          minGames: MIN_GAMES_MODE,
+          eyebrow: "Tournament sessions only",
+        },
+        {
+          id: "cash",
+          label: "Cash Game",
+          url: "./PokerCashSummary.csv",
+          minGames: MIN_GAMES_MODE,
+          eyebrow: "Cash-game sessions only",
+        },
+      ];
+      const DEFAULT_TAB = "overall";
+      const TAB_STORAGE_KEY = "standings.activeTab";
 
       function el(tag, attrs = {}, ...children) {
         const node = document.createElement(tag);
@@ -498,7 +571,7 @@
         );
       }
 
-      function parseCsv(text) {
+      function parseCsv(text, minGames = MIN_GAMES) {
         const lines = text.replace(/\r\n?/g, "\n").split("\n").filter((l) => l.trim());
         const rows = lines.slice(1).map((line) => line.split(",").map((s) => s.trim()));
         const players = [];
@@ -507,7 +580,7 @@
           const games = parseInt(cols[0], 10);
           const name = cols[1];
           if (!name || name === "TOTAL") continue;
-          if (!Number.isFinite(games) || games < MIN_GAMES) continue;
+          if (!Number.isFinite(games) || games < minGames) continue;
           players.push({
             name,
             games,
@@ -521,16 +594,53 @@
         return players;
       }
 
-      async function loadData() {
+      async function loadCsv(url) {
         // Cache-busting via query string AND `cache: no-store`.
         // Defeats iOS standalone-webapp's aggressive WebKit cache so
         // the standings always reflect the latest CSV in the repo.
-        const url = `${DATA_URL}?t=${Date.now()}`;
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Failed to load data (HTTP ${res.status})`);
+        const fullUrl = `${url}?t=${Date.now()}`;
+        const res = await fetch(fullUrl, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Failed to load ${url} (HTTP ${res.status})`);
         const text = await res.text();
         const lastModified = res.headers.get("last-modified");
-        return { players: parseCsv(text), lastModified };
+        return { text, lastModified };
+      }
+
+      async function loadAllData() {
+        const entries = await Promise.all(
+          TABS.map(async (tab) => {
+            const { text, lastModified } = await loadCsv(tab.url);
+            const players = parseCsv(text, tab.minGames);
+            return [tab.id, { players, lastModified }];
+          }),
+        );
+        const byTab = Object.fromEntries(entries);
+        applyUnifiedHues(byTab);
+        return byTab;
+      }
+
+      // assignHues() picks colors based on alphabetical position WITHIN the
+      // set it's given, so a player would otherwise get a different hue in
+      // each tab. Compute one mapping across the union of all three tabs and
+      // patch every player so their avatar color is stable across tabs.
+      function applyUnifiedHues(byTab) {
+        const seen = new Set();
+        const synthetic = [];
+        for (const tab of TABS) {
+          for (const p of byTab[tab.id].players) {
+            if (!seen.has(p.name)) {
+              seen.add(p.name);
+              synthetic.push({ name: p.name });
+            }
+          }
+        }
+        assignHues(synthetic);
+        const hueByName = new Map(synthetic.map((s) => [s.name, s.hue]));
+        for (const tab of TABS) {
+          for (const p of byTab[tab.id].players) {
+            p.hue = hueByName.get(p.name) ?? p.hue;
+          }
+        }
       }
 
       function fmtRelative(date) {
@@ -543,8 +653,41 @@
         return days + " day" + (days === 1 ? "" : "s") + " ago";
       }
 
+      function buildTabStrip() {
+        const strip = el("div", { class: "tabs", role: "tablist" });
+        for (const tab of TABS) {
+          const isActive = state.activeTab === tab.id;
+          const btn = el(
+            "button",
+            {
+              type: "button",
+              class: "tab" + (isActive ? " active" : ""),
+              role: "tab",
+              "aria-selected": isActive ? "true" : "false",
+              "data-tab": tab.id,
+            },
+            tab.label,
+          );
+          btn.addEventListener("click", () => setActiveTab(tab.id));
+          strip.appendChild(btn);
+        }
+        return strip;
+      }
+
+      function buildBlurb(ctx) {
+        const { players, totals, tab } = ctx;
+        if (!players.length || !totals) {
+          return `${tab.eyebrow}. No qualifying sessions yet — keep playing and they'll show up here.`;
+        }
+        if (tab.id === "overall") {
+          return `${players.length} regulars (${MIN_GAMES}+ sessions) across ${totals.totalGames} player-games. Sorted by net P/L; bars scale to the largest swing per side (${totals.maxAbsPlayer.name}, ${fmtMoney(totals.maxAbs)}).`;
+        }
+        const sessionWord = tab.id === "tournament" ? "tournament" : "cash";
+        return `${players.length} player${players.length === 1 ? "" : "s"} across ${totals.totalGames} ${sessionWord} player-game${totals.totalGames === 1 ? "" : "s"}. Sorted by net P/L; bars scale to the largest swing per side (${totals.maxAbsPlayer.name}, ${fmtMoney(totals.maxAbs)}).`;
+      }
+
       function buildHeader(ctx, onRefresh) {
-        const { players, totals, lastModifiedDate } = ctx;
+        const { lastModifiedDate } = ctx;
         const updatedLabel = lastModifiedDate
           ? `Updated ${fmtRelative(lastModifiedDate)}`
           : "Live data";
@@ -579,9 +722,25 @@
           el(
             "p",
             { class: "subtle", style: "max-width: 62ch" },
-            `${players.length} regulars (${MIN_GAMES}+ sessions) across ${totals.totalGames} player-games. Sorted by net P/L; bars scale to the largest swing per side (${totals.maxAbsPlayer.name}, ${fmtMoney(totals.maxAbs)}).`,
+            buildBlurb(ctx),
           ),
+          buildTabStrip(),
           el("div", { class: "meta-row" }, updated, refreshBtn),
+        );
+      }
+
+      function buildEmptyState(tab) {
+        const message =
+          tab.id === "tournament"
+            ? "No tournament sessions logged yet. Standings will appear here once the first tournament is recorded."
+            : tab.id === "cash"
+            ? "No cash-game sessions logged yet. Standings will appear here once the first cash session is recorded."
+            : "No qualifying players yet.";
+        return el(
+          "section",
+          { class: "card empty-state stack stack-10" },
+          el("h2", {}, `${tab.label} — Starting fresh`),
+          el("p", { class: "section-sub" }, message),
         );
       }
 
@@ -771,11 +930,33 @@
         );
       }
 
-      async function render() {
-        renderShell("Loading latest standings…", false);
-        let data;
+      function getInitialTab() {
+        const hash = (location.hash || "").replace(/^#/, "");
+        if (TABS.some((t) => t.id === hash)) return hash;
         try {
-          data = await loadData();
+          const stored = localStorage.getItem(TAB_STORAGE_KEY);
+          if (stored && TABS.some((t) => t.id === stored)) return stored;
+        } catch {}
+        return DEFAULT_TAB;
+      }
+
+      const state = { activeTab: getInitialTab(), data: null };
+
+      function setActiveTab(id) {
+        if (state.activeTab === id) return;
+        state.activeTab = id;
+        try { localStorage.setItem(TAB_STORAGE_KEY, id); } catch {}
+        if (location.hash !== `#${id}`) {
+          history.replaceState(null, "", `#${id}`);
+        }
+        renderActive();
+      }
+
+      async function loadAndRender() {
+        if (!state.data) renderShell("Loading latest standings…", false);
+        let byTab;
+        try {
+          byTab = await loadAllData();
         } catch (e) {
           renderShell(
             "Couldn’t load the latest standings. Pull down to refresh or check your connection. (" +
@@ -785,37 +966,56 @@
           );
           return;
         }
+        state.data = byTab;
+        renderActive();
+      }
 
-        const players = data.players;
+      function renderActive() {
+        const root = document.getElementById("root");
+        root.innerHTML = "";
+        if (!state.data) return;
+
+        const tab = TABS.find((t) => t.id === state.activeTab) || TABS[0];
+        const entry = state.data[tab.id];
+        const players = entry.players;
+        const lastModifiedDate = entry.lastModified ? new Date(entry.lastModified) : null;
+
         if (!players.length) {
-          renderShell("No players meet the minimum-session threshold yet.", false);
+          const ctx = { players, totals: null, lastModifiedDate, tab };
+          root.appendChild(buildHeader(ctx, loadAndRender));
+          root.appendChild(buildEmptyState(tab));
           return;
         }
 
         const totals = computeTotals(players);
         const sorted = [...players].sort((a, b) => b.net - a.net);
         const sortedByAvg = [...players].sort((a, b) => b.netAvg - a.netAvg);
-        const lastModifiedDate = data.lastModified ? new Date(data.lastModified) : null;
-        const ctx = { players, sorted, sortedByAvg, totals, lastModifiedDate };
+        const ctx = { players, sorted, sortedByAvg, totals, lastModifiedDate, tab };
 
-        const root = document.getElementById("root");
-        root.innerHTML = "";
-        root.appendChild(buildHeader(ctx, render));
+        root.appendChild(buildHeader(ctx, loadAndRender));
         root.appendChild(buildKpis(ctx));
         root.appendChild(buildChart(ctx));
         root.appendChild(buildPlayerList(ctx));
       }
 
-      render();
+      loadAndRender();
 
       // Re-fetch whenever the standalone webapp regains focus (e.g. user
       // taps the home-screen icon after backgrounding it). This keeps the
       // standings fresh without needing a manual reload.
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") render();
+        if (document.visibilityState === "visible") loadAndRender();
       });
       window.addEventListener("pageshow", (e) => {
-        if (e.persisted) render();
+        if (e.persisted) loadAndRender();
+      });
+      window.addEventListener("hashchange", () => {
+        const next = (location.hash || "").replace(/^#/, "");
+        if (TABS.some((t) => t.id === next) && next !== state.activeTab) {
+          state.activeTab = next;
+          try { localStorage.setItem(TAB_STORAGE_KEY, next); } catch {}
+          renderActive();
+        }
       });
     </script>
   </body>

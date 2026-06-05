@@ -183,12 +183,20 @@ test("empty per-mode CSVs have a well-formed TOTAL row and parse to zero qualify
   }
 });
 
-test("page references CSV via relative path + cache-busting + cache: no-store", async () => {
+test("page references every mode CSV via relative path + cache-busting + cache: no-store", async () => {
   const html = await (await fetch(`${baseUrl}/standings/`)).text();
-  assert.match(html, /const\s+DATA_URL\s*=\s*["']\.\/PokerSummary\.csv["']/);
+  // All three CSVs must be referenced via the page's TABS config so the
+  // bundled deploy → fetch → render pipeline stays intact for every tab.
+  for (const csv of ["PokerSummary.csv", "PokerTournamentSummary.csv", "PokerCashSummary.csv"]) {
+    assert.match(
+      html,
+      new RegExp(`url:\\s*["']\\./${csv.replace(/\./g, "\\.")}["']`),
+      `expected the TABS config to reference ./${csv} via a relative path`,
+    );
+  }
   assert.match(
     html,
-    /\$\{DATA_URL\}\?t=\$\{Date\.now\(\)\}/,
+    /\$\{(?:full)?[Uu]rl\}\?t=\$\{Date\.now\(\)\}/,
     "expected cache-busting timestamp on every CSV fetch",
   );
   assert.match(
