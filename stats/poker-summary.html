@@ -443,6 +443,20 @@
       .empty-state h2 { letter-spacing: -0.01em; }
       .empty-state .section-sub { max-width: 52ch; }
 
+      .pinfo-breakdown {
+        margin-top: 3px;
+        font-size: 11.5px;
+        line-height: 1.35;
+        color: var(--text-3);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.005em;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .pinfo-breakdown .mode-label { color: var(--text-2); font-weight: 600; }
+      .pinfo-breakdown .sep { color: var(--text-3); }
+
       @media (max-width: 380px) {
         .chart-row, .axis-labels { --col-name: 80px; --col-value: 54px; gap: 8px; }
         .player-handle .pname { font-size: 12px; }
@@ -607,33 +621,51 @@
       }
 
       async function loadAllData() {
-        const entries = await Promise.all(
+        // Fetch every CSV once, but produce two views per tab:
+        //   - byTab: filtered by the tab's minGames threshold; drives the
+        //     headline standings on each tab.
+        //   - byMode: every player regardless of session count; backs the
+        //     per-mode breakdown sub-line so even single-session players
+        //     can show their other-mode performance.
+        const fetched = await Promise.all(
           TABS.map(async (tab) => {
             const { text, lastModified } = await loadCsv(tab.url);
-            const players = parseCsv(text, tab.minGames);
-            return [tab.id, { players, lastModified }];
+            return { tab, text, lastModified };
           }),
         );
-        const byTab = Object.fromEntries(entries);
-        applyUnifiedHues(byTab);
-        return byTab;
+
+        const byTab = {};
+        const byMode = {};
+        for (const { tab, text, lastModified } of fetched) {
+          byTab[tab.id] = { players: parseCsv(text, tab.minGames), lastModified };
+          if (tab.id === "tournament" || tab.id === "cash") {
+            byMode[tab.id] = parseCsv(text, 0);
+          }
+        }
+
+        applyUnifiedHues(byTab, byMode);
+        const breakdownIndex = buildBreakdownIndex(byMode);
+        return { byTab, breakdownIndex };
       }
 
       // assignHues() picks colors based on alphabetical position WITHIN the
       // set it's given, so a player would otherwise get a different hue in
-      // each tab. Compute one mapping across the union of all three tabs and
-      // patch every player so their avatar color is stable across tabs.
-      function applyUnifiedHues(byTab) {
+      // each tab. Compute one mapping across the union of every player we
+      // know about (both the threshold-filtered tab views AND the unfiltered
+      // mode indexes) and patch every player so their avatar color is stable
+      // across tabs.
+      function applyUnifiedHues(byTab, byMode) {
         const seen = new Set();
         const synthetic = [];
-        for (const tab of TABS) {
-          for (const p of byTab[tab.id].players) {
-            if (!seen.has(p.name)) {
-              seen.add(p.name);
-              synthetic.push({ name: p.name });
-            }
+        const consider = (p) => {
+          if (!seen.has(p.name)) {
+            seen.add(p.name);
+            synthetic.push({ name: p.name });
           }
-        }
+        };
+        for (const tab of TABS) for (const p of byTab[tab.id].players) consider(p);
+        for (const mode of Object.keys(byMode)) for (const p of byMode[mode]) consider(p);
+
         assignHues(synthetic);
         const hueByName = new Map(synthetic.map((s) => [s.name, s.hue]));
         for (const tab of TABS) {
@@ -641,6 +673,18 @@
             p.hue = hueByName.get(p.name) ?? p.hue;
           }
         }
+      }
+
+      function buildBreakdownIndex(byMode) {
+        const idx = new Map();
+        for (const mode of ["tournament", "cash"]) {
+          for (const p of byMode[mode] || []) {
+            const key = p.name.toLowerCase();
+            if (!idx.has(key)) idx.set(key, {});
+            idx.get(key)[mode] = p;
+          }
+        }
+        return idx;
       }
 
       function fmtRelative(date) {
@@ -829,41 +873,65 @@
         );
       }
 
+      function buildBreakdownLine(player, activeTabId, breakdownIndex) {
+        if (!breakdownIndex) return null;
+        const entry = breakdownIndex.get(player.name.toLowerCase()) || {};
+        const showT = activeTabId !== "tournament" && entry.tournament;
+        const showC = activeTabId !== "cash" && entry.cash;
+        if (!showT && !showC) return null;
+
+        const children = [];
+        const pushPart = (label, p) => {
+          if (children.length) children.push(el("span", { class: "sep" }, "  ·  "));
+          const tone = p.net > 0 ? "gain-text" : p.net < 0 ? "loss-text" : "tertiary";
+          children.push(
+            el("span", { class: "mode-label" }, `${label}: `),
+            el("span", { class: tone }, fmtSigned(p.net)),
+            el("span", {}, ` · ${p.games}g`),
+          );
+        };
+        if (showT) pushPart("T", entry.tournament);
+        if (showC) pushPart("C", entry.cash);
+        return el("div", { class: "pinfo-breakdown" }, ...children);
+      }
+
       function buildPlayerList(ctx) {
-        const { sortedByAvg, totals } = ctx;
+        const { sortedByAvg, totals, tab, breakdownIndex } = ctx;
 
         const items = sortedByAvg.map((p, i) => {
           const rowClass = p.netAvg > 0 ? "gain" : p.netAvg < 0 ? "loss" : "";
           const tone = p.netAvg > 0 ? "gain-text" : p.netAvg < 0 ? "loss-text" : "tertiary";
           const isLeader = i === 0 && p.netAvg > 0;
+          const breakdown = buildBreakdownLine(p, tab.id, breakdownIndex);
+          const pinfoChildren = [
+            el(
+              "div",
+              { class: "pinfo-top" },
+              el("span", { class: "pname-l" }, p.name),
+              el(
+                "span",
+                { class: "headline-stat " + tone },
+                fmtAvg(p.netAvg) + "/g",
+              ),
+            ),
+            el(
+              "div",
+              { class: "pinfo-bot" },
+              el(
+                "span",
+                { class: "meta" },
+                `${p.games} GP · ${fmtMoney(p.buyIn)} → ${fmtMoney(p.cashOut)}`,
+              ),
+            ),
+          ];
+          if (breakdown) pinfoChildren.push(breakdown);
+
           return el(
             "li",
             { class: "pcard " + rowClass + (isLeader ? " leader" : "") },
             el("div", { class: "rank" }, "#" + (i + 1)),
             avatar(p),
-            el(
-              "div",
-              { class: "pinfo" },
-              el(
-                "div",
-                { class: "pinfo-top" },
-                el("span", { class: "pname-l" }, p.name),
-                el(
-                  "span",
-                  { class: "headline-stat " + tone },
-                  fmtAvg(p.netAvg) + "/g",
-                ),
-              ),
-              el(
-                "div",
-                { class: "pinfo-bot" },
-                el(
-                  "span",
-                  { class: "meta" },
-                  `${p.games} GP · ${fmtMoney(p.buyIn)} → ${fmtMoney(p.cashOut)}`,
-                ),
-              ),
-            ),
+            el("div", { class: "pinfo" }, ...pinfoChildren),
           );
         });
 
@@ -940,7 +1008,7 @@
         return DEFAULT_TAB;
       }
 
-      const state = { activeTab: getInitialTab(), data: null };
+      const state = { activeTab: getInitialTab(), data: null, breakdownIndex: null };
 
       function setActiveTab(id) {
         if (state.activeTab === id) return;
@@ -954,9 +1022,9 @@
 
       async function loadAndRender() {
         if (!state.data) renderShell("Loading latest standings…", false);
-        let byTab;
+        let result;
         try {
-          byTab = await loadAllData();
+          result = await loadAllData();
         } catch (e) {
           renderShell(
             "Couldn’t load the latest standings. Pull down to refresh or check your connection. (" +
@@ -966,7 +1034,8 @@
           );
           return;
         }
-        state.data = byTab;
+        state.data = result.byTab;
+        state.breakdownIndex = result.breakdownIndex;
         renderActive();
       }
 
@@ -990,7 +1059,15 @@
         const totals = computeTotals(players);
         const sorted = [...players].sort((a, b) => b.net - a.net);
         const sortedByAvg = [...players].sort((a, b) => b.netAvg - a.netAvg);
-        const ctx = { players, sorted, sortedByAvg, totals, lastModifiedDate, tab };
+        const ctx = {
+          players,
+          sorted,
+          sortedByAvg,
+          totals,
+          lastModifiedDate,
+          tab,
+          breakdownIndex: state.breakdownIndex,
+        };
 
         root.appendChild(buildHeader(ctx, loadAndRender));
         root.appendChild(buildKpis(ctx));
