@@ -32,10 +32,20 @@ const REPO_ROOT = path.resolve(__dirname, "..");
 const BUNDLE = [
   { src: "stats/poker-summary.html", dst: "standings/index.html" },
   { src: "stats/PokerSummary.csv", dst: "standings/PokerSummary.csv" },
+  { src: "stats/PokerTournamentSummary.csv", dst: "standings/PokerTournamentSummary.csv" },
+  { src: "stats/PokerCashSummary.csv", dst: "standings/PokerCashSummary.csv" },
   { src: "stats/manifest.webmanifest", dst: "standings/manifest.webmanifest" },
   { src: "stats/standings-icon-180.png", dst: "standings/standings-icon-180.png" },
   { src: "stats/standings-icon-192.png", dst: "standings/standings-icon-192.png" },
   { src: "stats/standings-icon-512.png", dst: "standings/standings-icon-512.png" },
+];
+
+// Per-mode CSVs that share the schema of PokerSummary.csv but track only
+// tournament or cash sessions. They start empty (header + zeroed TOTAL row)
+// and are populated going forward.
+const MODE_CSVS = [
+  { src: "stats/PokerTournamentSummary.csv", dst: "standings/PokerTournamentSummary.csv", label: "tournament" },
+  { src: "stats/PokerCashSummary.csv", dst: "standings/PokerCashSummary.csv", label: "cash" },
 ];
 
 const MIME = {
@@ -131,12 +141,62 @@ test("CSV served at /standings/PokerSummary.csv is byte-identical to stats/Poker
   assert.equal(served, source);
 });
 
-test("page references CSV via relative path + cache-busting + cache: no-store", async () => {
+test("per-mode CSVs are bundled and byte-identical to source", async () => {
+  for (const { src, dst, label } of MODE_CSVS) {
+    const served = await (
+      await fetch(`${baseUrl}/${dst}?t=${Date.now()}`, { cache: "no-store" })
+    ).text();
+    const source = fs.readFileSync(path.join(REPO_ROOT, src), "utf8");
+    assert.equal(served, source, `${label} CSV should be byte-identical to source`);
+  }
+});
+
+test("empty per-mode CSVs have a well-formed TOTAL row and parse to zero qualifying players", async () => {
+  // Mirrors the CSV-authoring sanity checks the page applies to PokerSummary.csv:
+  // the TOTAL row is the source of truth for downstream tabs, so even an empty
+  // starter CSV must satisfy the same arithmetic invariants.
+  for (const { dst, label } of MODE_CSVS) {
+    const csv = await (
+      await fetch(`${baseUrl}/${dst}?t=${Date.now()}`, { cache: "no-store" })
+    ).text();
+    const rows = csv
+      .replace(/\r\n?/g, "\n")
+      .split("\n")
+      .filter((l) => l.trim())
+      .slice(1)
+      .map((l) => l.split(",").map((s) => s.trim()))
+      .filter((c) => c.length >= 8 && c[1]);
+
+    const totalRow = rows.find((r) => r[1] === "TOTAL");
+    const dataRows = rows.filter((r) => r[1] !== "TOTAL");
+
+    assert.ok(totalRow, `${label} CSV should contain a TOTAL row`);
+    const sumGames = dataRows.reduce((s, r) => s + (parseInt(r[0], 10) || 0), 0);
+    const sumBuyIn = dataRows.reduce((s, r) => s + (parseFloat(r[2]) || 0), 0);
+    const sumCashOut = dataRows.reduce((s, r) => s + (parseFloat(r[4]) || 0), 0);
+    const sumNet = dataRows.reduce((s, r) => s + (parseFloat(r[6]) || 0), 0);
+
+    assert.equal(parseInt(totalRow[0], 10), sumGames, `${label} CSV TOTAL games`);
+    assert.equal(parseFloat(totalRow[2]).toFixed(2), sumBuyIn.toFixed(2), `${label} CSV TOTAL buy-in`);
+    assert.equal(parseFloat(totalRow[4]).toFixed(2), sumCashOut.toFixed(2), `${label} CSV TOTAL cash-out`);
+    assert.equal(parseFloat(totalRow[6]).toFixed(2), sumNet.toFixed(2), `${label} CSV TOTAL net`);
+  }
+});
+
+test("page references every mode CSV via relative path + cache-busting + cache: no-store", async () => {
   const html = await (await fetch(`${baseUrl}/standings/`)).text();
-  assert.match(html, /const\s+DATA_URL\s*=\s*["']\.\/PokerSummary\.csv["']/);
+  // All three CSVs must be referenced via the page's TABS config so the
+  // bundled deploy → fetch → render pipeline stays intact for every tab.
+  for (const csv of ["PokerSummary.csv", "PokerTournamentSummary.csv", "PokerCashSummary.csv"]) {
+    assert.match(
+      html,
+      new RegExp(`url:\\s*["']\\./${csv.replace(/\./g, "\\.")}["']`),
+      `expected the TABS config to reference ./${csv} via a relative path`,
+    );
+  }
   assert.match(
     html,
-    /\$\{DATA_URL\}\?t=\$\{Date\.now\(\)\}/,
+    /\$\{(?:full)?[Uu]rl\}\?t=\$\{Date\.now\(\)\}/,
     "expected cache-busting timestamp on every CSV fetch",
   );
   assert.match(

@@ -12,17 +12,33 @@ description: >-
 
 # Update Poker Standings
 
-## File
+## Files
 
-The cumulative standings live in `stats/PokerSummary.csv`. Columns (in order):
+The cumulative standings live in **three** CSVs, each with the same columns:
 
 ```
 Games,Player,Total Buy-In,Avg Buy-In,Total Cash Out,Avg Cash Out,Net,Net per Game
 ```
 
+- `stats/PokerSummary.csv` — **Overall**. The rolling totals across every session in every mode. Has been the single source of truth historically and continues to receive every session going forward. Backs the "Overall" tab on the standings page.
+- `stats/PokerTournamentSummary.csv` — **Tournament only**. Started fresh and accumulates one row per tournament session. Backs the "Tournament" tab.
+- `stats/PokerCashSummary.csv` — **Cash only**. Started fresh and accumulates one row per cash session. Backs the "Cash Game" tab.
+
+Shared rules for every CSV:
+
 - All monetary columns are formatted to **2 decimal places** (e.g. `40.00`, `-18.04`).
 - The final row is a `TOTAL` row where `Games` is the sum of player-game appearances (not session count), `Total Buy-In` / `Total Cash Out` / `Net` are summed across all players, and the `Avg` and `Net per Game` columns are left blank.
 - Rows are sorted by `Net` **descending** (highest winnings first, deepest losses last). The `TOTAL` row stays at the bottom.
+- An empty CSV still has the header row plus a zeroed `0,TOTAL,0.00,,0.00,,0.00,` row. Never delete the TOTAL row.
+
+## Which CSV(s) to update for a session
+
+Every session is one of the two game modes. For each session, you must update **two** files:
+
+1. `stats/PokerSummary.csv` (Overall — every session, no exceptions).
+2. EITHER `stats/PokerTournamentSummary.csv` OR `stats/PokerCashSummary.csv`, depending on the mode.
+
+If the user did not say which mode the session was, ask them with `AskQuestion` before editing. Default convention if obvious from context (e.g. screenshot is from the tournament mode of the app, or the user said "tournament results"): use it but mention the assumption in the summary.
 
 ## Workflow
 
@@ -41,17 +57,22 @@ The user will provide a session as a screenshot, image, table, or text. Extract 
 
 If the image looks cut off, ask whether there are more rows. Use the `AskQuestion` tool with explicit options rather than freeform follow-up.
 
+If the **game mode** (Tournament vs Cash) isn't obvious from context, ask once with `AskQuestion`. Don't guess — the per-mode CSV you write to depends on this answer.
+
 **Default convention for blank cash out**: treat it as `0` (player busted). This matches the existing data pattern where players like Souse and Toby show `-buy-in` as their net. Still confirm with the user once per session if any row has both a blank cash out *and* a blank net column, since that could also mean "still playing / not finalized".
 
 If a row has a non-blank Net, verify it equals `cash_out - buy_in` and surface the discrepancy if not.
 
-### 3. Read the current CSV
+### 3. Read the current CSVs
 
-Always read `stats/PokerSummary.csv` fresh before editing — do not rely on memory of previous values.
+Always read **both** target CSVs fresh before editing — do not rely on memory of previous values:
+
+- `stats/PokerSummary.csv` (always).
+- `stats/PokerTournamentSummary.csv` OR `stats/PokerCashSummary.csv` (the one matching the session's mode).
 
 ### 4. Recalculate per-player totals
 
-For each player in the new session:
+Apply this update to **each** of the two target CSVs independently (same arithmetic, different starting rows). For each player in the new session:
 
 - If the player already exists in the CSV:
   - `Games          += 1`
@@ -61,11 +82,13 @@ For each player in the new session:
   - `Avg Cash Out    = Total Cash Out / Games`
   - `Net             = Total Cash Out - Total Buy-In`
   - `Net per Game    = Net / Games`
-- If the player is new, add a new row with `Games = 1` and the session values directly (avg equals total, net per game equals net).
+- If the player is new to that CSV, add a new row with `Games = 1` and the session values directly (avg equals total, net per game equals net). Note that a player who has been around for months may still be "new" to the per-mode CSV the first time they play that mode.
 
 Players not in this session keep their existing row unchanged.
 
 ### 5. Recalculate the TOTAL row
+
+Apply this to **each** target CSV. The TOTAL row in Overall and the TOTAL row in the per-mode CSV are independent — they both increase by the same delta (one session's worth of player-games, buy-ins, cash-outs) but they start from different baselines.
 
 - `Games` (TOTAL) = previous Games (TOTAL) + number of distinct players in this session
 - `Total Buy-In` (TOTAL) = sum of every player row's `Total Buy-In`
@@ -75,11 +98,11 @@ Players not in this session keep their existing row unchanged.
 
 ### 6. Re-sort by Net descending
 
-Sort every player row by `Net` descending. Keep the header row at the top and the `TOTAL` row at the bottom.
+Sort every player row by `Net` descending in **each** target CSV. Keep the header row at the top and the `TOTAL` row at the bottom.
 
 ### 7. Run sanity checks
 
-Before writing, verify all of the following. If any fail, stop and surface the discrepancy to the user.
+Before writing, verify all of the following — once for **each** target CSV. If any fail, stop and surface the discrepancy to the user.
 
 - Session buy-in total equals session cash-out total (a balanced session). If they don't match, mention it — it usually means a missing cash-out or a typo.
 - Sum of every player row's `Net` equals the TOTAL row's `Net`.
@@ -87,13 +110,20 @@ Before writing, verify all of the following. If any fail, stop and surface the d
 - Sum of every player row's `Total Cash Out` equals the TOTAL row's `Total Cash Out`.
 - The TOTAL row's `Games` equals the sum of every player row's `Games`.
 
-### 8. Write the CSV
+Cross-CSV check (just one): the **delta** added to Overall's TOTAL row this session must equal the delta added to the per-mode CSV's TOTAL row. They both received the same session, so games / buy-in / cash-out / net deltas must match.
 
-Overwrite `stats/PokerSummary.csv` with the new contents. Preserve the exact column order, header text, 2-decimal formatting, and trailing newline.
+### 8. Write the CSVs
+
+Overwrite **both** target CSVs with the new contents:
+
+- `stats/PokerSummary.csv` (always).
+- `stats/PokerTournamentSummary.csv` OR `stats/PokerCashSummary.csv` (matching mode).
+
+Preserve the exact column order, header text, 2-decimal formatting, and trailing newline in each file.
 
 ### 9. Run the integration test
 
-The repository ships an automated backstop at `scripts/standings-integration.test.mjs` that bundles the standings page exactly the way the deploy workflow does, serves it over HTTP, then runs the page's own `parseCsv` / `computeTotals` / `assignHues` against the new CSV. Crucially, it also reasserts the same TOTAL-row arithmetic invariants from step 7, the `Net`-descending sort order, and that the live page can still parse every row.
+The repository ships an automated backstop at `scripts/standings-integration.test.mjs` that bundles the standings page exactly the way the deploy workflow does, serves it over HTTP, then runs the page's own `parseCsv` / `computeTotals` / `assignHues` against the bundled CSVs. It covers all three CSVs: it reasserts the TOTAL-row arithmetic invariants from step 7 against `PokerSummary.csv`, `PokerTournamentSummary.csv`, and `PokerCashSummary.csv`, and that the live page can still parse every row.
 
 Always run it after writing:
 
@@ -109,8 +139,9 @@ If it fails:
 
 After writing **and after the integration test passes**, post a short summary to the user that includes:
 
-- A table of every player who played this session, showing `Games` (before → after) and `Net` (before → after).
-- New cumulative totals: player-game appearances, total buy-in, total cash out, net.
+- Which mode the session was (Tournament or Cash), and therefore which two CSVs were updated.
+- A table of every player who played this session, showing `Games` (before → after) and `Net` (before → after) — Overall side, since that's what most history tracking refers to.
+- New cumulative totals for **both** updated CSVs: player-game appearances, total buy-in, total cash out, net.
 - Which sanity checks passed and that `npm run test:integration` is green.
 
 ## Rounding
@@ -139,3 +170,6 @@ Ham (previously `23 games, 875.00, 38.04, 460.00, 20.00, -415.00, -18.04`) becom
 - Do not silently treat ambiguous blank rows as `0` if both `cash out` and `net` are blank — clarify first.
 - Do not write integer monetary values (`40`); always write 2 decimals (`40.00`).
 - Do not preserve the prior row order; always re-sort by `Net` descending after updating.
+- **Do not forget the per-mode CSV.** Every session updates two files (Overall + the matching Tournament/Cash CSV). Updating only Overall would leave the per-mode tab silently stale.
+- Do not write the session into the wrong per-mode CSV. If unsure about Tournament vs Cash, ask the user.
+- Do not delete the `0,TOTAL,0.00,,0.00,,0.00,` row from a still-empty per-mode CSV. The integration test requires a TOTAL row in every CSV.
