@@ -59,6 +59,8 @@ The user will provide a session as a screenshot, image, table, or text. Extract 
 |---|---|
 | `Noble` | `Ham` |
 | `ChristopherTobyTobin` | `Toby` |
+| `Chris` | `Toby` |
+| `Me` (when typed by the user) | `Coffey` |
 
 If any *new* unrecognized name appears, ask with `AskQuestion` whether it's a new player or an alias for an existing one before writing. Add confirmed aliases to this table.
 
