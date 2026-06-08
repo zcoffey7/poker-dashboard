@@ -48,10 +48,19 @@ Follow these steps every time:
 
 The user will provide a session as a screenshot, image, table, or text. Extract one row per player with:
 
-- Player name
+- Player name (apply the **player aliases** below before writing)
 - Buy-in (number)
 - Cash out (number, may be blank)
 - Net (may be blank — used only as a cross-check)
+
+**Player aliases — apply silently, do not ask:**
+
+| Alias seen in screenshots/sheets | Canonical name to write in the CSV |
+|---|---|
+| `Noble` | `Ham` |
+| `ChristopherTobyTobin` | `Toby` |
+
+If any *new* unrecognized name appears, ask with `AskQuestion` whether it's a new player or an alias for an existing one before writing. Add confirmed aliases to this table.
 
 ### 2. Clarify ambiguities BEFORE editing
 
