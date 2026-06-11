@@ -111,10 +111,17 @@ export type TournamentState = {
   finishType?: FinishType;
   /**
    * Player id -> percentage of the prize pool (0..100) to award on a chop.
-   * Sum should be <= total payout percentage; any remainder stays unpaid.
+   * Legacy field kept so previously-finished tournaments still render;
+   * new chops record dollar amounts in `chopAmounts` instead.
    * Only meaningful when finishType === "chop".
    */
   chopShares?: Record<string, number>;
+  /**
+   * Player id -> exact dollar amount to award on a chop. Sum should be
+   * <= prize pool; any remainder stays unpaid. Takes precedence over
+   * `chopShares`. Only meaningful when finishType === "chop".
+   */
+  chopAmounts?: Record<string, number>;
   /**
    * Moves produced by the most recent `balanceTables` run that the user
    * hasn't acknowledged yet. When non-empty the dashboard shows a modal

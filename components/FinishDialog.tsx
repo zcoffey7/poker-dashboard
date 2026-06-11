@@ -15,7 +15,6 @@ function floorTo(n: number, step: number) {
 
 export default function FinishDialog({ onClose }: Props) {
   const players = useTournament((s) => s.players);
-  const payouts = useTournament((s) => s.payouts);
   const buyIn = useTournament((s) => s.buyIn);
   const addOnCost = useTournament((s) => s.addOnCost);
   const rebuyCost = useTournament((s) => s.rebuyCost);
@@ -37,12 +36,20 @@ export default function FinishDialog({ onClose }: Props) {
     [players, blindStructure, currentLevel, buyIn, addOnCost, rebuyCost],
   );
   const pool = stats.prizePool;
-  const totalPayoutPct = payouts.reduce((s, p) => s + p.percent, 0);
 
   const active = useMemo(
     () => players.filter((p) => !p.eliminated),
     [players],
   );
+
+  function equalSplit(ids: string[]): Record<string, number> {
+    if (ids.length === 0) return {};
+    const each = floorTo(pool / ids.length, CASH_INCREMENT);
+    const next = Object.fromEntries(ids.map((id) => [id, each]));
+    // Rounding remainder goes to the first player in the group.
+    next[ids[0]] = pool - each * (ids.length - 1);
+    return next;
+  }
 
   const [mode, setMode] = useState<"winner" | "chop">(
     active.length <= 1 ? "winner" : "chop",
@@ -50,21 +57,17 @@ export default function FinishDialog({ onClose }: Props) {
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(active.map((p) => [p.id, true])),
   );
-  const [shares, setShares] = useState<Record<string, number>>(() => {
-    const each = active.length > 0 ? totalPayoutPct / active.length : 0;
-    return Object.fromEntries(active.map((p) => [p.id, +each.toFixed(2)]));
-  });
+  const [amounts, setAmounts] = useState<Record<string, number>>(() =>
+    equalSplit(active.map((p) => p.id)),
+  );
 
   const chopIds = active.filter((p) => selected[p.id]).map((p) => p.id);
-  const shareTotal = chopIds.reduce((s, id) => s + (shares[id] ?? 0), 0);
-  const poolFloored = floorTo(pool, CASH_INCREMENT);
+  const allocated = chopIds.reduce((s, id) => s + (amounts[id] ?? 0), 0);
+  const remaining = pool - allocated;
 
   function setEqualShares() {
     if (chopIds.length === 0) return;
-    const each = totalPayoutPct / chopIds.length;
-    const next: Record<string, number> = { ...shares };
-    chopIds.forEach((id) => (next[id] = +each.toFixed(2)));
-    setShares(next);
+    setAmounts({ ...amounts, ...equalSplit(chopIds) });
   }
 
   function submit() {
@@ -84,13 +87,27 @@ export default function FinishDialog({ onClose }: Props) {
         alert("Select at least one player for the chop.");
         return;
       }
-      const chopShares = Object.fromEntries(
-        chopIds.map((id) => [id, shares[id] ?? 0]),
+      if (allocated > pool) {
+        alert(
+          `Allocated $${allocated.toLocaleString()} exceeds the $${pool.toLocaleString()} prize pool. Reduce the amounts before confirming.`,
+        );
+        return;
+      }
+      if (
+        remaining > 0 &&
+        !confirm(
+          `$${remaining.toLocaleString()} of the prize pool is unallocated and will stay unpaid. Continue?`,
+        )
+      ) {
+        return;
+      }
+      const chopAmounts = Object.fromEntries(
+        chopIds.map((id) => [id, amounts[id] ?? 0]),
       );
       finishTournament({
         type: "chop",
         chopPlayerIds: chopIds,
-        chopShares,
+        chopAmounts,
       });
     }
     onClose();
@@ -160,12 +177,12 @@ export default function FinishDialog({ onClose }: Props) {
           ) : (
             <div className="flex flex-col gap-3">
               <div className="text-xs text-[var(--text-muted)]">
-                Select which players are in the chop and adjust each share
-                (as % of the prize pool). Any unallocated % stays unpaid.
+                Select which players are in the chop and enter the dollar
+                amount each player gets. Any unallocated money stays unpaid.
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[var(--text-muted)]">
-                  Total payout %: {totalPayoutPct}%
+                  Prize pool: ${pool.toLocaleString()}
                 </span>
                 <button
                   type="button"
@@ -191,44 +208,40 @@ export default function FinishDialog({ onClose }: Props) {
                     <span className="flex-1 truncate text-sm font-medium">
                       {p.name}
                     </span>
+                    <span className="text-xs text-[var(--text-muted)] w-4 text-right">
+                      $
+                    </span>
                     <input
                       type="number"
                       min={0}
-                      max={100}
-                      step={0.1}
+                      max={pool}
+                      step={1}
                       disabled={!selected[p.id]}
-                      value={shares[p.id] ?? 0}
+                      value={amounts[p.id] ?? 0}
                       onChange={(e) =>
-                        setShares({
-                          ...shares,
+                        setAmounts({
+                          ...amounts,
                           [p.id]: Math.max(0, Number(e.target.value) || 0),
                         })
                       }
-                      className="input w-20 text-right font-mono text-sm"
+                      className="input w-24 text-right font-mono text-sm"
                     />
-                    <span className="text-xs text-[var(--text-muted)] w-4">
-                      %
-                    </span>
-                    <span className="font-mono text-xs text-[var(--text-muted)] w-20 text-right">
-                      ~$
-                      {selected[p.id]
-                        ? floorTo(
-                            ((shares[p.id] ?? 0) / (totalPayoutPct || 1)) *
-                              poolFloored,
-                            CASH_INCREMENT,
-                          ).toLocaleString()
-                        : "0"}
-                    </span>
                   </div>
                 ))}
               </div>
               <div className="text-xs text-[var(--text-muted)] flex items-center justify-between">
                 <span>
-                  Allocated: {shareTotal.toFixed(1)}% / {totalPayoutPct}%
+                  Allocated: ${allocated.toLocaleString()} / $
+                  {pool.toLocaleString()}
                 </span>
-                {shareTotal > totalPayoutPct && (
+                {remaining > 0 && (
                   <span className="text-orange-400">
-                    Over-allocated by {(shareTotal - totalPayoutPct).toFixed(1)}%
+                    ${remaining.toLocaleString()} unallocated
+                  </span>
+                )}
+                {remaining < 0 && (
+                  <span className="text-red-400">
+                    Over by ${(-remaining).toLocaleString()}
                   </span>
                 )}
               </div>
