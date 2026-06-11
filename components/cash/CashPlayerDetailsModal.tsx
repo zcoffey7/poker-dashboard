@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import NumberInput from "../NumberInput";
+import ModalShell from "../ModalShell";
+import CashOutForm from "./CashOutForm";
+import { StatBox } from "../StatTiles";
 import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
 import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 
@@ -32,14 +35,6 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
   const [nameDraft, setNameDraft] = useState(player?.name ?? "");
   const titleId = useId();
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const totalInCents = useMemo(
     () => (player ? totalBuyIns(player) : 0),
     [player],
@@ -51,17 +46,11 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
   const cashedOut = player.cashOut != null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+    <ModalShell
+      onClose={onClose}
+      labelledBy={titleId}
+      cardClassName="w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden"
     >
-      <div
-        className="card w-full max-w-md max-h-[90dvh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] gap-2">
           <div className="min-w-0 flex-1">
             <div className="label" id={titleId}>
@@ -112,9 +101,9 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
           <div className="grid grid-cols-3 gap-2 text-sm">
-            <Stat label="Buy-ins" value={`${player.buyIns.length}×`} />
-            <Stat label="In for" value={fmtMoneyCents(totalInCents)} />
-            <Stat
+            <StatBox label="Buy-ins" value={`${player.buyIns.length}×`} />
+            <StatBox label="In for" value={fmtMoneyCents(totalInCents)} />
+            <StatBox
               label={cashedOut ? "Net" : "Out for"}
               value={cashedOut ? fmtSignedCents(netCents ?? 0) : "—"}
               positive={cashedOut ? (netCents ?? 0) >= 0 : undefined}
@@ -239,72 +228,18 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
               </button>
             </div>
           ) : (
-            <QuickCashOut
-              onSubmit={(amount) => {
-                cashOutPlayer(playerId, amount);
-                onClose();
-              }}
-            />
+            <div className="border-t border-[var(--border)] pt-3">
+              <CashOutForm
+                totalInCents={totalInCents}
+                onSubmit={(amount) => {
+                  cashOutPlayer(playerId, amount);
+                  onClose();
+                }}
+              />
+            </div>
           )}
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 
-function QuickCashOut({ onSubmit }: { onSubmit: (amount: number) => void }) {
-  const [amount, setAmount] = useState(0);
-  return (
-    <div className="border-t border-[var(--border)] pt-3">
-      <div className="label mb-2">Cash Out</div>
-      <div className="flex items-center gap-2">
-        <span className="font-mono">$</span>
-        <NumberInput
-          className="input flex-1 font-mono"
-          value={amount}
-          onChange={setAmount}
-          step={0.01}
-          min={0}
-          placeholder="Final stack"
-        />
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => onSubmit(amount)}
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  positive,
-  muted,
-}: {
-  label: string;
-  value: string;
-  positive?: boolean;
-  muted?: boolean;
-}) {
-  return (
-    <div className="card-2 p-2 rounded">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-        {label}
-      </div>
-      <div
-        className={`font-mono text-sm font-semibold ${
-          positive
-            ? "text-[var(--accent)]"
-            : muted
-              ? "text-[var(--text-muted)]"
-              : ""
-        }`}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}

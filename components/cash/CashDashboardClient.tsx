@@ -7,6 +7,7 @@ import { fmtMoneyCents } from "@/lib/money";
 import CashPlayerRoster from "./CashPlayerRoster";
 import EndGameDialog from "./EndGameDialog";
 import CashRecap from "./CashRecap";
+import { StatTile } from "../StatTiles";
 
 export default function CashDashboardClient() {
   const name = useCash((s) => s.name);
@@ -96,28 +97,3 @@ export default function CashDashboardClient() {
   );
 }
 
-function StatTile({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="card p-3">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-        {label}
-      </div>
-      <div className="text-lg font-semibold font-mono tabular-nums truncate">
-        {value}
-      </div>
-      {hint && (
-        <div className="text-[11px] text-[var(--text-muted)] truncate">
-          {hint}
-        </div>
-      )}
-    </div>
-  );
-}

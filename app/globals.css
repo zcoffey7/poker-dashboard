@@ -55,8 +55,6 @@ html {
   --color-danger: var(--danger);
   --color-green: var(--green);
   --color-amber: var(--amber);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 html,

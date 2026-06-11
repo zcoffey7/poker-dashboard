@@ -1263,66 +1263,13 @@ export const useTournament = create<TournamentStore>()(
           queueMicrotask(() => useTournament.setState({ clock }));
         }
       },
-      partialize: (state) => {
-        const {
-          setName: _1,
-          setStartingStack: _2,
-          setBuyIn: _3,
-          setRebuyChips: _4,
-          updateSettings: _5,
-          addPlayer: _6,
-          addPlayersBulk: _7,
-          removePlayer: _8,
-          renamePlayer: _9,
-          eliminatePlayer: _10,
-          restorePlayer: _11,
-          rebuyPlayer: _12,
-          adjustChips: _13,
-          setChips: _14,
-          addTable: _15,
-          removeTable: _16,
-          renameTable: _17,
-          setTableSeats: _18,
-          assignSeats: _19,
-          balanceNow: _20,
-          clearSeats: _21,
-          addLevel: _22,
-          updateLevel: _23,
-          removeLevel: _24,
-          moveLevel: _25,
-          setBlindStructure: _26,
-          setPayouts: _27,
-          updatePayout: _28,
-          addPayoutSpot: _29,
-          removePayoutSpot: _30,
-          startClock: _31,
-          pauseClock: _32,
-          toggleClock: _33,
-          resetLevel: _34,
-          nextLevel: _35,
-          prevLevel: _36,
-          tick: _37,
-          resetTournament: _38,
-          importState: _39,
-          saveSettings: _40,
-          setAddOnChips: _41,
-          setAddOnCost: _42,
-          addOnPlayer: _43,
-          undoRebuy: _44,
-          undoAddOn: _45,
-          finishTournament: _46,
-          unfinishTournament: _47,
-          movePlayer: _48,
-          setRebuyCost: _49,
-          ...rest
-        } = state;
-        void _1;void _2;void _3;void _4;void _5;void _6;void _7;void _8;void _9;void _10;
-        void _11;void _12;void _13;void _14;void _15;void _16;void _17;void _18;void _19;void _20;
-        void _21;void _22;void _23;void _24;void _25;void _26;void _27;void _28;void _29;void _30;
-        void _31;void _32;void _33;void _34;void _35;void _36;void _37;void _38;void _39;void _40;
-        void _41;void _42;void _43;void _44;void _45;void _46;void _47;void _48;void _49;
-        return rest;
-      },
+      // Persist only data fields. Filtering by type (instead of a manual
+      // destructure list) can't drift when actions are added or renamed —
+      // the old list had already missed `acknowledgeRebalance`.
+      partialize: (state) =>
+        Object.fromEntries(
+          Object.entries(state).filter(([, v]) => typeof v !== "function"),
+        ) as TournamentState,
     },
   ),
 );

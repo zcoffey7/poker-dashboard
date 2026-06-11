@@ -20,7 +20,6 @@ export type CashOut = {
 export type CashPlayer = {
   id: string;
   name: string;
-  seat?: number | null;
   buyIns: CashBuyIn[];
   cashOut?: CashOut;
 };

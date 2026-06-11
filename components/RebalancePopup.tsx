@@ -1,5 +1,6 @@
 "use client";
 
+import ModalShell from "./ModalShell";
 import { useTournament } from "@/lib/store";
 
 export default function RebalancePopup() {
@@ -11,13 +12,13 @@ export default function RebalancePopup() {
   const count = moves.length;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="rebalance-title"
+    // No onClose: the popup is blocking and must be acknowledged.
+    <ModalShell
+      labelledBy="rebalance-title"
+      centered
+      overlayClassName="bg-black/70 backdrop-blur-sm"
+      cardClassName="card-2 w-full max-w-2xl max-h-[90dvh] flex flex-col shadow-2xl"
     >
-      <div className="card card-2 w-full max-w-2xl max-h-[90dvh] flex flex-col shadow-2xl">
         <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-3 border-b border-[var(--border)]">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -52,8 +53,7 @@ export default function RebalancePopup() {
             Acknowledged
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 

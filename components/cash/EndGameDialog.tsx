@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import NumberInput from "../NumberInput";
+import ModalShell from "../ModalShell";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
 import { fmtMoneyCents, fmtSignedCents, toCents } from "@/lib/money";
 
@@ -64,8 +65,8 @@ export default function EndGameDialog({ onClose }: Props) {
     if (acknowledged) setAcknowledged(false);
   }
 
-  // Backdrop / Escape / Cancel all funnel through here: entered final
-  // stacks are real work, don't discard them on a stray click.
+  // Backdrop / Escape / Cancel all funnel through here (via ModalShell):
+  // entered final stacks are real work, don't discard them on a stray click.
   const hasEnteredAmounts = unsettled.some((p) => (amounts[p.id] ?? 0) > 0);
   function requestClose() {
     if (
@@ -76,21 +77,6 @@ export default function EndGameDialog({ onClose }: Props) {
     }
     onClose();
   }
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      if (
-        hasEnteredAmounts &&
-        !confirm("Discard the final stacks you've entered?")
-      ) {
-        return;
-      }
-      onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [hasEnteredAmounts, onClose]);
 
   function submit() {
     unsettled.forEach((p) => {
@@ -105,17 +91,11 @@ export default function EndGameDialog({ onClose }: Props) {
   const canSubmitOverride = validAmounts && !balanced && acknowledged;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={requestClose}
+    <ModalShell
+      onClose={requestClose}
+      labelledBy={titleId}
+      cardClassName="w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
     >
-      <div
-        className="card w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>
             <div className="label" id={titleId}>
@@ -245,8 +225,7 @@ export default function EndGameDialog({ onClose }: Props) {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 

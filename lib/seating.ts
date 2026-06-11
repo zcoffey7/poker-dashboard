@@ -11,7 +11,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-export function shuffle<T>(arr: T[], seed?: number): T[] {
+function shuffle<T>(arr: T[], seed?: number): T[] {
   const a = arr.slice();
   const rand =
     seed === undefined ? Math.random : mulberry32(seed);

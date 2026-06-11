@@ -1,17 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import ModalShell from "./ModalShell";
 import { useTournament } from "@/lib/store";
 import { computeStats } from "@/lib/selectors";
-import { CASH_INCREMENT } from "@/lib/payouts";
+import { CASH_INCREMENT, floorTo } from "@/lib/payouts";
 
 type Props = {
   onClose: () => void;
 };
-
-function floorTo(n: number, step: number) {
-  return Math.floor(n / step) * step;
-}
 
 export default function FinishDialog({ onClose }: Props) {
   const players = useTournament((s) => s.players);
@@ -22,6 +19,7 @@ export default function FinishDialog({ onClose }: Props) {
   const currentLevel = useTournament((s) => s.clock.currentLevel);
   const finishTournament = useTournament((s) => s.finishTournament);
   const removedEntries = useTournament((s) => s.removedEntries);
+  const titleId = useId();
 
   const stats = useMemo(
     () =>
@@ -124,17 +122,16 @@ export default function FinishDialog({ onClose }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+    <ModalShell
+      onClose={onClose}
+      labelledBy={titleId}
+      cardClassName="w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
     >
-      <div
-        className="card w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>
-            <div className="label">Finish Tournament</div>
+            <div className="label" id={titleId}>
+              Finish Tournament
+            </div>
             <div className="text-xs text-[var(--text-muted)] mt-0.5">
               {active.length} active · ${pool.toLocaleString()} pool
             </div>
@@ -267,7 +264,6 @@ export default function FinishDialog({ onClose }: Props) {
             {mode === "winner" ? "Declare Winner" : "Confirm Chop"}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

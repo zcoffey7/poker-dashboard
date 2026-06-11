@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import NumberInput from "../NumberInput";
+import ModalShell from "../ModalShell";
 import { fmtMoney } from "@/lib/money";
 
 type Props = {
@@ -32,26 +33,12 @@ export default function BuyInDialog({
     new Set([defaultAmount, ...QUICK_AMOUNTS]),
   ).filter((n) => n > 0);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+    <ModalShell
+      onClose={onClose}
+      labelledBy={titleId}
+      cardClassName="w-full max-w-sm flex flex-col overflow-hidden"
     >
-      <div
-        className="card w-full max-w-sm flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div className="min-w-0">
             <div className="label" id={titleId}>
@@ -115,7 +102,6 @@ export default function BuyInDialog({
             {confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
 import { fmtMoneyCents, fmtSignedCents } from "@/lib/money";
 import { fmtDuration } from "@/lib/clock";
+import { StatCol, MiniStat } from "../StatTiles";
 
 type Row = {
   id: string;
@@ -142,27 +143,27 @@ export default function CashRecap() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <Stat
+                  <StatCol
                     label="In for"
                     value={fmtMoneyCents(totals.biggestWin.moneyIn)}
                     emphasize
                   />
-                  <Stat
+                  <StatCol
                     label="Out for"
                     value={fmtMoneyCents(totals.biggestWin.payout)}
                     emphasize
                   />
-                  <Stat
+                  <StatCol
                     label="Buy-ins"
                     value={`${totals.biggestWin.buyInCount}×`}
                   />
                   {totals.biggestWin.durationSec != null && (
-                    <Stat
+                    <StatCol
                       label="Played"
                       value={fmtDuration(totals.biggestWin.durationSec)}
                     />
                   )}
-                  <Stat
+                  <StatCol
                     label="Net"
                     value={fmtSignedCents(totals.biggestWin.net)}
                     emphasize
@@ -185,9 +186,12 @@ export default function CashRecap() {
           )}
 
           <section className="card p-3 grid grid-cols-3 gap-2 text-sm">
-            <Stat label="Total in" value={fmtMoneyCents(totals.totalIn)} />
-            <Stat label="Total out" value={fmtMoneyCents(totals.totalOut)} />
-            <Stat
+            <StatCol label="Total in" value={fmtMoneyCents(totals.totalIn)} />
+            <StatCol
+              label="Total out"
+              value={fmtMoneyCents(totals.totalOut)}
+            />
+            <StatCol
               label={totals.totalIn === totals.totalOut ? "Balanced" : "Diff"}
               value={fmtMoneyCents(Math.abs(totals.totalIn - totals.totalOut))}
               muted={totals.totalIn !== totals.totalOut}
@@ -231,66 +235,3 @@ function ParticipantRow({ row, place }: { row: Row; place: number }) {
   );
 }
 
-function Stat({
-  label,
-  value,
-  emphasize,
-  positive,
-  muted,
-}: {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-  positive?: boolean | null;
-  muted?: boolean;
-}) {
-  return (
-    <div className="flex flex-col">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-        {label}
-      </div>
-      <div
-        className={`font-mono ${emphasize ? "text-base font-semibold" : "text-sm"} ${
-          positive === true
-            ? "text-[var(--accent)]"
-            : muted || positive === false
-              ? "text-[var(--text-muted)]"
-              : ""
-        }`}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function MiniStat({
-  label,
-  value,
-  positive,
-  muted,
-}: {
-  label: string;
-  value: string;
-  positive?: boolean;
-  muted?: boolean;
-}) {
-  return (
-    <div className="flex flex-col min-w-0">
-      <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-        {label}
-      </span>
-      <span
-        className={`font-mono font-semibold truncate ${
-          positive
-            ? "text-[var(--accent)]"
-            : muted
-              ? "text-[var(--text-muted)]"
-              : ""
-        }`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
