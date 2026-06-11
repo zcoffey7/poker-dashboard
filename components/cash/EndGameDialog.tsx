@@ -41,14 +41,6 @@ export default function EndGameDialog({ onClose }: Props) {
   const titleId = useId();
   const ackId = useId();
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   // All math in integer cents so the balance check is exact.
   const totalInCents = players.reduce((s, p) => s + totalBuyIns(p), 0);
   const alreadyOutCents = players
@@ -61,9 +53,48 @@ export default function EndGameDialog({ onClose }: Props) {
   const diffCents = totalInCents - (alreadyOutCents + pendingOutCents);
   const balanced = diffCents === 0;
 
+  // The imbalance acknowledgment is tied to the exact discrepancy it was
+  // given for. If amounts change (different diff, or back to balanced and
+  // out again), the user must re-acknowledge. Render-time adjust, same
+  // pattern as the signature merge above.
+  const ackKey = `${signature}|${diffCents}`;
+  const [lastAckKey, setLastAckKey] = useState(ackKey);
+  if (ackKey !== lastAckKey) {
+    setLastAckKey(ackKey);
+    if (acknowledged) setAcknowledged(false);
+  }
+
+  // Backdrop / Escape / Cancel all funnel through here: entered final
+  // stacks are real work, don't discard them on a stray click.
+  const hasEnteredAmounts = unsettled.some((p) => (amounts[p.id] ?? 0) > 0);
+  function requestClose() {
+    if (
+      hasEnteredAmounts &&
+      !confirm("Discard the final stacks you've entered?")
+    ) {
+      return;
+    }
+    onClose();
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (
+        hasEnteredAmounts &&
+        !confirm("Discard the final stacks you've entered?")
+      ) {
+        return;
+      }
+      onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hasEnteredAmounts, onClose]);
+
   function submit() {
     unsettled.forEach((p) => {
-      cashOutPlayer(p.id, amounts[p.id] ?? 0);
+      cashOutPlayer(p.id, amounts[p.id] ?? 0, { viaEndGame: true });
     });
     const ok = endGame();
     if (ok) onClose();
@@ -76,7 +107,7 @@ export default function EndGameDialog({ onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         className="card w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
@@ -96,7 +127,7 @@ export default function EndGameDialog({ onClose }: Props) {
           </div>
           <button
             className="btn btn-ghost btn-sm"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
           >
             ×
@@ -191,7 +222,7 @@ export default function EndGameDialog({ onClose }: Props) {
             </label>
           )}
           <div className="flex justify-end gap-2 mt-1">
-            <button className="btn btn-ghost" onClick={onClose}>
+            <button className="btn btn-ghost" onClick={requestClose}>
               Cancel
             </button>
             {balanced ? (

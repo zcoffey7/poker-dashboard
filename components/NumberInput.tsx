@@ -10,6 +10,12 @@ type Props = Omit<
   onChange: (n: number) => void;
   /** Value to commit when the field is left empty on blur. Defaults to 0. */
   emptyValue?: number;
+  /**
+   * When true, `onChange` only fires on blur (or Enter via blur), never per
+   * keystroke. Use for inputs wired straight to a persistent store, where a
+   * transient "0" while typing must not be committed.
+   */
+  commitOnBlur?: boolean;
   min?: number;
   max?: number;
   step?: number;
@@ -30,6 +36,7 @@ export default function NumberInput({
   value,
   onChange,
   emptyValue = 0,
+  commitOnBlur = false,
   min,
   max,
   step,
@@ -72,6 +79,7 @@ export default function NumberInput({
       onChange={(e) => {
         const next = e.target.value;
         setText(next);
+        if (commitOnBlur) return;
         if (next === "" || next === "-") return;
         const parsed = Number(next);
         if (!Number.isNaN(parsed)) onChange(parsed);

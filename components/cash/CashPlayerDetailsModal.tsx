@@ -186,6 +186,12 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
                       className="input flex-1 font-mono text-sm"
                       value={fromCents(b.amount)}
                       onChange={(n) => editBuyIn(playerId, b.id, n)}
+                      // Wired straight to the store: committing per
+                      // keystroke would persist transient $0 while typing.
+                      commitOnBlur
+                      // Restore the previous amount if the field is left
+                      // empty rather than zeroing the buy-in.
+                      emptyValue={fromCents(b.amount)}
                       step={0.01}
                       min={0}
                     />

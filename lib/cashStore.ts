@@ -44,7 +44,11 @@ type CashStore = CashGameState & {
   removeBuyIn: (playerId: string, buyInId: string) => void;
 
   /** `amount` in dollars. */
-  cashOutPlayer: (id: string, amount: number) => void;
+  cashOutPlayer: (
+    id: string,
+    amount: number,
+    opts?: { viaEndGame?: boolean },
+  ) => void;
   reopenPlayer: (id: string) => void;
 
   endGame: () => boolean;
@@ -77,10 +81,13 @@ export const useCash = create<CashStore>()(
 
       saveSettings: (draft) => {
         const trimmed = draft.name.trim() || "Cash Game";
+        const smallBlind = Math.max(0, toCents(draft.smallBlind));
         set({
           name: trimmed,
-          smallBlind: Math.max(0, toCents(draft.smallBlind)),
-          bigBlind: Math.max(0, toCents(draft.bigBlind)),
+          smallBlind,
+          // The form validates BB >= SB; clamp here too so no code path can
+          // persist nonsensical blinds like $0.50/$0.25.
+          bigBlind: Math.max(smallBlind, toCents(draft.bigBlind)),
           defaultBuyIn: Math.max(0, toCents(draft.defaultBuyIn)),
         });
       },
@@ -108,11 +115,21 @@ export const useCash = create<CashStore>()(
       renamePlayer: (id, name) => {
         const trimmed = name.trim();
         if (!trimmed) return;
-        set((s) => ({
-          players: s.players.map((p) =>
-            p.id === id ? { ...p, name: trimmed } : p,
-          ),
-        }));
+        set((s) => {
+          const target = s.players.find((p) => p.id === id);
+          if (!target || target.name === trimmed) return {};
+          // Same dedupe rule as addPlayer (excluding the player being
+          // renamed) so two players can't end up sharing a name.
+          const unique = dedupeName(
+            trimmed,
+            s.players.filter((p) => p.id !== id).map((p) => p.name),
+          );
+          return {
+            players: s.players.map((p) =>
+              p.id === id ? { ...p, name: unique } : p,
+            ),
+          };
+        });
       },
 
       removePlayer: (id) =>
@@ -144,6 +161,10 @@ export const useCash = create<CashStore>()(
           players: s.players.map((p) => {
             if (p.id !== playerId) return p;
             if (p.cashOut != null) return p;
+            // A player's only buy-in can't be edited to $0 — that's
+            // effectively deleting it, which removeBuyIn also refuses.
+            // Use Remove Player for "added by mistake".
+            if (amtCents <= 0 && p.buyIns.length <= 1) return p;
             return {
               ...p,
               buyIns: p.buyIns.map((b) =>
@@ -170,12 +191,19 @@ export const useCash = create<CashStore>()(
         }));
       },
 
-      cashOutPlayer: (id, amount) => {
+      cashOutPlayer: (id, amount, opts) => {
         const amtCents = Math.max(0, toCents(amount));
         set((s) => ({
           players: s.players.map((p) =>
             p.id === id
-              ? { ...p, cashOut: { amount: amtCents, at: Date.now() } }
+              ? {
+                  ...p,
+                  cashOut: {
+                    amount: amtCents,
+                    at: Date.now(),
+                    ...(opts?.viaEndGame ? { viaEndGame: true } : {}),
+                  },
+                }
               : p,
           ),
         }));
@@ -190,13 +218,24 @@ export const useCash = create<CashStore>()(
 
       endGame: () => {
         const s = get();
+        // An empty game has nothing to settle or recap.
+        if (s.players.length === 0) return false;
         const anyUnsettled = s.players.some((p) => !p.cashOut);
         if (anyUnsettled) return false;
         set({ endedAt: Date.now() });
         return true;
       },
 
-      reopenGame: () => set({ endedAt: undefined }),
+      reopenGame: () =>
+        set((s) => ({
+          endedAt: undefined,
+          // Undo the End Game settlement: players batch-cashed-out by the
+          // end-game flow come back as active, while players who genuinely
+          // left mid-game stay settled. Restores the exact pre-end state.
+          players: s.players.map((p) =>
+            p.cashOut?.viaEndGame ? { ...p, cashOut: undefined } : p,
+          ),
+        })),
 
       resetGame: () =>
         set({

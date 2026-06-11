@@ -95,7 +95,11 @@ export default function CashRecap() {
             <button
               className="btn btn-ghost"
               onClick={() => {
-                if (confirm("Reopen the game? You can keep playing.")) {
+                if (
+                  confirm(
+                    "Reopen the game? Players settled when the game ended become active again; anyone who cashed out earlier stays settled.",
+                  )
+                ) {
                   reopenGame();
                 }
               }}
