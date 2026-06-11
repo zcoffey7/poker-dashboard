@@ -15,6 +15,7 @@ export default function PlayerRoster() {
   const rebuyChips = useTournament((s) => s.rebuyChips);
   const addOnPlayer = useTournament((s) => s.addOnPlayer);
   const addOnChips = useTournament((s) => s.addOnChips);
+  const addOnCost = useTournament((s) => s.addOnCost);
   const startedAt = useTournament((s) => s.startedAt);
 
   const [name, setName] = useState("");
@@ -153,7 +154,8 @@ export default function PlayerRoster() {
                   +R
                 </button>
               )}
-              {addOnChips > 0 && (
+              {/* Same guard as PlayerDetailsModal: add-ons need a price. */}
+              {addOnChips > 0 && addOnCost > 0 && (
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
                   onClick={() => addOnPlayer(p.id)}
