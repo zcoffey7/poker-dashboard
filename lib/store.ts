@@ -83,6 +83,48 @@ function diffSeating(
   return moves;
 }
 
+/**
+ * After a table's seatCount shrinks, players can be left sitting in seats
+ * that no longer exist (`movePlayer` validates new moves but existing
+ * assignments were untouched). Move each overflow player to the lowest open
+ * seat at their table, or unseat them when the table is genuinely full.
+ */
+function clampSeatsToTables(players: Player[], tables: Table[]): Player[] {
+  const capById = new Map(tables.map((t) => [t.id, t.seatCount]));
+  const taken = new Map<string, Set<number>>();
+  for (const p of players) {
+    if (p.eliminated || p.tableId == null || p.seat == null) continue;
+    const cap = capById.get(p.tableId);
+    if (cap == null || p.seat > cap) continue;
+    let seats = taken.get(p.tableId);
+    if (!seats) {
+      seats = new Set();
+      taken.set(p.tableId, seats);
+    }
+    seats.add(p.seat);
+  }
+  let changed = false;
+  const next = players.map((p) => {
+    if (p.eliminated || p.tableId == null || p.seat == null) return p;
+    const cap = capById.get(p.tableId);
+    if (cap == null || p.seat <= cap) return p;
+    changed = true;
+    let seats = taken.get(p.tableId);
+    if (!seats) {
+      seats = new Set();
+      taken.set(p.tableId, seats);
+    }
+    for (let seatN = 1; seatN <= cap; seatN++) {
+      if (!seats.has(seatN)) {
+        seats.add(seatN);
+        return { ...p, seat: seatN };
+      }
+    }
+    return { ...p, tableId: null, seat: null };
+  });
+  return changed ? next : players;
+}
+
 type TournamentStore = TournamentState & {
   // tournament-level
   setName: (name: string) => void;
@@ -373,8 +415,14 @@ export const useTournament = create<TournamentStore>()(
         set({
           players: nextPlayers,
           tables: nextTables,
-          ...(rebalanceMoves.length > 0
-            ? { pendingRebalanceMoves: rebalanceMoves }
+          // When a rebalance was computed, an empty diff must also *clear*
+          // any unacknowledged popup from a previous run — its moves are
+          // stale against the new seating.
+          ...(s.settings.autoBalance
+            ? {
+                pendingRebalanceMoves:
+                  rebalanceMoves.length > 0 ? rebalanceMoves : undefined,
+              }
             : {}),
           ...(autoFinish
             ? {
@@ -506,11 +554,15 @@ export const useTournament = create<TournamentStore>()(
           tables: s.tables.map((t) => (t.id === id ? { ...t, name } : t)),
         })),
       setTableSeats: (id, seatCount) =>
-        set((s) => ({
-          tables: s.tables.map((t) =>
+        set((s) => {
+          const tables = s.tables.map((t) =>
             t.id === id ? { ...t, seatCount: Math.max(2, seatCount) } : t,
-          ),
-        })),
+          );
+          return {
+            tables,
+            players: clampSeatsToTables(s.players, tables),
+          };
+        }),
 
       assignSeats: () => {
         const s = get();
@@ -532,7 +584,9 @@ export const useTournament = create<TournamentStore>()(
         set({
           players: res.players,
           tables: res.tables,
-          ...(moves.length > 0 ? { pendingRebalanceMoves: moves } : {}),
+          // An empty diff clears any stale unacknowledged popup (see
+          // eliminatePlayer).
+          pendingRebalanceMoves: moves.length > 0 ? moves : undefined,
         });
       },
       acknowledgeRebalance: () => set({ pendingRebalanceMoves: undefined }),
@@ -804,47 +858,18 @@ export const useTournament = create<TournamentStore>()(
         }
 
         if (remaining <= 0) {
-          const atEnd =
-            s.clock.currentLevel >= s.blindStructure.length - 1;
-          const nextIdx = Math.min(
-            s.clock.currentLevel + 1,
-            s.blindStructure.length - 1,
-          );
-          const nextLv = s.blindStructure[nextIdx];
           if (s.settings.soundEnabled) playLevelUp();
-          if (atEnd) {
-            set({
-              clock: {
-                ...s.clock,
-                currentLevel: s.clock.currentLevel,
-                remainingSec: 0,
-                running: false,
-                lastTickAt: now,
-                levelStartedAt,
-              },
-            });
-            return;
-          }
-          // Carry over any extra elapsed time into the new level so we don't
-          // lose a second on rollover in the background.
-          const carryoverMs = Math.max(
-            0,
-            now - (levelStartedAt + cur.durationSec * 1000),
-          );
-          const newStarted = now - carryoverMs;
-          const newDur = nextLv?.durationSec ?? 0;
-          const newRemaining = Math.max(
-            0,
-            newDur - Math.floor(carryoverMs / 1000),
-          );
+          // Reuse the rehydration walk so a single tick can roll through
+          // *every* level that expired while the tab was backgrounded
+          // (throttled intervals can skip many seconds), instead of
+          // advancing one level per tick and sitting on 0:00. The walk
+          // carries elapsed time forward level by level and stops the clock
+          // at the end of the structure.
           set({
-            clock: {
-              ...s.clock,
-              currentLevel: nextIdx,
-              remainingSec: newRemaining,
-              lastTickAt: now,
-              levelStartedAt: newStarted,
-            },
+            clock: reconcileClock(
+              { ...s.clock, levelStartedAt, lastTickAt: now },
+              s.blindStructure,
+            ),
           });
           return;
         }
@@ -1063,12 +1088,16 @@ export const useTournament = create<TournamentStore>()(
           level: i + 1,
         }));
         // Drop tables that were removed from the draft and clear seating for
-        // players that were seated at those removed tables.
+        // players that were seated at those removed tables. Then clamp any
+        // player whose seat exceeds a reduced seat count.
         const keptTableIds = new Set(draft.tables.map((t) => t.id));
-        const players = s.players.map((p) =>
-          p.tableId && !keptTableIds.has(p.tableId)
-            ? { ...p, tableId: null, seat: null }
-            : p,
+        const players = clampSeatsToTables(
+          s.players.map((p) =>
+            p.tableId && !keptTableIds.has(p.tableId)
+              ? { ...p, tableId: null, seat: null }
+              : p,
+          ),
+          draft.tables,
         );
 
         // Adjust clock to match new structure.
