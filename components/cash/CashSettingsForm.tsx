@@ -62,7 +62,8 @@ function SettingsFormInner({ initial }: { initial: Draft }) {
     draft.bigBlind !== initial.bigBlind ||
     draft.defaultBuyIn !== initial.defaultBuyIn;
 
-  const canSave = dirty && draft.name.trim().length > 0;
+  const blindsInvalid = draft.bigBlind < draft.smallBlind;
+  const canSave = dirty && draft.name.trim().length > 0 && !blindsInvalid;
 
   function save() {
     saveSettings(draft);
@@ -126,8 +127,16 @@ function SettingsFormInner({ initial }: { initial: Draft }) {
         </label>
 
         <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
-          <span className="text-xs text-[var(--text-muted)]">
-            {dirty ? "Unsaved changes" : "All changes saved"}
+          <span
+            className={`text-xs ${
+              blindsInvalid ? "text-[var(--amber)]" : "text-[var(--text-muted)]"
+            }`}
+          >
+            {blindsInvalid
+              ? "Big blind must be at least the small blind."
+              : dirty
+                ? "Unsaved changes"
+                : "All changes saved"}
           </span>
           <button
             className="btn btn-primary"

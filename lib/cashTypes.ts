@@ -9,6 +9,12 @@ export type CashOut = {
   /** Stored as integer cents. */
   amount: number;
   at: number;
+  /**
+   * True when this cash-out was recorded by the End Game batch settlement
+   * rather than the player leaving mid-game. `reopenGame` reverses exactly
+   * these, restoring the pre-end state.
+   */
+  viaEndGame?: boolean;
 };
 
 export type CashPlayer = {
