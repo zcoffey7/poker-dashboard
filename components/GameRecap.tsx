@@ -77,6 +77,7 @@ export default function GameRecap() {
   const finishedAt = useTournament((s) => s.finishedAt);
   const finishType = useTournament((s) => s.finishType);
   const chopShares = useTournament((s) => s.chopShares);
+  const storedChopAmounts = useTournament((s) => s.chopAmounts);
   const currentLevelIdx = useTournament((s) => s.clock.currentLevel);
   const unfinishTournament = useTournament((s) => s.unfinishTournament);
   const resetTournament = useTournament((s) => s.resetTournament);
@@ -106,10 +107,14 @@ export default function GameRecap() {
     () => computeCashPayouts(payouts, pool, playersInFinalStanding),
     [payouts, pool, playersInFinalStanding],
   );
-  const chopAmounts = useMemo(
-    () => (chopShares ? computeChopAmounts(chopShares, pool) : {}),
-    [chopShares, pool],
-  );
+  // Exact dollar amounts entered at chop time take precedence; the
+  // percentage-based conversion only remains for legacy finished games.
+  const chopAmounts = useMemo(() => {
+    if (storedChopAmounts && Object.keys(storedChopAmounts).length > 0) {
+      return storedChopAmounts;
+    }
+    return chopShares ? computeChopAmounts(chopShares, pool) : {};
+  }, [storedChopAmounts, chopShares, pool]);
 
   // Group players by finishPlace so that if multiple players share a place
   // (e.g. a manual tie outside of a formal chop) we can split the money.
@@ -156,11 +161,11 @@ export default function GameRecap() {
   const now = finishedAt ?? mountedAt;
 
   const rows: Row[] = useMemo(() => {
-    const isChop = finishType === "chop" && !!chopShares;
-    const chopSet =
-      isChop && chopShares
-        ? new Set(Object.keys(chopShares))
-        : new Set<string>();
+    const isChop =
+      finishType === "chop" && Object.keys(chopAmounts).length > 0;
+    const chopSet = isChop
+      ? new Set(Object.keys(chopAmounts))
+      : new Set<string>();
 
     return players
       .map((p: Player) => {
@@ -208,7 +213,6 @@ export default function GameRecap() {
     addOnCost,
     placePayouts,
     chopAmounts,
-    chopShares,
     finishType,
     startedAt,
     finishedAt,

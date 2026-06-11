@@ -151,6 +151,7 @@ type TournamentStore = TournamentState & {
     type: FinishType;
     chopPlayerIds?: string[];
     chopShares?: Record<string, number>;
+    chopAmounts?: Record<string, number>;
   }) => void;
   unfinishTournament: () => void;
 
@@ -828,17 +829,25 @@ export const useTournament = create<TournamentStore>()(
         });
       },
 
-      finishTournament: ({ type, chopPlayerIds, chopShares }) => {
+      finishTournament: ({ type, chopPlayerIds, chopShares, chopAmounts }) => {
         const s = get();
         const now = Date.now();
         let players = s.players;
         let shares: Record<string, number> | undefined;
+        let amounts: Record<string, number> | undefined;
         if (type === "chop") {
           const ids =
             chopPlayerIds ??
             s.players.filter((p) => !p.eliminated).map((p) => p.id);
           if (ids.length > 0) {
-            if (chopShares && Object.keys(chopShares).length > 0) {
+            if (chopAmounts && Object.keys(chopAmounts).length > 0) {
+              amounts = Object.fromEntries(
+                Object.entries(chopAmounts).map(([id, amt]) => [
+                  id,
+                  Math.max(0, Number(amt) || 0),
+                ]),
+              );
+            } else if (chopShares && Object.keys(chopShares).length > 0) {
               shares = { ...chopShares };
             } else {
               // Equal split of total payout % across remaining players.
@@ -903,6 +912,7 @@ export const useTournament = create<TournamentStore>()(
           finishedAt: now,
           finishType: type,
           chopShares: shares,
+          chopAmounts: amounts,
           clock: { ...s.clock, running: false },
         });
       },
@@ -912,6 +922,7 @@ export const useTournament = create<TournamentStore>()(
           finishedAt: undefined,
           finishType: undefined,
           chopShares: undefined,
+          chopAmounts: undefined,
           // Leave players/finishPlace as-is; reopening keeps assigned places.
           clock: { ...s.clock },
         })),
@@ -935,6 +946,7 @@ export const useTournament = create<TournamentStore>()(
           finishedAt: undefined,
           finishType: undefined,
           chopShares: undefined,
+          chopAmounts: undefined,
           pendingRebalanceMoves: undefined,
         }),
 
@@ -991,6 +1003,9 @@ export const useTournament = create<TournamentStore>()(
           }
           if (state.chopShares && typeof state.chopShares === "object") {
             next.chopShares = state.chopShares;
+          }
+          if (state.chopAmounts && typeof state.chopAmounts === "object") {
+            next.chopAmounts = state.chopAmounts;
           }
           return next;
         }),
