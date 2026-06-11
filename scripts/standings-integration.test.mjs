@@ -83,6 +83,46 @@ function makeServer(root) {
   });
 }
 
+// Extracts a `const NAME = [ ... ]` array literal from a script source by
+// counting bracket balance. Sufficient for the page's TABS config, which is
+// a plain literal with no template strings or embedded brackets.
+function extractConstArray(src, name) {
+  const needle = `const ${name} = [`;
+  const start = src.indexOf(needle);
+  if (start < 0) throw new Error(`const ${name} array not found in script source`);
+  const open = src.indexOf("[", start);
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === "[") depth++;
+    else if (ch === "]") {
+      depth--;
+      if (depth === 0) return src.slice(open, i + 1);
+    }
+  }
+  throw new Error(`unbalanced brackets while extracting ${name}`);
+}
+
+// Minimal oracle parse of a standings CSV, shared by tests that need ground
+// truth independent of the page's own parseCsv.
+function oracleRows(csv) {
+  return csv
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .filter((l) => l.trim())
+    .slice(1)
+    .map((l) => l.split(",").map((s) => s.trim()))
+    .filter((c) => c.length >= 8 && c[1])
+    .map((c) => ({
+      name: c[1],
+      games: parseInt(c[0], 10),
+      buyIn: parseFloat(c[2]) || 0,
+      cashOut: parseFloat(c[4]) || 0,
+      net: parseFloat(c[6]) || 0,
+      netAvg: parseFloat(c[7]) || 0,
+    }));
+}
+
 // Extracts the entire `function NAME(...) { ... }` declaration from a script
 // source by counting brace balance. Sufficient for the page's pure-data
 // helpers (parseCsv, assignHues, computeTotals) which don't contain template
@@ -361,6 +401,164 @@ test("running the page's own parseCsv/computeTotals/assignHues against the serve
       `hue ${hue} would clash with the rose loss bars`,
     );
   }
+});
+
+test("page's parseCsv honors each tab's minGames against every served mode CSV", async () => {
+  const html = await (await fetch(`${baseUrl}/standings/`)).text();
+  const scriptSrc = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+
+  const minGamesMatch = scriptSrc.match(/const\s+MIN_GAMES\s*=\s*(\d+)/);
+  const minGamesModeMatch = scriptSrc.match(/const\s+MIN_GAMES_MODE\s*=\s*(\d+)/);
+  assert.ok(minGamesMatch, "expected MIN_GAMES constant in script");
+  assert.ok(minGamesModeMatch, "expected MIN_GAMES_MODE constant in script");
+
+  // Lift the page's real TABS config + parseCsv so the test follows the page
+  // if tab wiring or thresholds ever change.
+  const harness = `
+    const MIN_GAMES = ${minGamesMatch[1]};
+    const MIN_GAMES_MODE = ${minGamesModeMatch[1]};
+    const HUE_PALETTE = ${scriptSrc.match(/const\s+HUE_PALETTE\s*=\s*(\[[^\]]+\])/)[1]};
+    const TABS = ${extractConstArray(scriptSrc, "TABS")};
+    ${extractFunction(scriptSrc, "assignHues")}
+    ${extractFunction(scriptSrc, "parseCsv")}
+    return { TABS, parseCsv, MIN_GAMES, MIN_GAMES_MODE };
+  `;
+  const { TABS, parseCsv, MIN_GAMES, MIN_GAMES_MODE } = new Function(harness)();
+
+  assert.equal(TABS.length, 3, "page should configure three tabs");
+  const overall = TABS.find((t) => t.id === "overall");
+  assert.equal(overall.minGames, MIN_GAMES, "overall tab should use the MIN_GAMES floor");
+  for (const mode of ["tournament", "cash"]) {
+    const tab = TABS.find((t) => t.id === mode);
+    assert.ok(tab, `expected a ${mode} tab`);
+    assert.equal(tab.minGames, MIN_GAMES_MODE, `${mode} tab should use the MIN_GAMES_MODE floor`);
+  }
+
+  for (const tab of TABS) {
+    const csv = await (
+      await fetch(`${baseUrl}/standings/${tab.url.replace("./", "")}?t=${Date.now()}`, {
+        cache: "no-store",
+      })
+    ).text();
+    const expected = oracleRows(csv).filter(
+      (r) => r.name !== "TOTAL" && Number.isFinite(r.games) && r.games >= tab.minGames,
+    );
+    const players = parseCsv(csv, tab.minGames);
+    assert.deepEqual(
+      new Set(players.map((p) => p.name)),
+      new Set(expected.map((r) => r.name)),
+      `${tab.id}: parseCsv should yield exactly the rows clearing minGames=${tab.minGames}`,
+    );
+    for (const p of players) {
+      const row = expected.find((r) => r.name === p.name);
+      assert.equal(p.games, row.games, `${tab.id}/${p.name}: games`);
+      assert.equal(p.net, row.net, `${tab.id}/${p.name}: net`);
+      assert.equal(p.netAvg, row.netAvg, `${tab.id}/${p.name}: netAvg`);
+    }
+  }
+});
+
+test("applyUnifiedHues gives every player the same avatar hue on every tab", async () => {
+  const html = await (await fetch(`${baseUrl}/standings/`)).text();
+  const scriptSrc = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+
+  const harness = `
+    const MIN_GAMES = ${scriptSrc.match(/const\s+MIN_GAMES\s*=\s*(\d+)/)[1]};
+    const MIN_GAMES_MODE = ${scriptSrc.match(/const\s+MIN_GAMES_MODE\s*=\s*(\d+)/)[1]};
+    const HUE_PALETTE = ${scriptSrc.match(/const\s+HUE_PALETTE\s*=\s*(\[[^\]]+\])/)[1]};
+    const TABS = ${extractConstArray(scriptSrc, "TABS")};
+    ${extractFunction(scriptSrc, "assignHues")}
+    ${extractFunction(scriptSrc, "parseCsv")}
+    ${extractFunction(scriptSrc, "applyUnifiedHues")}
+    return { TABS, parseCsv, applyUnifiedHues };
+  `;
+  const { TABS, parseCsv, applyUnifiedHues } = new Function(harness)();
+
+  const byTab = {};
+  for (const tab of TABS) {
+    const csv = await (
+      await fetch(`${baseUrl}/standings/${tab.url.replace("./", "")}?t=${Date.now()}`, {
+        cache: "no-store",
+      })
+    ).text();
+    byTab[tab.id] = { players: parseCsv(csv, tab.minGames) };
+  }
+  applyUnifiedHues(byTab);
+
+  const hueByName = new Map();
+  for (const tab of TABS) {
+    for (const p of byTab[tab.id].players) {
+      if (hueByName.has(p.name)) {
+        assert.equal(
+          p.hue,
+          hueByName.get(p.name),
+          `${p.name} should keep one hue across tabs (differs on ${tab.id})`,
+        );
+      } else {
+        hueByName.set(p.name, p.hue);
+      }
+      assert.ok(Number.isFinite(p.hue), `${p.name} should have a numeric hue`);
+    }
+  }
+});
+
+test("tab strip implements the WAI-ARIA tabs pattern (ids, panels, keyboard nav)", async () => {
+  const html = await (await fetch(`${baseUrl}/standings/`)).text();
+  const scriptSrc = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+
+  // Tablist with an accessible name.
+  assert.match(scriptSrc, /role:\s*["']tablist["']/, "expected role=tablist");
+  assert.match(
+    scriptSrc,
+    /["']aria-label["']:\s*["'][^"']+["'],\s*\n?\s*\}\)|role:\s*["']tablist["'],\s*\n\s*["']aria-label["']/,
+    "expected an aria-label on the tablist",
+  );
+
+  // Tab buttons: id + aria-controls pairing and roving tabindex.
+  assert.match(scriptSrc, /id:\s*["']tab-["']\s*\+\s*tab\.id/, "expected per-tab ids");
+  assert.match(
+    scriptSrc,
+    /["']aria-controls["']:\s*["']panel-["']\s*\+\s*tab\.id/,
+    "expected aria-controls pointing at the matching panel",
+  );
+  assert.match(
+    scriptSrc,
+    /tabindex:\s*isActive\s*\?\s*["']0["']\s*:\s*["']-1["']/,
+    "expected roving tabindex on tab buttons",
+  );
+
+  // Tabpanel labelled by the active tab.
+  assert.match(scriptSrc, /role:\s*["']tabpanel["']/, "expected role=tabpanel");
+  assert.match(
+    scriptSrc,
+    /["']aria-labelledby["']:\s*["']tab-["']\s*\+\s*tab\.id/,
+    "expected the tabpanel to be labelled by its tab",
+  );
+
+  // Keyboard support: arrows + Home/End.
+  for (const key of ["ArrowRight", "ArrowLeft", "Home", "End"]) {
+    assert.ok(scriptSrc.includes(`"${key}"`), `expected keyboard handling for ${key}`);
+  }
+});
+
+test("theme-color is consistent across the standings page and its web manifest", async () => {
+  const html = await (await fetch(`${baseUrl}/standings/`)).text();
+  const manifest = JSON.parse(
+    await (await fetch(`${baseUrl}/standings/manifest.webmanifest`)).text(),
+  );
+
+  const metaTheme = html.match(/<meta name="theme-color" content="([^"]+)"/)?.[1];
+  const bgBase = html.match(/--bg-base:\s*([^;]+);/)?.[1].trim();
+
+  assert.ok(metaTheme, "expected a theme-color meta tag");
+  assert.ok(bgBase, "expected a --bg-base CSS variable");
+  assert.equal(metaTheme, bgBase, "meta theme-color should match the page background");
+  assert.equal(manifest.theme_color, metaTheme, "manifest theme_color should match the page");
+  assert.equal(
+    manifest.background_color,
+    metaTheme,
+    "manifest background_color should match the page",
+  );
 });
 
 test("deploy → refresh cycle: updating the bundled CSV is reflected in the next cache-busted fetch", async () => {

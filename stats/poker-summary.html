@@ -439,6 +439,11 @@
         outline: 2px solid var(--gain);
         outline-offset: 2px;
       }
+      [role="tabpanel"]:focus-visible {
+        outline: 2px solid var(--gain);
+        outline-offset: 6px;
+        border-radius: 12px;
+      }
 
       .empty-state h2 { letter-spacing: -0.01em; }
       .empty-state .section-sub { max-width: 52ch; }
@@ -659,8 +664,15 @@
         return days + " day" + (days === 1 ? "" : "s") + " ago";
       }
 
+      // Full WAI-ARIA tabs pattern: tab/tabpanel id pairs, roving tabindex
+      // (only the active tab is in the Tab order), and Arrow/Home/End
+      // keyboard navigation with automatic activation.
       function buildTabStrip() {
-        const strip = el("div", { class: "tabs", role: "tablist" });
+        const strip = el("div", {
+          class: "tabs",
+          role: "tablist",
+          "aria-label": "Standings view",
+        });
         for (const tab of TABS) {
           const isActive = state.activeTab === tab.id;
           const btn = el(
@@ -669,7 +681,10 @@
               type: "button",
               class: "tab" + (isActive ? " active" : ""),
               role: "tab",
+              id: "tab-" + tab.id,
               "aria-selected": isActive ? "true" : "false",
+              "aria-controls": "panel-" + tab.id,
+              tabindex: isActive ? "0" : "-1",
               "data-tab": tab.id,
             },
             tab.label,
@@ -677,6 +692,23 @@
           btn.addEventListener("click", () => setActiveTab(tab.id));
           strip.appendChild(btn);
         }
+        strip.addEventListener("keydown", (e) => {
+          const idx = TABS.findIndex((t) => t.id === state.activeTab);
+          let next;
+          if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+            next = (idx + 1) % TABS.length;
+          } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            next = (idx - 1 + TABS.length) % TABS.length;
+          } else if (e.key === "Home") {
+            next = 0;
+          } else if (e.key === "End") {
+            next = TABS.length - 1;
+          } else {
+            return;
+          }
+          e.preventDefault();
+          setActiveTab(TABS[next].id, { focus: true });
+        });
         return strip;
       }
 
@@ -948,14 +980,28 @@
 
       const state = { activeTab: getInitialTab(), data: null };
 
-      function setActiveTab(id) {
-        if (state.activeTab === id) return;
+      function setActiveTab(id, opts) {
+        if (state.activeTab === id) {
+          // Home/End can land on the already-active tab; still honor the
+          // focus request so keyboard users aren't dropped.
+          if (opts && opts.focus) {
+            const btn = document.getElementById("tab-" + id);
+            if (btn) btn.focus();
+          }
+          return;
+        }
         state.activeTab = id;
         try { localStorage.setItem(TAB_STORAGE_KEY, id); } catch {}
         if (location.hash !== `#${id}`) {
           history.replaceState(null, "", `#${id}`);
         }
         renderActive();
+        // renderActive rebuilds the DOM, which drops focus to <body>. For
+        // keyboard-driven switches, restore focus to the new active tab.
+        if (opts && opts.focus) {
+          const btn = document.getElementById("tab-" + id);
+          if (btn) btn.focus();
+        }
       }
 
       async function loadAndRender() {
@@ -986,10 +1032,22 @@
         const players = entry.players;
         const lastModifiedDate = entry.lastModified ? new Date(entry.lastModified) : null;
 
+        // The tab's content lives in a tabpanel labelled by its tab button,
+        // completing the ARIA tabs contract. tabindex=0 lets keyboard users
+        // Tab from the tablist straight into the panel.
+        const panel = el("div", {
+          class: "stack stack-20",
+          role: "tabpanel",
+          id: "panel-" + tab.id,
+          "aria-labelledby": "tab-" + tab.id,
+          tabindex: "0",
+        });
+
         if (!players.length) {
           const ctx = { players, totals: null, lastModifiedDate, tab };
           root.appendChild(buildHeader(ctx, loadAndRender));
-          root.appendChild(buildEmptyState(tab));
+          panel.appendChild(buildEmptyState(tab));
+          root.appendChild(panel);
           return;
         }
 
@@ -1006,9 +1064,10 @@
         };
 
         root.appendChild(buildHeader(ctx, loadAndRender));
-        root.appendChild(buildKpis(ctx));
-        root.appendChild(buildChart(ctx));
-        root.appendChild(buildPlayerList(ctx));
+        panel.appendChild(buildKpis(ctx));
+        panel.appendChild(buildChart(ctx));
+        panel.appendChild(buildPlayerList(ctx));
+        root.appendChild(panel);
       }
 
       loadAndRender();
