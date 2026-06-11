@@ -2,8 +2,36 @@ import type { PayoutSpot } from "./types";
 
 export const CASH_INCREMENT = 5;
 
-function floorTo(n: number, step: number) {
+/** Floor `n` to the nearest multiple of `step`. */
+export function floorTo(n: number, step: number) {
   return Math.floor(n / step) * step;
+}
+
+/**
+ * Convert percentage-based chop shares into cash-friendly dollar amounts.
+ * Mirrors `computeCashPayouts`: every share after the first is floored to
+ * the increment, and rounding dust goes to the first entry.
+ */
+export function computeChopAmounts(
+  shares: Record<string, number>,
+  pool: number,
+  increment = CASH_INCREMENT,
+): Record<string, number> {
+  const entries = Object.entries(shares);
+  if (entries.length === 0 || pool <= 0) return {};
+  const totalPct = entries.reduce((s, [, v]) => s + v, 0) || 1;
+  const poolFloored = floorTo(pool, increment);
+  const amounts: Record<string, number> = {};
+  let allocated = 0;
+  entries.forEach(([id, pct], idx) => {
+    if (idx === 0) return;
+    const raw = (pct / totalPct) * poolFloored;
+    const amt = Math.max(0, floorTo(raw, increment));
+    amounts[id] = amt;
+    allocated += amt;
+  });
+  amounts[entries[0][0]] = Math.max(0, poolFloored - allocated);
+  return amounts;
 }
 
 /**

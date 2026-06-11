@@ -275,26 +275,11 @@ export const useCash = create<CashStore>()(
           })),
         } as CashGameState;
       },
-      partialize: (state) => {
-        const {
-          saveSettings: _1,
-          addPlayer: _2,
-          renamePlayer: _3,
-          removePlayer: _4,
-          rebuy: _5,
-          editBuyIn: _6,
-          removeBuyIn: _7,
-          cashOutPlayer: _8,
-          reopenPlayer: _9,
-          endGame: _10,
-          reopenGame: _11,
-          resetGame: _12,
-          ...rest
-        } = state;
-        void _1;void _2;void _3;void _4;void _5;void _6;
-        void _7;void _8;void _9;void _10;void _11;void _12;
-        return rest;
-      },
+      // Persist only data fields; see the same pattern in lib/store.ts.
+      partialize: (state) =>
+        Object.fromEntries(
+          Object.entries(state).filter(([, v]) => typeof v !== "function"),
+        ) as CashGameState,
     },
   ),
 );

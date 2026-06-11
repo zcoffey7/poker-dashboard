@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import ModalShell from "./ModalShell";
 import { useTournament } from "@/lib/store";
 
 type Props = {
@@ -31,14 +32,6 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
 
   const [name, setName] = useState(() => player?.name ?? "");
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   if (!player) return null;
 
   const rebuys = player.rebuys ?? 0;
@@ -61,14 +54,12 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
+    <ModalShell
+      onClose={onClose}
+      label="Player details"
+      centered
+      cardClassName="w-full max-w-md p-5 flex flex-col gap-4 max-h-[90dvh] overflow-y-auto"
     >
-      <div
-        className="card w-full max-w-md p-5 flex flex-col gap-4 max-h-[90dvh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="label mb-1">Player</div>
@@ -209,8 +200,7 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
             Done
           </button>
         </div>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
 

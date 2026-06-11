@@ -3,8 +3,14 @@
 import { useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
 import { computeStats } from "@/lib/selectors";
-import { computeCashPayouts, CASH_INCREMENT } from "@/lib/payouts";
+import {
+  computeCashPayouts,
+  computeChopAmounts,
+  floorTo,
+  CASH_INCREMENT,
+} from "@/lib/payouts";
 import { fmtDuration } from "@/lib/clock";
+import { StatCol, MiniStat } from "./StatTiles";
 import type { Player } from "@/lib/types";
 
 type Row = {
@@ -20,32 +26,6 @@ type Row = {
   payout: number;
   net: number;
 };
-
-function floorTo(n: number, step: number) {
-  return Math.floor(n / step) * step;
-}
-
-function computeChopAmounts(
-  shares: Record<string, number>,
-  pool: number,
-  increment = CASH_INCREMENT,
-): Record<string, number> {
-  const entries = Object.entries(shares);
-  if (entries.length === 0 || pool <= 0) return {};
-  const totalPct = entries.reduce((s, [, v]) => s + v, 0) || 1;
-  const poolFloored = floorTo(pool, increment);
-  const amounts: Record<string, number> = {};
-  let allocated = 0;
-  entries.forEach(([id, pct], idx) => {
-    if (idx === 0) return;
-    const raw = (pct / totalPct) * poolFloored;
-    const amt = Math.max(0, floorTo(raw, increment));
-    amounts[id] = amt;
-    allocated += amt;
-  });
-  amounts[entries[0][0]] = Math.max(0, poolFloored - allocated);
-  return amounts;
-}
 
 function placeLabel(place: number | null, isCoWinner: boolean): string {
   if (isCoWinner) return "CHOP";
@@ -347,26 +327,26 @@ function WinnerCard({ row }: { row: Row }) {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <Stat
+        <StatCol
           label="In for"
           value={`$${row.moneyIn.toLocaleString()}`}
           emphasize
         />
-        <Stat
+        <StatCol
           label="Out for"
           value={`$${row.payout.toLocaleString()}`}
           emphasize
         />
-        <Stat label="Buy-ins" value={`${row.entries}×`} />
-        <Stat label="Add-ons" value={`${row.addOns}×`} />
-        <Stat
+        <StatCol label="Buy-ins" value={`${row.entries}×`} />
+        <StatCol label="Add-ons" value={`${row.addOns}×`} />
+        <StatCol
           label="Net"
           value={`${row.net >= 0 ? "+" : "−"}$${Math.abs(row.net).toLocaleString()}`}
           emphasize
           positive={row.net >= 0}
         />
         {row.durationSec != null && (
-          <Stat label="Played" value={fmtDuration(row.durationSec)} />
+          <StatCol label="Played" value={fmtDuration(row.durationSec)} />
         )}
       </div>
     </div>
@@ -407,64 +387,3 @@ function ParticipantRow({ row }: { row: Row }) {
   );
 }
 
-function MiniStat({
-  label,
-  value,
-  positive,
-  muted,
-}: {
-  label: string;
-  value: string;
-  positive?: boolean;
-  muted?: boolean;
-}) {
-  return (
-    <div className="flex flex-col min-w-0">
-      <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-        {label}
-      </span>
-      <span
-        className={`font-mono font-semibold truncate ${
-          positive
-            ? "text-[var(--accent)]"
-            : muted
-              ? "text-[var(--text-muted)]"
-              : ""
-        }`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  emphasize,
-  positive,
-}: {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-  positive?: boolean;
-}) {
-  return (
-    <div className="flex flex-col">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-        {label}
-      </div>
-      <div
-        className={`font-mono ${emphasize ? "text-base font-semibold" : "text-sm"} ${
-          positive === true
-            ? "text-[var(--accent)]"
-            : positive === false
-              ? "text-[var(--text-muted)]"
-              : ""
-        }`}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}

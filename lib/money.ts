@@ -46,9 +46,3 @@ export function fmtMoney(n: number): string {
   if (!Number.isFinite(n)) return "$0.00";
   return USD.format(n);
 }
-
-export function fmtSigned(n: number): string {
-  if (!Number.isFinite(n) || n === 0) return fmtMoney(0);
-  const sign = n > 0 ? "+" : "−";
-  return `${sign}${fmtMoney(Math.abs(n))}`;
-}
