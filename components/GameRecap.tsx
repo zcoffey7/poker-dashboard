@@ -81,6 +81,7 @@ export default function GameRecap() {
   const currentLevelIdx = useTournament((s) => s.clock.currentLevel);
   const unfinishTournament = useTournament((s) => s.unfinishTournament);
   const resetTournament = useTournament((s) => s.resetTournament);
+  const removedEntries = useTournament((s) => s.removedEntries);
 
   const stats = useMemo(
     () =>
@@ -92,8 +93,17 @@ export default function GameRecap() {
         addOnCost,
         {},
         rebuyCost,
+        removedEntries,
       ),
-    [players, blindStructure, currentLevelIdx, buyIn, addOnCost, rebuyCost],
+    [
+      players,
+      blindStructure,
+      currentLevelIdx,
+      buyIn,
+      addOnCost,
+      rebuyCost,
+      removedEntries,
+    ],
   );
   const pool = stats.prizePool;
 

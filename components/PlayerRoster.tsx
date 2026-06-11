@@ -15,6 +15,7 @@ export default function PlayerRoster() {
   const rebuyChips = useTournament((s) => s.rebuyChips);
   const addOnPlayer = useTournament((s) => s.addOnPlayer);
   const addOnChips = useTournament((s) => s.addOnChips);
+  const startedAt = useTournament((s) => s.startedAt);
 
   const [name, setName] = useState("");
   const [bulk, setBulk] = useState("");
@@ -41,6 +42,20 @@ export default function PlayerRoster() {
     if (lines.length) addPlayersBulk(lines);
     setBulk("");
     setShowBulk(false);
+  }
+
+  function handleRemove(p: (typeof players)[number]) {
+    // Once the game has started, money has been paid: be explicit that the
+    // entry stays in the prize pool instead of silently dropping the row.
+    if (
+      startedAt != null &&
+      !confirm(
+        `Remove ${p.name}? Anything they paid (buy-in, rebuys, add-ons) stays in the prize pool.`,
+      )
+    ) {
+      return;
+    }
+    removePlayer(p.id);
   }
 
   return (
@@ -155,7 +170,7 @@ export default function PlayerRoster() {
               </button>
               <button
                 className="btn btn-ghost btn-sm !px-2 !py-0.5"
-                onClick={() => removePlayer(p.id)}
+                onClick={() => handleRemove(p)}
                 title="Remove from tournament"
               >
                 ×
@@ -197,7 +212,8 @@ export default function PlayerRoster() {
                 </button>
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
-                  onClick={() => removePlayer(p.id)}
+                  onClick={() => handleRemove(p)}
+                  title="Remove from tournament"
                 >
                   ×
                 </button>

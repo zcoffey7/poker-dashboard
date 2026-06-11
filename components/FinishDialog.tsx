@@ -21,6 +21,7 @@ export default function FinishDialog({ onClose }: Props) {
   const blindStructure = useTournament((s) => s.blindStructure);
   const currentLevel = useTournament((s) => s.clock.currentLevel);
   const finishTournament = useTournament((s) => s.finishTournament);
+  const removedEntries = useTournament((s) => s.removedEntries);
 
   const stats = useMemo(
     () =>
@@ -32,8 +33,17 @@ export default function FinishDialog({ onClose }: Props) {
         addOnCost,
         {},
         rebuyCost,
+        removedEntries,
       ),
-    [players, blindStructure, currentLevel, buyIn, addOnCost, rebuyCost],
+    [
+      players,
+      blindStructure,
+      currentLevel,
+      buyIn,
+      addOnCost,
+      rebuyCost,
+      removedEntries,
+    ],
   );
   const pool = stats.prizePool;
 

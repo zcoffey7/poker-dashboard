@@ -299,7 +299,26 @@ export const useTournament = create<TournamentStore>()(
         set((s) => ({ players: [...s.players, ...newPlayers] }));
       },
       removePlayer: (id) =>
-        set((s) => ({ players: s.players.filter((p) => p.id !== id) })),
+        set((s) => {
+          const target = s.players.find((p) => p.id === id);
+          if (!target) return {};
+          const players = s.players.filter((p) => p.id !== id);
+          // Before the tournament starts, removal means "added by mistake"
+          // and no money is in the pot yet. After start, the player's
+          // buy-in/rebuys/add-ons have been paid — keep them counted so the
+          // prize pool doesn't silently shrink (computeStats folds
+          // `removedEntries` back into the pool).
+          if (s.startedAt == null) return { players };
+          const prev = s.removedEntries ?? { buyIns: 0, rebuys: 0, addOns: 0 };
+          return {
+            players,
+            removedEntries: {
+              buyIns: prev.buyIns + 1,
+              rebuys: prev.rebuys + (target.rebuys ?? 0),
+              addOns: prev.addOns + (target.addOns ?? 0),
+            },
+          };
+        }),
       renamePlayer: (id, name) =>
         set((s) => ({
           players: s.players.map((p) =>
@@ -402,21 +421,30 @@ export const useTournament = create<TournamentStore>()(
           };
         }),
       addOnPlayer: (id) =>
-        set((s) => ({
-          players: s.players.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  chips: p.chips + s.addOnChips,
-                  addOns: (p.addOns ?? 0) + 1,
-                }
-              : p,
-          ),
-        })),
+        set((s) => {
+          const target = s.players.find((p) => p.id === id);
+          // Mirror rebuyPlayer: eliminated players can't take add-ons. The
+          // UI disables the controls, but the store enforces the invariant.
+          if (!target || target.eliminated) return {};
+          return {
+            players: s.players.map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    chips: p.chips + s.addOnChips,
+                    addOns: (p.addOns ?? 0) + 1,
+                  }
+                : p,
+            ),
+          };
+        }),
       undoRebuy: (id) =>
         set((s) => ({
           players: s.players.map((p) => {
             if (p.id !== id) return p;
+            // An eliminated player's paid rebuys are part of the prize pool;
+            // restore the player first if a correction is really needed.
+            if (p.eliminated) return p;
             const current = p.rebuys ?? 0;
             if (current <= 0) return p;
             return {
@@ -430,6 +458,8 @@ export const useTournament = create<TournamentStore>()(
         set((s) => ({
           players: s.players.map((p) => {
             if (p.id !== id) return p;
+            // Same invariant as undoRebuy: no pool edits via busted players.
+            if (p.eliminated) return p;
             const current = p.addOns ?? 0;
             if (current <= 0) return p;
             return {
@@ -948,6 +978,7 @@ export const useTournament = create<TournamentStore>()(
           chopShares: undefined,
           chopAmounts: undefined,
           pendingRebalanceMoves: undefined,
+          removedEntries: undefined,
         }),
 
       importState: (state) =>
@@ -1006,6 +1037,15 @@ export const useTournament = create<TournamentStore>()(
           }
           if (state.chopAmounts && typeof state.chopAmounts === "object") {
             next.chopAmounts = state.chopAmounts;
+          }
+          if (
+            state.removedEntries &&
+            typeof state.removedEntries === "object" &&
+            typeof state.removedEntries.buyIns === "number" &&
+            typeof state.removedEntries.rebuys === "number" &&
+            typeof state.removedEntries.addOns === "number"
+          ) {
+            next.removedEntries = state.removedEntries;
           }
           return next;
         }),

@@ -25,6 +25,7 @@ export default function PayoutsEditor({
   const players = useTournament((s) => s.players);
   const blindStructure = useTournament((s) => s.blindStructure);
   const currentLevel = useTournament((s) => s.clock.currentLevel);
+  const removedEntries = useTournament((s) => s.removedEntries);
   const stats = useMemo(
     () =>
       computeStats(
@@ -35,8 +36,17 @@ export default function PayoutsEditor({
         addOnCost,
         {},
         rebuyCost,
+        removedEntries,
       ),
-    [players, blindStructure, currentLevel, buyIn, addOnCost, rebuyCost],
+    [
+      players,
+      blindStructure,
+      currentLevel,
+      buyIn,
+      addOnCost,
+      rebuyCost,
+      removedEntries,
+    ],
   );
 
   const total = payouts.reduce((s, p) => s + p.percent, 0);

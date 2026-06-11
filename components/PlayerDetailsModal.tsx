@@ -123,8 +123,12 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
                 <button
                   className="btn btn-ghost btn-sm !px-2"
                   onClick={() => undoRebuy(player.id)}
-                  disabled={rebuys <= 0}
-                  title="Remove rebuy"
+                  disabled={rebuys <= 0 || player.eliminated}
+                  title={
+                    player.eliminated
+                      ? "Restore the player to edit rebuys"
+                      : "Remove rebuy"
+                  }
                 >
                   −
                 </button>
@@ -132,8 +136,12 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
                 <button
                   className="btn btn-ghost btn-sm !px-2"
                   onClick={() => rebuyPlayer(player.id)}
-                  disabled={rebuyChips <= 0}
-                  title="Add rebuy"
+                  disabled={rebuyChips <= 0 || player.eliminated}
+                  title={
+                    player.eliminated
+                      ? "Eliminated players can't rebuy"
+                      : "Add rebuy"
+                  }
                 >
                   +
                 </button>
@@ -157,8 +165,12 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
                 <button
                   className="btn btn-ghost btn-sm !px-2"
                   onClick={() => undoAddOn(player.id)}
-                  disabled={addOns <= 0}
-                  title="Remove add-on"
+                  disabled={addOns <= 0 || player.eliminated}
+                  title={
+                    player.eliminated
+                      ? "Restore the player to edit add-ons"
+                      : "Remove add-on"
+                  }
                 >
                   −
                 </button>
@@ -166,8 +178,14 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
                 <button
                   className="btn btn-ghost btn-sm !px-2"
                   onClick={() => addOnPlayer(player.id)}
-                  disabled={addOnChips <= 0 || addOnCost <= 0}
-                  title="Add add-on"
+                  disabled={
+                    addOnChips <= 0 || addOnCost <= 0 || player.eliminated
+                  }
+                  title={
+                    player.eliminated
+                      ? "Eliminated players can't take add-ons"
+                      : "Add add-on"
+                  }
                 >
                   +
                 </button>
