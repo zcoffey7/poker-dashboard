@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCash } from "@/lib/cashStore";
 import { fromCents } from "@/lib/money";
+import { useHasHydrated } from "@/lib/useHasHydrated";
 import NumberInput from "../NumberInput";
 
 type Draft = {
@@ -18,11 +19,23 @@ export default function CashSettingsForm() {
   const smallBlind = useCash((s) => s.smallBlind);
   const bigBlind = useCash((s) => s.bigBlind);
   const defaultBuyIn = useCash((s) => s.defaultBuyIn);
+  // Wait for persist rehydration before seeding the draft, so the form
+  // doesn't flash default values and then jump to the stored ones (same
+  // gate as the tournament SettingsForm).
+  const hydrated = useHasHydrated(useCash);
 
   // Remount the inner form when persisted settings change, so the draft is
   // always seeded from the latest store values. Avoids the set-state-in-effect
   // anti-pattern.
   const signature = `${name}|${smallBlind}|${bigBlind}|${defaultBuyIn}`;
+
+  if (!hydrated) {
+    return (
+      <div className="card p-4 text-sm text-[var(--text-muted)]" aria-busy="true">
+        Loading settings…
+      </div>
+    );
+  }
 
   return (
     <SettingsFormInner

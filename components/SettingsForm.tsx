@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
+import { useHasHydrated } from "@/lib/useHasHydrated";
 import type {
   BlindLevel,
   ChipDenom,
@@ -55,11 +56,11 @@ function snapshot(): Draft {
 export default function SettingsForm() {
   // Zustand's `persist` middleware rehydrates the store from localStorage on
   // the client, so the server render (no localStorage → defaults) never
-  // matches the client render (persisted values). Gate the whole form behind a
-  // mount flag so React sees identical output on the server and the first
-  // client render, then swaps in the real form after mount.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // matches the client render (persisted values). Gate the whole form behind
+  // the store's own hydration signal so React sees identical output on the
+  // server and the first client render, then swaps in the real form once the
+  // persisted values are in.
+  const hydrated = useHasHydrated(useTournament);
 
   const storedName = useTournament((s) => s.name);
   const storedTables = useTournament((s) => s.tables);
@@ -111,7 +112,7 @@ export default function SettingsForm() {
     ],
   );
 
-  if (!mounted) {
+  if (!hydrated) {
     return (
       <div
         className="card-2 p-6 text-sm text-muted"
