@@ -13,6 +13,7 @@ export default function PayoutsPanel() {
   const buyIn = useTournament((s) => s.buyIn);
   const addOnCost = useTournament((s) => s.addOnCost);
   const rebuyCost = useTournament((s) => s.rebuyCost);
+  const removedEntries = useTournament((s) => s.removedEntries);
   const stats = useMemo(
     () =>
       computeStats(
@@ -23,8 +24,17 @@ export default function PayoutsPanel() {
         addOnCost,
         {},
         rebuyCost,
+        removedEntries,
       ),
-    [players, blindStructure, currentLevel, buyIn, addOnCost, rebuyCost],
+    [
+      players,
+      blindStructure,
+      currentLevel,
+      buyIn,
+      addOnCost,
+      rebuyCost,
+      removedEntries,
+    ],
   );
 
   const pool = stats.prizePool;
@@ -36,8 +46,10 @@ export default function PayoutsPanel() {
   const paidSpots = payouts.length;
   const activeCount = stats.activeCount;
 
+  // Anyone with a finish place fills their payout row — including players
+  // who finished without being eliminated (auto-declared winners, chops).
   const winners = players
-    .filter((p) => p.eliminated && p.finishPlace && p.finishPlace <= paidSpots)
+    .filter((p) => p.finishPlace && p.finishPlace <= paidSpots)
     .sort((a, b) => (a.finishPlace ?? 0) - (b.finishPlace ?? 0));
 
   return (
@@ -54,9 +66,10 @@ export default function PayoutsPanel() {
       <div className="flex flex-col gap-0.5 overflow-y-auto scrollbar-thin min-h-0 -mr-2 pr-2">
         {payouts.map((p) => {
           const amt = cashAmounts[p.place] ?? 0;
-          const stillIn =
-            activeCount > 0 &&
-            p.place > Math.max(0, activeCount - paidSpots);
+          // A spot is still contested while at least `place` players remain
+          // active: any of them could finish there. Decided spots without an
+          // assigned finisher (deep finishes below the field size) show "—".
+          const stillIn = activeCount >= p.place;
           const winner = winners.find((w) => w.finishPlace === p.place);
           return (
             <div

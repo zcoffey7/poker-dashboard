@@ -37,6 +37,7 @@ export default function StatsBar() {
   const startingStack = useTournament((s) => s.startingStack);
   const rebuyChips = useTournament((s) => s.rebuyChips);
   const addOnChips = useTournament((s) => s.addOnChips);
+  const removedEntries = useTournament((s) => s.removedEntries);
 
   const stats = useMemo(
     () =>
@@ -52,6 +53,7 @@ export default function StatsBar() {
           addOnChips,
         },
         rebuyCost,
+        removedEntries,
       ),
     [
       players,
@@ -63,6 +65,7 @@ export default function StatsBar() {
       startingStack,
       rebuyChips,
       addOnChips,
+      removedEntries,
     ],
   );
   const nextBreak = useMemo(

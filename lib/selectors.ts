@@ -1,4 +1,4 @@
-import type { BlindLevel, Player } from "./types";
+import type { BlindLevel, Player, RemovedEntries } from "./types";
 
 export type Stats = {
   activeCount: number;
@@ -45,13 +45,19 @@ export function computeStats(
   addOnCost = 0,
   chipSchedule: ChipSchedule = {},
   rebuyCost = 0,
+  removedEntries?: RemovedEntries,
 ): Stats {
   const active = players.filter((p) => !p.eliminated);
-  const totalRebuys = players.reduce((sum, p) => sum + (p.rebuys ?? 0), 0);
-  const totalAddOns = players.reduce(
-    (sum, p) => sum + (p.addOns ?? 0),
-    0,
-  );
+  // Players removed from the roster mid-tournament already paid; their
+  // entries stay in the money counts so the prize pool doesn't silently
+  // shrink. Their chips left the table with them, so chip math below uses
+  // roster-only counts.
+  const removed = removedEntries ?? { buyIns: 0, rebuys: 0, addOns: 0 };
+  const rosterRebuys = players.reduce((sum, p) => sum + (p.rebuys ?? 0), 0);
+  const rosterAddOns = players.reduce((sum, p) => sum + (p.addOns ?? 0), 0);
+  const totalBuyIns = players.length + Math.max(0, removed.buyIns);
+  const totalRebuys = rosterRebuys + Math.max(0, removed.rebuys);
+  const totalAddOns = rosterAddOns + Math.max(0, removed.addOns);
   // Total chips in play is fixed by buy-ins, rebuys, and add-ons — chips change
   // hands during play but are never created or destroyed (busted players hand
   // their stack to whoever eliminated them). Summing `active[].chips` directly
@@ -62,8 +68,8 @@ export function computeStats(
   const addOnChipsSafe = Math.max(0, chipSchedule.addOnChips ?? 0);
   const totalChips =
     players.length * startingStackSafe +
-    totalRebuys * rebuyChipsSafe +
-    totalAddOns * addOnChipsSafe;
+    rosterRebuys * rebuyChipsSafe +
+    rosterAddOns * addOnChipsSafe;
   const avgStack =
     active.length > 0 ? Math.round(totalChips / active.length) : 0;
   const currentLv = blindStructure[currentLevelIdx];
@@ -81,7 +87,7 @@ export function computeStats(
     mLevel && mLevel.bigBlind > 0
       ? Math.round(avgStack / mLevel.bigBlind)
       : 0;
-  const totalEntries = players.length + totalRebuys;
+  const totalEntries = totalBuyIns + totalRebuys;
   const buyInSafe = Math.max(0, buyIn);
   const addOnCostSafe = Math.max(0, addOnCost);
   const rebuyCostSafe = Math.max(0, rebuyCost);
@@ -89,7 +95,7 @@ export function computeStats(
   // (configurable in settings) drives the prize pool independently of the
   // initial buy-in.
   const prizePool =
-    players.length * buyInSafe +
+    totalBuyIns * buyInSafe +
     totalRebuys * rebuyCostSafe +
     totalAddOns * addOnCostSafe;
   return {

@@ -91,6 +91,17 @@ export type RebalanceMove = {
   reason: "break" | "balance";
 };
 
+/**
+ * Tally of paid entries belonging to players removed from the roster after
+ * the tournament started. Their money is already in the pot, so the prize
+ * pool must keep counting it even though the player rows are gone.
+ */
+export type RemovedEntries = {
+  buyIns: number;
+  rebuys: number;
+  addOns: number;
+};
+
 export type TournamentState = {
   name: string;
   startingStack: number;
@@ -128,4 +139,9 @@ export type TournamentState = {
    * listing every player who needs to get up and where to sit.
    */
   pendingRebalanceMoves?: RebalanceMove[];
+  /**
+   * Entries paid by players who were removed from the roster after the
+   * tournament started. Counted into the prize pool by `computeStats`.
+   */
+  removedEntries?: RemovedEntries;
 };
