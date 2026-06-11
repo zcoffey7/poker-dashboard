@@ -934,7 +934,14 @@ export const useTournament = create<TournamentStore>()(
               }
               const np = nonChopPlaces.get(p.id);
               if (np != null) {
-                return { ...p, finishPlace: np };
+                // Anyone outside the chop busts at their ranked place —
+                // same rule as the winner finish below.
+                return {
+                  ...p,
+                  finishPlace: np,
+                  eliminated: true,
+                  eliminatedAt: now,
+                };
               }
               return p;
             });
@@ -956,9 +963,15 @@ export const useTournament = create<TournamentStore>()(
             });
             const placeById = new Map<string, number>();
             ranked.forEach((p, i) => placeById.set(p.id, i + 1));
+            // Only the winner stays active; everyone else busts at their
+            // ranked place so the tournament can't end with multiple
+            // "active" players holding finish ranks.
             players = s.players.map((p) => {
               const place = placeById.get(p.id);
-              return place != null ? { ...p, finishPlace: place } : p;
+              if (place == null) return p;
+              return place === 1
+                ? { ...p, finishPlace: 1 }
+                : { ...p, finishPlace: place, eliminated: true, eliminatedAt: now };
             });
           }
         }
@@ -978,7 +991,15 @@ export const useTournament = create<TournamentStore>()(
           finishType: undefined,
           chopShares: undefined,
           chopAmounts: undefined,
-          // Leave players/finishPlace as-is; reopening keeps assigned places.
+          // Eliminated players keep their earned places, but actives must
+          // not carry finish metadata back into a live game (a reopened
+          // winner with finishPlace 1 corrupts payouts/recap if the game is
+          // finished again later).
+          players: s.players.map((p) =>
+            !p.eliminated && (p.finishPlace != null || p.eliminatedAt != null)
+              ? { ...p, finishPlace: undefined, eliminatedAt: undefined }
+              : p,
+          ),
           clock: { ...s.clock },
         })),
 
