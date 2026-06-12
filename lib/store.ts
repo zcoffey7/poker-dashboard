@@ -27,7 +27,15 @@ import {
   DEFAULT_TABLES,
   DEFAULT_TOURNAMENT_NAME,
 } from "./defaults";
+import { newBlindLevelId } from "./blindLevelId";
 import { balanceTables, randomAssign } from "./seating";
+
+function ensureBlindLevelIds(levels: BlindLevel[]): BlindLevel[] {
+  return levels.map((lv) => ({
+    ...lv,
+    id: lv.id ?? newBlindLevelId(),
+  }));
+}
 import { playLevelUp, playWarning } from "./clock";
 
 function uid(prefix = "id") {
@@ -652,6 +660,7 @@ export const useTournament = create<TournamentStore>()(
         const s = get();
         const last = s.blindStructure[s.blindStructure.length - 1];
         const nextLevel: BlindLevel = {
+          id: newBlindLevelId(),
           level: (last?.level ?? 0) + 1,
           smallBlind: last ? last.smallBlind * 2 : 25,
           bigBlind: last ? last.bigBlind * 2 : 50,
@@ -719,7 +728,9 @@ export const useTournament = create<TournamentStore>()(
         }),
       setBlindStructure: (levels) =>
         set({
-          blindStructure: levels.map((lv, i) => ({ ...lv, level: i + 1 })),
+          blindStructure: ensureBlindLevelIds(
+            levels.map((lv, i) => ({ ...lv, level: i + 1 })),
+          ),
         }),
 
       setPayouts: (spots) =>
@@ -1104,10 +1115,12 @@ export const useTournament = create<TournamentStore>()(
           .sort((a, b) => a.place - b.place)
           .map((p, i) => ({ ...p, place: i + 1 }));
         // Normalize blind structure: renumber sequentially.
-        const blindStructure = draft.blindStructure.map((lv, i) => ({
-          ...lv,
-          level: i + 1,
-        }));
+        const blindStructure = ensureBlindLevelIds(
+          draft.blindStructure.map((lv, i) => ({
+            ...lv,
+            level: i + 1,
+          })),
+        );
         // Drop tables that were removed from the draft and clear seating for
         // players that were seated at those removed tables. Then clamp any
         // player whose seat exceeds a reduced seat count.
@@ -1166,7 +1179,7 @@ export const useTournament = create<TournamentStore>()(
     {
       name: "poker-tournament-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 6,
+      version: 7,
       migrate: (persistedState, version) => {
         if (!persistedState) return persistedState as TournamentState;
         let state = persistedState as Partial<TournamentState>;
@@ -1244,6 +1257,14 @@ export const useTournament = create<TournamentStore>()(
             ...state,
             rebuyCost:
               state.rebuyCost ?? state.buyIn ?? DEFAULT_REBUY_COST,
+          };
+        }
+        if (version < 7) {
+          // v7 adds stable `id` on each blind level so the structure editor
+          // can key rows without losing input state on reorder.
+          state = {
+            ...state,
+            blindStructure: ensureBlindLevelIds(state.blindStructure ?? []),
           };
         }
         return state as TournamentState;

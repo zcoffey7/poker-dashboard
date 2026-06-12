@@ -117,8 +117,11 @@ export default function BlindClock() {
         </button>
         <button
           className="btn btn-ghost"
-          onClick={() => resetLevel()}
-          title="Reset current level timer"
+          onClick={() => {
+            if (confirm("Reset the current level timer to full duration?"))
+              resetLevel();
+          }}
+          aria-label="Reset current level timer"
         >
           Reset
         </button>

@@ -42,7 +42,18 @@ export default function TablesView() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button className="btn btn-sm" onClick={() => clearSeats()}>
+          <button
+            className="btn btn-sm"
+            onClick={() => {
+              if (
+                confirm(
+                  "Clear all seat assignments? Players stay in the tournament but become unseated.",
+                )
+              ) {
+                clearSeats();
+              }
+            }}
+          >
             Clear seats
           </button>
           <button className="btn btn-sm" onClick={() => balanceNow()}>
@@ -121,8 +132,16 @@ export default function TablesView() {
                       </button>
                       <button
                         className="btn btn-danger btn-sm px-2! py-0.5! shrink-0"
-                        title="Eliminate"
-                        onClick={() => eliminatePlayer(p.id)}
+                        aria-label={`Eliminate ${p.name}`}
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Eliminate ${p.name}? They'll be assigned the next finish place.`,
+                            )
+                          ) {
+                            eliminatePlayer(p.id);
+                          }
+                        }}
                       >
                         Out
                       </button>

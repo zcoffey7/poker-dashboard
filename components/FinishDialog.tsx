@@ -208,6 +208,7 @@ export default function FinishDialog({ onClose }: Props) {
                     <input
                       type="checkbox"
                       checked={!!selected[p.id]}
+                      aria-label={`Include ${p.name} in chop`}
                       onChange={(e) =>
                         setSelected({ ...selected, [p.id]: e.target.checked })
                       }
@@ -225,6 +226,7 @@ export default function FinishDialog({ onClose }: Props) {
                       step={1}
                       disabled={!selected[p.id]}
                       value={amounts[p.id] ?? 0}
+                      aria-label={`Chop amount for ${p.name}`}
                       onChange={(e) =>
                         setAmounts({
                           ...amounts,

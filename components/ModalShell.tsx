@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
+import { handleOverlayEscape, pushOverlay } from "@/lib/overlayStack";
+
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type Props = {
   /**
@@ -24,8 +28,7 @@ type Props = {
 
 /**
  * Shared overlay + dialog chrome: fixed backdrop, click-outside and Escape
- * dismissal, and `role="dialog"` semantics. This is the single place to
- * grow focus-trap and Escape-stacking behavior (#26, #27).
+ * dismissal (topmost layer wins), focus trap, and `role="dialog"` semantics.
  */
 export default function ModalShell({
   onClose,
@@ -36,13 +39,48 @@ export default function ModalShell({
   overlayClassName,
   children,
 }: Props) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const fallbackTitleId = useId();
+  const titleId = labelledBy ?? (label ? fallbackTitleId : undefined);
+
   useEffect(() => {
-    if (!onClose) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose?.();
+    const pop = pushOverlay(onClose);
+    const previous = document.activeElement as HTMLElement | null;
+
+    const card = cardRef.current;
+    if (card) {
+      const first = card.querySelector<HTMLElement>(FOCUSABLE);
+      (first ?? card).focus();
     }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (handleOverlayEscape(e)) return;
+      }
+      if (e.key !== "Tab" || !cardRef.current) return;
+      const nodes = Array.from(
+        cardRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+      ).filter((el) => el.offsetParent !== null);
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      pop();
+      previous?.focus?.();
+    };
   }, [onClose]);
 
   return (
@@ -53,13 +91,20 @@ export default function ModalShell({
       onClick={onClose}
     >
       <div
-        className={`card ${cardClassName}`}
+        ref={cardRef}
+        className={`card outline-none ${cardClassName}`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={labelledBy}
-        aria-label={label}
+        aria-labelledby={titleId}
+        aria-label={labelledBy ? undefined : label}
+        tabIndex={-1}
       >
+        {label && !labelledBy && (
+          <span id={fallbackTitleId} className="sr-only">
+            {label}
+          </span>
+        )}
         {children}
       </div>
     </div>

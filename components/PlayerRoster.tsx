@@ -46,17 +46,34 @@ export default function PlayerRoster() {
   }
 
   function handleRemove(p: (typeof players)[number]) {
-    // Once the game has started, money has been paid: be explicit that the
-    // entry stays in the prize pool instead of silently dropping the row.
+    const startedMsg =
+      startedAt != null
+        ? " Anything they paid (buy-in, rebuys, add-ons) stays in the prize pool."
+        : "";
+    if (!confirm(`Remove ${p.name} from the tournament?${startedMsg}`)) return;
+    removePlayer(p.id);
+  }
+
+  function handleEliminate(p: (typeof players)[number]) {
     if (
-      startedAt != null &&
       !confirm(
-        `Remove ${p.name}? Anything they paid (buy-in, rebuys, add-ons) stays in the prize pool.`,
+        `Eliminate ${p.name}? They'll be assigned the next finish place.`,
       )
     ) {
       return;
     }
-    removePlayer(p.id);
+    eliminatePlayer(p.id);
+  }
+
+  function handleRestore(p: (typeof players)[number]) {
+    if (
+      !confirm(
+        `Restore ${p.name} to the active field? Their finish place will be cleared.`,
+      )
+    ) {
+      return;
+    }
+    restorePlayer(p.id);
   }
 
   return (
@@ -78,12 +95,16 @@ export default function PlayerRoster() {
 
       {showBulk ? (
         <div className="flex flex-col gap-2">
-          <textarea
-            className="input min-h-[100px] font-mono text-xs"
-            placeholder="One name per line (or comma separated)"
-            value={bulk}
-            onChange={(e) => setBulk(e.target.value)}
-          />
+          <label className="flex flex-col gap-1">
+            <span className="label">Bulk player names</span>
+            <textarea
+              id="bulk-players"
+              className="input min-h-[100px] font-mono text-xs"
+              placeholder="One name per line (or comma separated)"
+              value={bulk}
+              onChange={(e) => setBulk(e.target.value)}
+            />
+          </label>
           <button
             className="btn btn-primary btn-sm"
             onClick={handleBulk}
@@ -94,7 +115,11 @@ export default function PlayerRoster() {
         </div>
       ) : (
         <form onSubmit={handleAdd} className="flex gap-2">
+          <label htmlFor="player-name" className="sr-only">
+            Player name
+          </label>
           <input
+            id="player-name"
             className="input"
             placeholder="Player name"
             value={name}
@@ -124,7 +149,7 @@ export default function PlayerRoster() {
             <button
               className="flex-1 text-left truncate cursor-pointer hover:underline underline-offset-2 min-w-0"
               onClick={() => setDetailsId(p.id)}
-              title="View details"
+              aria-label={`View details for ${p.name}`}
             >
               {p.name}
             </button>
@@ -149,7 +174,7 @@ export default function PlayerRoster() {
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
                   onClick={() => rebuyPlayer(p.id)}
-                  title="Rebuy"
+                  aria-label={`Rebuy for ${p.name}`}
                 >
                   +R
                 </button>
@@ -159,21 +184,22 @@ export default function PlayerRoster() {
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
                   onClick={() => addOnPlayer(p.id)}
-                  title="Add-on"
+                  aria-label={`Add-on for ${p.name}`}
                 >
                   +A
                 </button>
               )}
               <button
                 className="btn btn-danger btn-sm !px-2 !py-0.5"
-                onClick={() => eliminatePlayer(p.id)}
+                onClick={() => handleEliminate(p)}
+                aria-label={`Eliminate ${p.name}`}
               >
                 Out
               </button>
               <button
                 className="btn btn-ghost btn-sm !px-2 !py-0.5"
                 onClick={() => handleRemove(p)}
-                title="Remove from tournament"
+                aria-label={`Remove ${p.name} from tournament`}
               >
                 ×
               </button>
@@ -202,13 +228,14 @@ export default function PlayerRoster() {
                 <button
                   className="flex-1 text-left truncate line-through cursor-pointer hover:no-underline"
                   onClick={() => setDetailsId(p.id)}
-                  title="View details"
+                  aria-label={`View details for ${p.name}`}
                 >
                   {p.name}
                 </button>
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
-                  onClick={() => restorePlayer(p.id)}
+                  onClick={() => handleRestore(p)}
+                  aria-label={`Restore ${p.name}`}
                 >
                   Undo
                 </button>

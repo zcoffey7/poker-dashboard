@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { pushOverlay } from "@/lib/overlayStack";
 import { useTournament } from "@/lib/store";
 
 type Props = Readonly<{
@@ -32,8 +33,9 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
+    const pop = pushOverlay(onClose);
     const dialog = dialogRef.current;
-    if (!dialog) return;
+    if (!dialog) return pop;
     if (!dialog.open) dialog.showModal();
 
     function onBackdropMouseDown(e: MouseEvent) {
@@ -48,7 +50,10 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
     }
 
     dialog.addEventListener("mousedown", onBackdropMouseDown);
-    return () => dialog.removeEventListener("mousedown", onBackdropMouseDown);
+    return () => {
+      dialog.removeEventListener("mousedown", onBackdropMouseDown);
+      pop();
+    };
   }, [onClose]);
 
   const selectedTable = tables.find((t) => t.id === tableId);

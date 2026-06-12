@@ -15,6 +15,10 @@ function newId() {
 
 export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
   function updateChipColor(id: string, color: ChipColor) {
+    const taken = new Set(
+      chipDenoms.filter((c) => c.id !== id).map((c) => c.color),
+    );
+    if (taken.has(color)) return;
     const preset = CHIP_COLOR_OPTIONS.find((o) => o.value === color);
     onChange(
       chipDenoms.map((c) =>
@@ -71,6 +75,9 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
         {chipDenoms.map((c) => {
           const palette = CHIP_COLOR_MAP[c.color];
           const imageSrc = chipImageForValue(c.value);
+          const takenByOthers = new Set(
+            chipDenoms.filter((d) => d.id !== c.id).map((d) => d.color),
+          );
           return (
             <div key={c.id} className="flex items-center gap-4">
               <ChipDisk
@@ -87,6 +94,7 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
                 <select
                   className="select"
                   value={c.color}
+                  aria-label={`Color for $${c.value.toLocaleString()} chip`}
                   onChange={(e) =>
                     updateChipColor(c.id, e.target.value as ChipColor)
                   }
@@ -95,8 +103,13 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
                   }}
                 >
                   {CHIP_COLOR_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
+                    <option
+                      key={o.value}
+                      value={o.value}
+                      disabled={takenByOthers.has(o.value)}
+                    >
                       {o.label}
+                      {takenByOthers.has(o.value) ? " (in use)" : ""}
                     </option>
                   ))}
                 </select>
@@ -106,8 +119,11 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
               </div>
               <button
                 className="btn btn-sm btn-danger"
-                onClick={() => removeChip(c.id)}
-                title="Remove chip"
+                onClick={() => {
+                  if (confirm(`Remove the $${c.value.toLocaleString()} chip?`))
+                    removeChip(c.id);
+                }}
+                aria-label={`Remove $${c.value.toLocaleString()} chip`}
               >
                 ×
               </button>

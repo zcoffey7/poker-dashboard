@@ -25,6 +25,8 @@ export type Table = {
 };
 
 export type BlindLevel = {
+  /** Stable row identity — survives reorder (React keys, editor state). */
+  id: string;
   level: number;
   smallBlind: number;
   bigBlind: number;

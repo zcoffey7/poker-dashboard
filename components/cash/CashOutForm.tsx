@@ -26,9 +26,23 @@ export default function CashOutForm({
   autoFocus,
 }: Props) {
   const [amount, setAmount] = useState(0);
+  const [dirty, setDirty] = useState(false);
   const amountCents = toCents(amount);
   const netCents = amountCents - totalInCents;
   const positive = netCents >= 0;
+
+  function handleSubmit() {
+    if (!dirty) return;
+    if (
+      amount <= 0 &&
+      !confirm(
+        "Cash out for $0.00? Use this when the player busted with nothing left.",
+      )
+    ) {
+      return;
+    }
+    onSubmit(amount);
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -39,7 +53,10 @@ export default function CashOutForm({
           <NumberInput
             className="input flex-1 font-mono text-lg"
             value={amount}
-            onChange={setAmount}
+            onChange={(n) => {
+              setDirty(true);
+              setAmount(n);
+            }}
             step={0.01}
             min={0}
             autoFocus={autoFocus}
@@ -59,7 +76,12 @@ export default function CashOutForm({
       </div>
 
       <div className="flex justify-end">
-        <button className="btn btn-primary" onClick={() => onSubmit(amount)}>
+        <button
+          className="btn btn-primary"
+          onClick={handleSubmit}
+          disabled={!dirty}
+          title={!dirty ? "Enter a final stack amount first" : undefined}
+        >
           {confirmLabel}
         </button>
       </div>
