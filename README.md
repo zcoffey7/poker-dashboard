@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PokerClock
 
-## Getting Started
+A static home-game dashboard for running **tournaments** and **cash games**, plus a deployable **season standings** page. Built with Next.js (static export), React, Zustand, and Tailwind CSS.
 
-First, run the development server:
+## Features
+
+- **Tournament mode** — blind clock with sound warnings, table seating and auto-balance, rebuys/add-ons, payout structure, finish/chop flow, and end-of-game recap
+- **Cash game mode** — per-player buy-ins and rebuys, individual cash-outs, end-game settlement with balance check, and recap
+- **Standings** — cumulative stats from `stats/PokerSummary.csv`, bundled as a standalone PWA at `/standings/`
+
+State persists in the browser via Zustand + `localStorage`. There is no backend.
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm run lint
+npm run typecheck
+npm run test       # unit + integration
+npm run build      # static export → out/
+npm run start      # serve out/ locally (npx serve)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script | Purpose |
+|--------|---------|
+| `dev` | Next.js dev server |
+| `build` | Static export to `out/` |
+| `start` | Serve the static export |
+| `lint` | ESLint |
+| `typecheck` | `tsc --noEmit` |
+| `test` | Unit tests (`lib/`) + standings integration test |
+| `test:unit` | `node --test` on `lib/*.test.ts` |
+| `test:integration` | Headless checks against the standings bundle |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+The app is a **static export** (`output: "export"` in `next.config.ts`), deployed to **GitHub Pages** via `.github/workflows/deploy.yml`.
 
-To learn more about Next.js, take a look at the following resources:
+On GitHub Pages the app is served under a repository subpath. CI sets `NEXT_PUBLIC_BASE_PATH` (e.g. `/poker-dashboard`) so asset URLs resolve correctly.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Pull requests run `.github/workflows/ci.yml` (lint, typecheck, tests, build).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Standings data
 
-## Deploy on Vercel
+Season totals live in `stats/PokerSummary.csv`. The standings page (`stats/poker-summary.html`) is copied into the export at build time. Update the CSV after each game night to keep the public standings current.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project layout
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/           Next.js routes (tournament, cash, standings redirect)
+components/    UI for tournament, cash, and shared widgets
+lib/           Store logic, selectors, payouts, seating, money helpers
+stats/         Standings HTML/CSS/CSV and PWA manifest
+scripts/       Integration tests
+```
+
+## Tech notes
+
+- Uses system fonts (no Geist / `next/font`)
+- Money in the cash module is stored as **integer cents** internally; UI inputs are dollars
+- Tournament blind levels carry stable `id` fields so the structure editor survives reorder without losing row state

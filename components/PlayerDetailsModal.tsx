@@ -62,14 +62,21 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
     >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="label mb-1">Player</div>
+            <label className="label mb-1" htmlFor="player-name-edit">
+              Player
+            </label>
             <input
+              id="player-name-edit"
               className="input text-lg font-semibold"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={commitName}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setName(player.name);
+                  (e.target as HTMLInputElement).blur();
+                } else if (e.key === "Enter") {
                   commitName();
                   (e.target as HTMLInputElement).blur();
                 }
@@ -88,7 +95,7 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
           <button
             className="btn btn-ghost btn-sm"
             onClick={onClose}
-            title="Close"
+            aria-label="Close player details"
           >
             ×
           </button>
@@ -113,13 +120,12 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
               <div className="flex items-center gap-2">
                 <button
                   className="btn btn-ghost btn-sm !px-2"
-                  onClick={() => undoRebuy(player.id)}
+                  onClick={() => {
+                    if (confirm(`Remove one rebuy from ${player.name}?`))
+                      undoRebuy(player.id);
+                  }}
                   disabled={rebuys <= 0 || player.eliminated}
-                  title={
-                    player.eliminated
-                      ? "Restore the player to edit rebuys"
-                      : "Remove rebuy"
-                  }
+                  aria-label={`Remove rebuy from ${player.name}`}
                 >
                   −
                 </button>
@@ -128,11 +134,7 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
                   className="btn btn-ghost btn-sm !px-2"
                   onClick={() => rebuyPlayer(player.id)}
                   disabled={rebuyChips <= 0 || player.eliminated}
-                  title={
-                    player.eliminated
-                      ? "Eliminated players can't rebuy"
-                      : "Add rebuy"
-                  }
+                  aria-label={`Add rebuy for ${player.name}`}
                 >
                   +
                 </button>
@@ -155,13 +157,12 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
               <div className="flex items-center gap-2">
                 <button
                   className="btn btn-ghost btn-sm !px-2"
-                  onClick={() => undoAddOn(player.id)}
+                  onClick={() => {
+                    if (confirm(`Remove one add-on from ${player.name}?`))
+                      undoAddOn(player.id);
+                  }}
                   disabled={addOns <= 0 || player.eliminated}
-                  title={
-                    player.eliminated
-                      ? "Restore the player to edit add-ons"
-                      : "Remove add-on"
-                  }
+                  aria-label={`Remove add-on from ${player.name}`}
                 >
                   −
                 </button>
@@ -172,11 +173,7 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
                   disabled={
                     addOnChips <= 0 || addOnCost <= 0 || player.eliminated
                   }
-                  title={
-                    player.eliminated
-                      ? "Eliminated players can't take add-ons"
-                      : "Add add-on"
-                  }
+                  aria-label={`Add add-on for ${player.name}`}
                 >
                   +
                 </button>

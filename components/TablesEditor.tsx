@@ -58,6 +58,7 @@ export default function TablesEditor({ tables, onChange }: Props) {
             <input
               className="input !py-1 !text-sm flex-1"
               value={t.name}
+              aria-label={`Name for ${t.name}`}
               onChange={(e) => renameTable(t.id, e.target.value)}
             />
             <NumberInput
@@ -65,6 +66,7 @@ export default function TablesEditor({ tables, onChange }: Props) {
               value={t.seatCount}
               min={2}
               emptyValue={2}
+              aria-label={`Seat count for ${t.name}`}
               onChange={(n) => setSeatCount(t.id, Math.max(2, n))}
             />
             <span className="text-xs text-[var(--text-muted)]">
@@ -73,8 +75,12 @@ export default function TablesEditor({ tables, onChange }: Props) {
             {t.broken && <span className="chip chip-amber">Broken</span>}
             <button
               className="btn btn-sm btn-danger"
-              onClick={() => removeTable(t.id)}
+              onClick={() => {
+                if (confirm(`Remove ${t.name}? Seated players become unseated.`))
+                  removeTable(t.id);
+              }}
               disabled={tables.length <= 1}
+              aria-label={`Remove ${t.name}`}
             >
               ×
             </button>

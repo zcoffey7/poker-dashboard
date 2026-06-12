@@ -66,10 +66,19 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
                 className="flex gap-2 mt-1"
               >
                 <input
+                  id="cash-player-name-edit"
                   className="input flex-1"
                   value={nameDraft}
                   onChange={(e) => setNameDraft(e.target.value)}
+                  aria-label="Player name"
                   autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.stopPropagation();
+                      setNameDraft(player.name);
+                      setEditingName(false);
+                    }
+                  }}
                 />
                 <button className="btn btn-primary btn-sm" type="submit">
                   Save
@@ -126,7 +135,16 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
               </div>
               <button
                 className="btn btn-ghost btn-sm"
-                onClick={() => reopenPlayer(playerId)}
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Reopen ${player.name}? Their cash-out will be cleared and they become active again.`,
+                    )
+                  ) {
+                    reopenPlayer(playerId);
+                  }
+                }}
+                aria-label={`Reopen ${player.name}`}
               >
                 Undo
               </button>
@@ -222,7 +240,15 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
             <div className="border-t border-[var(--border)] pt-3">
               <button
                 className="btn btn-ghost"
-                onClick={() => reopenPlayer(playerId)}
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Reopen ${player.name}? Their cash-out will be cleared and they become active again.`,
+                    )
+                  ) {
+                    reopenPlayer(playerId);
+                  }
+                }}
               >
                 Reopen session
               </button>

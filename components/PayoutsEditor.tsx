@@ -64,6 +64,7 @@ export default function PayoutsEditor({
     onChange([...payouts, { place: payouts.length + 1, percent: 0 }]);
   }
   function removeSpot(place: number) {
+    if (!confirm(`Remove payout spot #${place}?`)) return;
     onChange(
       payouts
         .filter((p) => p.place !== place)
@@ -103,6 +104,7 @@ export default function PayoutsEditor({
               min={0}
               max={100}
               step={0.5}
+              aria-label={`Payout percent for place ${p.place}`}
               onChange={(n) => updatePayout(p.place, n)}
             />
             <span className="text-xs text-[var(--text-muted)]">%</span>
@@ -112,6 +114,7 @@ export default function PayoutsEditor({
             <button
               className="btn btn-sm btn-danger"
               onClick={() => removeSpot(p.place)}
+              aria-label={`Remove payout spot ${p.place}`}
             >
               ×
             </button>

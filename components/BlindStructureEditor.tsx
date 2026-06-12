@@ -1,6 +1,7 @@
 "use client";
 
 import type { BlindLevel } from "@/lib/types";
+import { newBlindLevelId } from "@/lib/blindLevelId";
 import NumberInput from "./NumberInput";
 
 type Props = {
@@ -19,6 +20,14 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
     );
   }
   function removeLevel(index: number) {
+    const lv = structure[index];
+    if (
+      !confirm(
+        `Remove level ${lv.level}${lv.isBreak ? " (break)" : ""}? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
     onChange(renumber(structure.filter((_, i) => i !== index)));
   }
   function moveLevel(index: number, dir: -1 | 1) {
@@ -31,6 +40,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
   function addLevel(partial?: Partial<BlindLevel>) {
     const last = structure[structure.length - 1];
     const next: BlindLevel = {
+      id: newBlindLevelId(),
       level: (last?.level ?? 0) + 1,
       smallBlind: last ? last.smallBlind * 2 : 25,
       bigBlind: last ? last.bigBlind * 2 : 50,
@@ -90,7 +100,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
           <tbody>
             {structure.map((lv, i) => (
               <tr
-                key={i}
+                key={lv.id}
                 className={`border-t border-[var(--border)] ${lv.isBreak ? "bg-[var(--surface2)]" : ""}`}
               >
                 <td className="py-1.5 pr-2 font-mono">{lv.level}</td>
@@ -99,6 +109,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                     className="input !py-1 !text-sm w-[90px]"
                     value={lv.smallBlind}
                     disabled={lv.isBreak}
+                    aria-label={`Level ${lv.level} small blind`}
                     onChange={(n) => updateLevel(i, { smallBlind: n })}
                   />
                 </td>
@@ -107,6 +118,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                     className="input !py-1 !text-sm w-[90px]"
                     value={lv.bigBlind}
                     disabled={lv.isBreak}
+                    aria-label={`Level ${lv.level} big blind`}
                     onChange={(n) => updateLevel(i, { bigBlind: n })}
                   />
                 </td>
@@ -115,6 +127,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                     className="input !py-1 !text-sm w-[80px]"
                     value={lv.ante}
                     disabled={lv.isBreak}
+                    aria-label={`Level ${lv.level} ante`}
                     onChange={(n) => updateLevel(i, { ante: n })}
                   />
                 </td>
@@ -124,6 +137,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                     value={Math.round(lv.durationSec / 60)}
                     min={1}
                     emptyValue={1}
+                    aria-label={`Level ${lv.level} duration in minutes`}
                     onChange={(n) =>
                       updateLevel(i, { durationSec: Math.max(1, n) * 60 })
                     }
@@ -133,6 +147,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                   <input
                     type="checkbox"
                     checked={!!lv.isBreak}
+                    aria-label={`Level ${lv.level} is a break`}
                     onChange={(e) =>
                       updateLevel(i, { isBreak: e.target.checked })
                     }
@@ -144,7 +159,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                       className="btn btn-sm btn-ghost !px-2"
                       onClick={() => moveLevel(i, -1)}
                       disabled={i === 0}
-                      title="Move up"
+                      aria-label={`Move level ${lv.level} up`}
                     >
                       ↑
                     </button>
@@ -152,13 +167,14 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                       className="btn btn-sm btn-ghost !px-2"
                       onClick={() => moveLevel(i, 1)}
                       disabled={i === structure.length - 1}
-                      title="Move down"
+                      aria-label={`Move level ${lv.level} down`}
                     >
                       ↓
                     </button>
                     <button
                       className="btn btn-sm btn-danger !px-2"
                       onClick={() => removeLevel(i)}
+                      aria-label={`Remove level ${lv.level}`}
                     >
                       ×
                     </button>

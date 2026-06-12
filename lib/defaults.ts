@@ -7,22 +7,22 @@ import type {
 } from "./types";
 
 export const DEFAULT_BLIND_STRUCTURE: BlindLevel[] = [
-  { level: 1, smallBlind: 100, bigBlind: 200, ante: 0, durationSec: 20 * 60 },
-  { level: 2, smallBlind: 200, bigBlind: 400, ante: 0, durationSec: 20 * 60 },
-  { level: 3, smallBlind: 300, bigBlind: 600, ante: 0, durationSec: 20 * 60 },
-  { level: 4, smallBlind: 400, bigBlind: 800, ante: 0, durationSec: 20 * 60 },
-  { level: 5, smallBlind: 500, bigBlind: 1000, ante: 0, durationSec: 20 * 60 },
-  { level: 6, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
-  { level: 7, smallBlind: 500, bigBlind: 1500, ante: 0, durationSec: 20 * 60 },
-  { level: 8, smallBlind: 1000, bigBlind: 2000, ante: 0, durationSec: 20 * 60 },
-  { level: 9, smallBlind: 2000, bigBlind: 4000, ante: 0, durationSec: 20 * 60 },
-  { level: 10, smallBlind: 3000, bigBlind: 6000, ante: 0, durationSec: 20 * 60 },
-  { level: 11, smallBlind: 4000, bigBlind: 8000, ante: 0, durationSec: 20 * 60 },
-  { level: 12, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
-  { level: 13, smallBlind: 5000, bigBlind: 10000, ante: 0, durationSec: 20 * 60 },
-  { level: 14, smallBlind: 10000, bigBlind: 20000, ante: 0, durationSec: 20 * 60 },
-  { level: 15, smallBlind: 20000, bigBlind: 40000, ante: 0, durationSec: 20 * 60 },
-  { level: 16, smallBlind: 30000, bigBlind: 60000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_1", level: 1, smallBlind: 100, bigBlind: 200, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_2", level: 2, smallBlind: 200, bigBlind: 400, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_3", level: 3, smallBlind: 300, bigBlind: 600, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_4", level: 4, smallBlind: 400, bigBlind: 800, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_5", level: 5, smallBlind: 500, bigBlind: 1000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_6", level: 6, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
+  { id: "bl_def_7", level: 7, smallBlind: 500, bigBlind: 1500, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_8", level: 8, smallBlind: 1000, bigBlind: 2000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_9", level: 9, smallBlind: 2000, bigBlind: 4000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_10", level: 10, smallBlind: 3000, bigBlind: 6000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_11", level: 11, smallBlind: 4000, bigBlind: 8000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_12", level: 12, smallBlind: 0, bigBlind: 0, ante: 0, durationSec: 10 * 60, isBreak: true },
+  { id: "bl_def_13", level: 13, smallBlind: 5000, bigBlind: 10000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_14", level: 14, smallBlind: 10000, bigBlind: 20000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_15", level: 15, smallBlind: 20000, bigBlind: 40000, ante: 0, durationSec: 20 * 60 },
+  { id: "bl_def_16", level: 16, smallBlind: 30000, bigBlind: 60000, ante: 0, durationSec: 20 * 60 },
 ];
 
 export const DEFAULT_PAYOUTS: PayoutSpot[] = [

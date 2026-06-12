@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useClockTick } from "@/lib/clock";
+import { overlayDepth, pushOverlay } from "@/lib/overlayStack";
 import { useTournament } from "@/lib/store";
 import BlindClock from "./BlindClock";
 import StatsBar from "./StatsBar";
@@ -44,18 +45,9 @@ export default function DashboardClient() {
         return;
       }
       if (hasPendingRebalance) return;
-      if (e.key === "Escape") {
-        if (finishOpen) {
-          setFinishOpen(false);
-          return;
-        }
-        if (openPanel) {
-          setOpenPanel(null);
-          return;
-        }
-      }
-      if (finishOpen) return;
-      if (openPanel) return;
+      // Overlays (side panel, modals) register on the stack and handle
+      // Escape themselves — only the topmost layer closes.
+      if (overlayDepth() > 0) return;
       if (e.code === "Space") {
         e.preventDefault();
         toggleClock();
@@ -178,21 +170,27 @@ function SidePanel({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  useEffect(() => pushOverlay(onClose), [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-40 flex justify-end bg-black/50 backdrop-blur-sm"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
     >
       <div
-        className="h-[100dvh] w-full max-w-2xl bg-[var(--bg)] shadow-2xl flex flex-col overflow-hidden animate-slide-in"
+        className="h-[100dvh] w-full max-w-2xl bg-[var(--bg)] shadow-2xl flex flex-col overflow-hidden animate-slide-in outline-none"
         onClick={(e) => e.stopPropagation()}
+        tabIndex={-1}
       >
         <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
           <div className="label">{title}</div>
           <button
             className="btn btn-ghost btn-sm"
             onClick={onClose}
-            title="Close (Esc)"
+            aria-label={`Close ${title}`}
           >
             ×
           </button>

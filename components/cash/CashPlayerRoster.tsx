@@ -50,7 +50,11 @@ export default function CashPlayerRoster() {
           openAdd();
         }}
       >
+        <label htmlFor="cash-add-player" className="sr-only">
+          Player name
+        </label>
         <input
+          id="cash-add-player"
           className="input"
           placeholder="Player name"
           value={addName}
@@ -157,8 +161,16 @@ export default function CashPlayerRoster() {
                   </span>
                   <button
                     className="btn btn-ghost btn-sm !px-2 !py-0.5"
-                    onClick={() => reopenPlayer(p.id)}
-                    title="Re-enter this player"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Reopen ${p.name}? Their cash-out will be cleared and they become active again.`,
+                        )
+                      ) {
+                        reopenPlayer(p.id);
+                      }
+                    }}
+                    aria-label={`Reopen ${p.name}`}
                   >
                     Undo
                   </button>
