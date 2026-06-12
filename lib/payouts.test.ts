@@ -5,7 +5,7 @@ import {
   computeChopAmounts,
   floorTo,
   CASH_INCREMENT,
-} from "./payouts.ts";
+} from "./payouts";
 
 test("floorTo snaps down to increment", () => {
   assert.equal(floorTo(47, 5), 45);

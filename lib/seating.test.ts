@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { randomAssign } from "./seating.ts";
-import type { Player, Table } from "./types.ts";
+import { randomAssign } from "./seating";
+import type { Player, Table } from "./types";
 
 const tables: Table[] = [
   { id: "t1", name: "Table 1", seatCount: 3 },

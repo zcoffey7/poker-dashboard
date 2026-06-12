@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeStats, computeNextBreak } from "./selectors.ts";
-import type { BlindLevel, Player } from "./types.ts";
+import { computeStats, computeNextBreak } from "./selectors";
+import type { BlindLevel, Player } from "./types";
 
 const levels: BlindLevel[] = [
   {

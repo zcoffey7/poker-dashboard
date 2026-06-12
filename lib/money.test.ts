@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toCents, fromCents, fmtMoneyCents, fmtSignedCents } from "./money.ts";
+import { toCents, fromCents, fmtMoneyCents, fmtSignedCents } from "./money";
 
 test("toCents rounds dollars to integer cents", () => {
   assert.equal(toCents(20), 2000);

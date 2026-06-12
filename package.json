@@ -8,7 +8,7 @@
     "start": "npx serve out",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:unit": "node --experimental-strip-types --test --test-reporter=spec lib/*.test.ts",
+    "test:unit": "tsx --test --test-reporter=spec lib/*.test.ts",
     "test:integration": "node --test --test-reporter=spec scripts/standings-integration.test.mjs",
     "test": "npm run test:unit && npm run test:integration"
   },
@@ -31,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.2.9",
     "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }
