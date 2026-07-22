@@ -1,0 +1,20 @@
+{
+  "games": [
+    {
+      "id": "2026-07-21-home-cash-game",
+      "date": "2026-07-21",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 168,
+      "players": [
+        { "name": "Mercer", "buyIn": 45, "cashOut": 90, "buyIns": 1 },
+        { "name": "Ham", "buyIn": 40, "cashOut": 75, "buyIns": 1 },
+        { "name": "Coffey", "buyIn": 100, "cashOut": 115, "buyIns": 2 },
+        { "name": "Vallis", "buyIn": 45, "cashOut": 50, "buyIns": 3 },
+        { "name": "Martell", "buyIn": 40, "cashOut": 15, "buyIns": 1 },
+        { "name": "Randell", "buyIn": 40, "cashOut": 10, "buyIns": 1 },
+        { "name": "Rodgers", "buyIn": 50, "cashOut": 0, "buyIns": 3 }
+      ]
+    }
+  ]
+}

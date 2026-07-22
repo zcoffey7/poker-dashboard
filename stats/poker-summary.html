@@ -495,6 +495,7 @@
         {
           id: "overall",
           label: "Overall",
+          type: "leaderboard",
           url: "./PokerSummary.csv",
           minGames: MIN_GAMES,
           eyebrow: "All sessions, rolling totals",
@@ -502,6 +503,7 @@
         {
           id: "tournament",
           label: "Tournament",
+          type: "leaderboard",
           url: "./PokerTournamentSummary.csv",
           minGames: MIN_GAMES_MODE,
           eyebrow: "Tournament sessions only",
@@ -509,9 +511,17 @@
         {
           id: "cash",
           label: "Cash Game",
+          type: "leaderboard",
           url: "./PokerCashSummary.csv",
           minGames: MIN_GAMES_MODE,
           eyebrow: "Cash-game sessions only",
+        },
+        {
+          id: "history",
+          label: "History",
+          type: "history",
+          url: "./games.json",
+          eyebrow: "Every session, most recent first",
         },
       ];
       const DEFAULT_TAB = "overall";
@@ -621,7 +631,12 @@
 
         const byTab = {};
         for (const { tab, text, lastModified } of fetched) {
-          byTab[tab.id] = { players: parseCsv(text, tab.minGames), lastModified };
+          if (tab.type === "history") {
+            const parsed = JSON.parse(text);
+            byTab[tab.id] = { games: parsed.games || [], lastModified };
+          } else {
+            byTab[tab.id] = { players: parseCsv(text, tab.minGames), lastModified };
+          }
         }
 
         applyUnifiedHues(byTab);
@@ -637,10 +652,22 @@
         const seen = new Set();
         const synthetic = [];
         for (const tab of TABS) {
-          for (const p of byTab[tab.id].players) {
-            if (!seen.has(p.name)) {
-              seen.add(p.name);
-              synthetic.push({ name: p.name });
+          if (tab.type === "leaderboard" && byTab[tab.id]) {
+            for (const p of byTab[tab.id].players) {
+              if (!seen.has(p.name)) {
+                seen.add(p.name);
+                synthetic.push({ name: p.name });
+              }
+            }
+          }
+        }
+        if (byTab.history && byTab.history.games) {
+          for (const game of byTab.history.games) {
+            for (const p of game.players) {
+              if (!seen.has(p.name)) {
+                seen.add(p.name);
+                synthetic.push({ name: p.name });
+              }
             }
           }
         }
@@ -648,8 +675,17 @@
         assignHues(synthetic);
         const hueByName = new Map(synthetic.map((s) => [s.name, s.hue]));
         for (const tab of TABS) {
-          for (const p of byTab[tab.id].players) {
-            p.hue = hueByName.get(p.name) ?? p.hue;
+          if (tab.type === "leaderboard" && byTab[tab.id]) {
+            for (const p of byTab[tab.id].players) {
+              p.hue = hueByName.get(p.name) ?? p.hue;
+            }
+          }
+        }
+        if (byTab.history && byTab.history.games) {
+          for (const game of byTab.history.games) {
+            for (const p of game.players) {
+              p.hue = hueByName.get(p.name) ?? p.hue;
+            }
           }
         }
       }
@@ -713,7 +749,13 @@
       }
 
       function buildBlurb(ctx) {
-        const { players, totals, tab } = ctx;
+        const { players, totals, tab, games } = ctx;
+        if (tab.id === "history") {
+          if (!games || !games.length) {
+            return `${tab.eyebrow}. No sessions recorded yet — they'll appear here after your first game.`;
+          }
+          return `${games.length} session${games.length === 1 ? "" : "s"} recorded, most recent first.`;
+        }
         if (!players.length || !totals) {
           return `${tab.eyebrow}. No qualifying sessions yet — keep playing and they'll show up here.`;
         }
@@ -926,6 +968,103 @@
         );
       }
 
+      function fmtGameDate(dateStr) {
+        const parts = dateStr.split("-");
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return months[m - 1] + " " + d + ", " + y;
+      }
+
+      function fmtDuration(minutes) {
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        if (h === 0) return m + "m";
+        if (m === 0) return h + "h";
+        return h + "h " + m + "m";
+      }
+
+      function buildHistory(ctx) {
+        const { games } = ctx;
+        if (!games || !games.length) {
+          return el(
+            "section",
+            { class: "card empty-state stack stack-10" },
+            el("h2", {}, "History — No sessions yet"),
+            el("p", { class: "section-sub" }, "No sessions recorded yet. Game history will appear here after your first session."),
+          );
+        }
+
+        const cards = games.map((game) => {
+          const players = game.players || [];
+          const totalIn = players.reduce((s, p) => s + p.buyIn, 0);
+          const totalOut = players.reduce((s, p) => s + p.cashOut, 0);
+          const diff = totalOut - totalIn;
+
+          const sorted = players
+            .map((p) => ({ name: p.name, buyIn: p.buyIn, cashOut: p.cashOut, buyIns: p.buyIns, hue: p.hue, net: p.cashOut - p.buyIn }))
+            .sort((a, b) => b.net - a.net);
+
+          const modeLabel = game.mode === "tournament" ? "Tournament" : "Cash";
+          const durationStr = game.durationMinutes ? fmtDuration(game.durationMinutes) : null;
+          const subParts = [
+            fmtGameDate(game.date),
+            modeLabel,
+            durationStr,
+            players.length + " players",
+            "$" + totalIn + " in play",
+          ].filter(Boolean).join(" · ");
+
+          const diffTone = diff === 0 ? "tertiary" : diff > 0 ? "gain-text" : "loss-text";
+          const diffLabel = diff === 0 ? "Balanced" : fmtSigned(diff);
+
+          const items = sorted.map((p, i) => {
+            const net = p.net;
+            const rowClass = net > 0 ? "gain" : net < 0 ? "loss" : "";
+            const tone = net > 0 ? "gain-text" : net < 0 ? "loss-text" : "tertiary";
+            const isLeader = i === 0 && net > 0;
+            const buyInsNote = p.buyIns > 1 ? " · " + p.buyIns + "× buy-in" : "";
+            return el(
+              "li",
+              { class: "pcard " + rowClass + (isLeader ? " leader" : "") },
+              el("div", { class: "rank" }, "#" + (i + 1)),
+              avatar(p),
+              el(
+                "div",
+                { class: "pinfo" },
+                el(
+                  "div",
+                  { class: "pinfo-top" },
+                  el("span", { class: "pname-l" }, p.name),
+                  el("span", { class: "headline-stat " + tone }, fmtSigned(net)),
+                ),
+                el(
+                  "div",
+                  { class: "pinfo-bot" },
+                  el("span", { class: "meta" }, "$" + p.buyIn + " \u2192 $" + p.cashOut + buyInsNote),
+                ),
+              ),
+            );
+          });
+
+          return el(
+            "section",
+            { class: "card stack stack-14" },
+            el(
+              "div",
+              { class: "section-head" },
+              el("h2", {}, game.title),
+              el("span", { class: diffTone + " small tabular" }, diffLabel),
+            ),
+            el("p", { class: "section-sub" }, subParts),
+            el("ol", { class: "player-list" }, ...items),
+          );
+        });
+
+        return el("div", { class: "stack stack-20" }, ...cards);
+      }
+
       function computeTotals(players) {
         const totalGames = players.reduce((s, p) => s + p.games, 0);
         const totalBuyIn = players.reduce((s, p) => s + p.buyIn, 0);
@@ -1029,7 +1168,6 @@
 
         const tab = TABS.find((t) => t.id === state.activeTab) || TABS[0];
         const entry = state.data[tab.id];
-        const players = entry.players;
         const lastModifiedDate = entry.lastModified ? new Date(entry.lastModified) : null;
 
         // The tab's content lives in a tabpanel labelled by its tab button,
@@ -1042,6 +1180,17 @@
           "aria-labelledby": "tab-" + tab.id,
           tabindex: "0",
         });
+
+        if (tab.type === "history") {
+          const games = entry.games;
+          const ctx = { games, tab, lastModifiedDate };
+          root.appendChild(buildHeader(ctx, loadAndRender));
+          panel.appendChild(buildHistory(ctx));
+          root.appendChild(panel);
+          return;
+        }
+
+        const players = entry.players;
 
         if (!players.length) {
           const ctx = { players, totals: null, lastModifiedDate, tab };

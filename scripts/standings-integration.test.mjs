@@ -34,6 +34,7 @@ const BUNDLE = [
   { src: "stats/PokerSummary.csv", dst: "standings/PokerSummary.csv" },
   { src: "stats/PokerTournamentSummary.csv", dst: "standings/PokerTournamentSummary.csv" },
   { src: "stats/PokerCashSummary.csv", dst: "standings/PokerCashSummary.csv" },
+  { src: "stats/games.json", dst: "standings/games.json" },
   { src: "stats/manifest.webmanifest", dst: "standings/manifest.webmanifest" },
   { src: "stats/standings-icon-180.png", dst: "standings/standings-icon-180.png" },
   { src: "stats/standings-icon-192.png", dst: "standings/standings-icon-192.png" },
@@ -53,6 +54,7 @@ const MIME = {
   ".csv": "text/csv; charset=utf-8",
   ".webmanifest": "application/manifest+json",
   ".png": "image/png",
+  ".json": "application/json; charset=utf-8",
 };
 
 let tmpDir;
@@ -425,7 +427,12 @@ test("page's parseCsv honors each tab's minGames against every served mode CSV",
   `;
   const { TABS, parseCsv, MIN_GAMES, MIN_GAMES_MODE } = new Function(harness)();
 
-  assert.equal(TABS.length, 3, "page should configure three tabs");
+  assert.equal(TABS.length, 4, "page should configure four tabs");
+  const historyTabEntry = TABS.find((t) => t.id === "history");
+  assert.ok(historyTabEntry, "expected a history tab in TABS");
+  assert.equal(historyTabEntry.type, "history", "history tab should have type 'history'");
+  assert.equal(historyTabEntry.url, "./games.json", "history tab url should be ./games.json");
+
   const overall = TABS.find((t) => t.id === "overall");
   assert.equal(overall.minGames, MIN_GAMES, "overall tab should use the MIN_GAMES floor");
   for (const mode of ["tournament", "cash"]) {
@@ -434,7 +441,7 @@ test("page's parseCsv honors each tab's minGames against every served mode CSV",
     assert.equal(tab.minGames, MIN_GAMES_MODE, `${mode} tab should use the MIN_GAMES_MODE floor`);
   }
 
-  for (const tab of TABS) {
+  for (const tab of TABS.filter((t) => t.type === "leaderboard")) {
     const csv = await (
       await fetch(`${baseUrl}/standings/${tab.url.replace("./", "")}?t=${Date.now()}`, {
         cache: "no-store",
@@ -475,7 +482,7 @@ test("applyUnifiedHues gives every player the same avatar hue on every tab", asy
   const { TABS, parseCsv, applyUnifiedHues } = new Function(harness)();
 
   const byTab = {};
-  for (const tab of TABS) {
+  for (const tab of TABS.filter((t) => t.type === "leaderboard")) {
     const csv = await (
       await fetch(`${baseUrl}/standings/${tab.url.replace("./", "")}?t=${Date.now()}`, {
         cache: "no-store",
@@ -486,7 +493,7 @@ test("applyUnifiedHues gives every player the same avatar hue on every tab", asy
   applyUnifiedHues(byTab);
 
   const hueByName = new Map();
-  for (const tab of TABS) {
+  for (const tab of TABS.filter((t) => t.type === "leaderboard")) {
     for (const p of byTab[tab.id].players) {
       if (hueByName.has(p.name)) {
         assert.equal(
@@ -580,4 +587,81 @@ test("deploy → refresh cycle: updating the bundled CSV is reflected in the nex
   } finally {
     fs.writeFileSync(csvPath, original);
   }
+});
+
+test("games.json is bundled and byte-identical to source", async () => {
+  const served = await (
+    await fetch(`${baseUrl}/standings/games.json?t=${Date.now()}`, { cache: "no-store" })
+  ).text();
+  const source = fs.readFileSync(path.join(REPO_ROOT, "stats/games.json"), "utf8");
+  assert.equal(served, source, "served games.json should be byte-identical to stats/games.json");
+});
+
+test("games.json is well-formed and internally consistent", async () => {
+  const served = await (
+    await fetch(`${baseUrl}/standings/games.json?t=${Date.now()}`, { cache: "no-store" })
+  ).text();
+  const data = JSON.parse(served);
+  assert.ok(Array.isArray(data.games), "games.json should have a .games array");
+  assert.ok(data.games.length > 0, "games array should be non-empty");
+
+  for (const game of data.games) {
+    assert.ok(game.id, `game should have an id`);
+    assert.ok(game.date, `game ${game.id} should have a date`);
+    assert.ok(game.title, `game ${game.id} should have a title`);
+    assert.ok(game.mode, `game ${game.id} should have a mode`);
+    assert.ok(Array.isArray(game.players), `game ${game.id} should have a players array`);
+    for (const p of game.players) {
+      assert.ok(p.name, `player in game ${game.id} should have a name`);
+      assert.ok(typeof p.buyIn === "number", `${p.name} in game ${game.id} should have numeric buyIn`);
+      assert.ok(typeof p.cashOut === "number", `${p.name} in game ${game.id} should have numeric cashOut`);
+      assert.ok(Number.isFinite(p.cashOut - p.buyIn), `${p.name}: net should be finite`);
+    }
+  }
+
+  const seeded = data.games.find((g) => g.id === "2026-07-21-home-cash-game");
+  assert.ok(seeded, "seeded game 2026-07-21-home-cash-game should exist");
+  assert.equal(seeded.players.length, 7, "seeded game should have 7 players");
+  const totalIn = seeded.players.reduce((s, p) => s + p.buyIn, 0);
+  const totalOut = seeded.players.reduce((s, p) => s + p.cashOut, 0);
+  assert.equal(totalIn, 360, "seeded game totalIn should be 360");
+  assert.equal(totalOut, 355, "seeded game totalOut should be 355");
+});
+
+test("history tab is wired into the page TABS config", async () => {
+  const html = await (await fetch(`${baseUrl}/standings/`)).text();
+  const scriptSrc = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+
+  const harness = `
+    const MIN_GAMES = ${scriptSrc.match(/const\s+MIN_GAMES\s*=\s*(\d+)/)[1]};
+    const MIN_GAMES_MODE = ${scriptSrc.match(/const\s+MIN_GAMES_MODE\s*=\s*(\d+)/)[1]};
+    const HUE_PALETTE = ${scriptSrc.match(/const\s+HUE_PALETTE\s*=\s*(\[[^\]]+\])/)[1]};
+    const TABS = ${extractConstArray(scriptSrc, "TABS")};
+    return { TABS };
+  `;
+  const { TABS } = new Function(harness)();
+
+  const histTab = TABS.find((t) => t.id === "history");
+  assert.ok(histTab, "expected a history tab in TABS");
+  assert.equal(histTab.type, "history", "history tab should have type 'history'");
+  assert.equal(histTab.url, "./games.json", "history tab url should be ./games.json");
+});
+
+test("the page defines a buildHistory renderer wired to the history tab", async () => {
+  const html = await (await fetch(`${baseUrl}/standings/`)).text();
+  const scriptSrc = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+
+  assert.ok(
+    scriptSrc.includes("function buildHistory"),
+    "script should declare a standalone buildHistory function",
+  );
+  assert.ok(
+    scriptSrc.includes("buildHistory(ctx)"),
+    "renderActive should call buildHistory with ctx",
+  );
+  // Verify the complete script (including buildHistory) still parses as valid JS.
+  assert.doesNotThrow(
+    () => new Function(scriptSrc),
+    "script with buildHistory should parse cleanly as JS",
+  );
 });

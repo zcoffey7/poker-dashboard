@@ -53,6 +53,7 @@ jobs:
           cp stats/PokerSummary.csv out/standings/PokerSummary.csv
           cp stats/PokerTournamentSummary.csv out/standings/PokerTournamentSummary.csv
           cp stats/PokerCashSummary.csv out/standings/PokerCashSummary.csv
+          cp stats/games.json out/standings/games.json
           cp stats/manifest.webmanifest out/standings/manifest.webmanifest
           cp stats/standings-icon-180.png out/standings/standings-icon-180.png
           cp stats/standings-icon-192.png out/standings/standings-icon-192.png
