@@ -1,6 +1,21 @@
 {
   "games": [
     {
+      "id": "2026-07-27-home-cash-game",
+      "date": "2026-07-27",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 160,
+      "players": [
+        { "name": "John", "buyIn": 40, "cashOut": 100, "buyIns": 1 },
+        { "name": "Martell", "buyIn": 20, "cashOut": 60, "buyIns": 1 },
+        { "name": "Ham", "buyIn": 40, "cashOut": 50, "buyIns": 2 },
+        { "name": "Xander", "buyIn": 20, "cashOut": 30, "buyIns": 1 },
+        { "name": "Randell", "buyIn": 80, "cashOut": 40, "buyIns": 4 },
+        { "name": "Coffey", "buyIn": 150, "cashOut": 70, "buyIns": 3 }
+      ]
+    },
+    {
       "id": "2026-07-21-home-cash-game",
       "date": "2026-07-21",
       "title": "Home Cash Game",
