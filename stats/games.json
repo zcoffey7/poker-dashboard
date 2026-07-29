@@ -9,8 +9,8 @@
       "players": [
         {
           "name": "Ham",
-          "buyIn": 40,
-          "cashOut": 290,
+          "buyIn": 30,
+          "cashOut": 280,
           "buyIns": 2
         },
         {
