@@ -1,18 +1,99 @@
 {
   "games": [
     {
+      "id": "2026-07-29-home-game-tournament",
+      "date": "2026-07-29",
+      "title": "Home Game Tournament",
+      "mode": "tournament",
+      "durationMinutes": 236,
+      "players": [
+        {
+          "name": "Ham",
+          "buyIn": 40,
+          "cashOut": 290,
+          "buyIns": 2
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 90,
+          "cashOut": 0,
+          "buyIns": 4
+        },
+        {
+          "name": "Derek",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 50,
+          "cashOut": 0,
+          "buyIns": 2
+        },
+        {
+          "name": "Xander",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Swain",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
       "id": "2026-07-27-home-cash-game",
       "date": "2026-07-27",
       "title": "Home Cash Game",
       "mode": "cash",
       "durationMinutes": 160,
       "players": [
-        { "name": "John", "buyIn": 40, "cashOut": 100, "buyIns": 1 },
-        { "name": "Martell", "buyIn": 20, "cashOut": 60, "buyIns": 1 },
-        { "name": "Ham", "buyIn": 40, "cashOut": 50, "buyIns": 2 },
-        { "name": "Xander", "buyIn": 20, "cashOut": 30, "buyIns": 1 },
-        { "name": "Randell", "buyIn": 80, "cashOut": 40, "buyIns": 4 },
-        { "name": "Coffey", "buyIn": 150, "cashOut": 70, "buyIns": 3 }
+        {
+          "name": "John",
+          "buyIn": 40,
+          "cashOut": 100,
+          "buyIns": 1
+        },
+        {
+          "name": "Martell",
+          "buyIn": 20,
+          "cashOut": 60,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 40,
+          "cashOut": 50,
+          "buyIns": 2
+        },
+        {
+          "name": "Xander",
+          "buyIn": 20,
+          "cashOut": 30,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 80,
+          "cashOut": 40,
+          "buyIns": 4
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 150,
+          "cashOut": 70,
+          "buyIns": 3
+        }
       ]
     },
     {
@@ -22,13 +103,48 @@
       "mode": "cash",
       "durationMinutes": 168,
       "players": [
-        { "name": "Mercer", "buyIn": 45, "cashOut": 90, "buyIns": 1 },
-        { "name": "Ham", "buyIn": 40, "cashOut": 75, "buyIns": 1 },
-        { "name": "Coffey", "buyIn": 100, "cashOut": 115, "buyIns": 2 },
-        { "name": "Vallis", "buyIn": 45, "cashOut": 50, "buyIns": 3 },
-        { "name": "Martell", "buyIn": 40, "cashOut": 15, "buyIns": 1 },
-        { "name": "Randell", "buyIn": 40, "cashOut": 10, "buyIns": 1 },
-        { "name": "Rodgers", "buyIn": 50, "cashOut": 0, "buyIns": 3 }
+        {
+          "name": "Mercer",
+          "buyIn": 45,
+          "cashOut": 90,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 40,
+          "cashOut": 75,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 100,
+          "cashOut": 115,
+          "buyIns": 2
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 45,
+          "cashOut": 50,
+          "buyIns": 3
+        },
+        {
+          "name": "Martell",
+          "buyIn": 40,
+          "cashOut": 15,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 40,
+          "cashOut": 10,
+          "buyIns": 1
+        },
+        {
+          "name": "Rodgers",
+          "buyIn": 50,
+          "cashOut": 0,
+          "buyIns": 3
+        }
       ]
     }
   ]
