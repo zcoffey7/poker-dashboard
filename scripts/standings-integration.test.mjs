@@ -225,6 +225,43 @@ test("empty per-mode CSVs have a well-formed TOTAL row and parse to zero qualify
   }
 });
 
+test("every CSV row's derived columns agree with its Games / Total Buy-In / Total Cash Out", async () => {
+  // The TOTAL-row checks above only prove a CSV is self-consistent in aggregate,
+  // so a row whose Games count drifts out of step with its already-computed
+  // averages sails through them. Net per Game is rendered directly by the page,
+  // which makes that drift visible to readers.
+  const round2 = (n) =>
+    ((n < 0 ? -1 : 1) * Math.round(Math.abs(n) * 100 + Number.EPSILON)) / 100;
+  const money = (n) => round2(n).toFixed(2);
+
+  for (const { dst } of BUNDLE.filter((b) => b.dst.endsWith(".csv"))) {
+    const csv = await (
+      await fetch(`${baseUrl}/${dst}?t=${Date.now()}`, { cache: "no-store" })
+    ).text();
+    const rows = csv
+      .replace(/\r\n?/g, "\n")
+      .split("\n")
+      .filter((l) => l.trim())
+      .slice(1)
+      .map((l) => l.split(",").map((s) => s.trim()))
+      .filter((c) => c.length >= 8 && c[1] && c[1] !== "TOTAL");
+
+    for (const cols of rows) {
+      const [games, name, buyIn, avgBuyIn, cashOut, avgCashOut, net, netPerGame] = cols;
+      const g = parseInt(games, 10);
+      const tbi = parseFloat(buyIn);
+      const tco = parseFloat(cashOut);
+      const expNet = round2(tco - tbi);
+      const where = `${dst} row "${name}" (Games=${games})`;
+
+      assert.equal(avgBuyIn, money(tbi / g), `${where} Avg Buy-In`);
+      assert.equal(avgCashOut, money(tco / g), `${where} Avg Cash Out`);
+      assert.equal(net, money(expNet), `${where} Net`);
+      assert.equal(netPerGame, money(expNet / g), `${where} Net per Game`);
+    }
+  }
+});
+
 test("page references every mode CSV via relative path + cache-busting + cache: no-store", async () => {
   const html = await (await fetch(`${baseUrl}/standings/`)).text();
   // All three CSVs must be referenced via the page's TABS config so the
