@@ -20,6 +20,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Prerequisite for the OIDC deploy path below: registers GitHub Actions
+      # as the Pages deployment source. Without it, deploy-pages can create a
+      # deployment that Pages never picks up (hangs at deployment_queued).
+      - uses: actions/configure-pages@v5
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
