@@ -484,7 +484,7 @@
     <main class="page stack stack-20" id="root"></main>
 
     <script>
-      const MIN_GAMES = 5;
+      const MIN_GAMES = 3;
       // Mode CSVs (Tournament/Cash) start fresh and accumulate one session at
       // a time, so a 5-game floor would hide every player for weeks. While
       // those tabs are still building up, show every player who has played
@@ -553,12 +553,12 @@
         return "$" + Math.abs(n).toLocaleString();
       }
 
-      // Curated palette of 12 visually distinct hues. We deliberately skip
+      // Curated palette of 15 visually distinct hues. We deliberately skip
       // the 130-175° range (would clash with the emerald gain bars) and the
       // 335-10° range (would clash with the rose loss bars) so an avatar
       // never reads as a P/L signal. Ordered to maximize contrast between
       // neighboring palette slots.
-      const HUE_PALETTE = [15, 220, 45, 280, 60, 200, 180, 305, 30, 255, 100, 240];
+      const HUE_PALETTE = [15, 220, 45, 280, 60, 200, 180, 305, 30, 255, 100, 240, 120, 80, 320];
 
       function assignHues(players) {
         // Stable alphabetical assignment so a player's color doesn't change
