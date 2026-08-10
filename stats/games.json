@@ -1,6 +1,107 @@
 {
   "games": [
     {
+      "id": "2026-08-09-home-game-tournament",
+      "date": "2026-08-09",
+      "title": "Home Game Tournament",
+      "mode": "tournament",
+      "players": [
+        {
+          "name": "Xander",
+          "buyIn": 30,
+          "cashOut": 230,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 50,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Brods",
+          "buyIn": 60,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Toby",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
+      "id": "2026-08-07-home-cash-game",
+      "date": "2026-08-07",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 139,
+      "players": [
+        {
+          "name": "Randell",
+          "buyIn": 20,
+          "cashOut": 105,
+          "buyIns": 1
+        },
+        {
+          "name": "Martell",
+          "buyIn": 50,
+          "cashOut": 80,
+          "buyIns": 3
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 20,
+          "cashOut": 40,
+          "buyIns": 1
+        },
+        {
+          "name": "Xander",
+          "buyIn": 20,
+          "cashOut": 40,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 50,
+          "cashOut": 40,
+          "buyIns": 2
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 120,
+          "cashOut": 80,
+          "buyIns": 2
+        },
+        {
+          "name": "Toby",
+          "buyIn": 85,
+          "cashOut": 0,
+          "buyIns": 2
+        }
+      ]
+    },
+    {
       "id": "2026-08-05-home-cash-game",
       "date": "2026-08-05",
       "title": "Home Cash Game",
