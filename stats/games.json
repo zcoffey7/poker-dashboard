@@ -1,6 +1,51 @@
 {
   "games": [
     {
+      "id": "2026-08-17-home-cash-game",
+      "date": "2026-08-17",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 261,
+      "players": [
+        {
+          "name": "Sebs",
+          "buyIn": 20,
+          "cashOut": 100,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 30,
+          "cashOut": 80,
+          "buyIns": 1
+        },
+        {
+          "name": "Swain",
+          "buyIn": 80,
+          "cashOut": 125,
+          "buyIns": 3
+        },
+        {
+          "name": "Randell",
+          "buyIn": 40,
+          "cashOut": 65,
+          "buyIns": 1
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 50,
+          "cashOut": 0,
+          "buyIns": 3
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 150,
+          "cashOut": 0,
+          "buyIns": 6
+        }
+      ]
+    },
+    {
       "id": "2026-08-09-home-game-tournament",
       "date": "2026-08-09",
       "title": "Home Game Tournament",
