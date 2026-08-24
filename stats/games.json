@@ -1,6 +1,134 @@
 {
   "games": [
     {
+      "id": "2026-08-23-home-game-tournament",
+      "date": "2026-08-23",
+      "title": "Home Game Tournament",
+      "mode": "tournament",
+      "durationMinutes": 674,
+      "players": [
+        {
+          "name": "Coffey",
+          "buyIn": 30,
+          "cashOut": 160,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 30,
+          "cashOut": 10,
+          "buyIns": 1
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 50,
+          "cashOut": 0,
+          "buyIns": 2
+        },
+        {
+          "name": "Toby",
+          "buyIn": 40,
+          "cashOut": 0,
+          "buyIns": 2
+        }
+      ]
+    },
+    {
+      "id": "2026-08-22-home-cash-game",
+      "date": "2026-08-22",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 153,
+      "players": [
+        {
+          "name": "Toby",
+          "buyIn": 40,
+          "cashOut": 110,
+          "buyIns": 1
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 70,
+          "cashOut": 85,
+          "buyIns": 2
+        },
+        {
+          "name": "Martell",
+          "buyIn": 20,
+          "cashOut": 25,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 80,
+          "cashOut": 80,
+          "buyIns": 2
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 40,
+          "cashOut": 20,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 80,
+          "cashOut": 0,
+          "buyIns": 2
+        }
+      ]
+    },
+    {
+      "id": "2026-08-20-home-cash-game",
+      "date": "2026-08-20",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "players": [
+        {
+          "name": "Ham",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 40,
+          "cashOut": 45,
+          "buyIns": 1
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 40,
+          "cashOut": 100,
+          "buyIns": 1
+        },
+        {
+          "name": "Toby",
+          "buyIn": 40,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 60,
+          "cashOut": 35,
+          "buyIns": 1
+        },
+        {
+          "name": "Xander",
+          "buyIn": 30,
+          "cashOut": 60,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
       "id": "2026-08-17-home-cash-game",
       "date": "2026-08-17",
       "title": "Home Cash Game",

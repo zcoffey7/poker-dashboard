@@ -99,6 +99,7 @@ Also extract session-level fields for `games.json`:
 | `Chris` | `Toby` |
 | `Me` (when typed by the user) | `Coffey` |
 | `Hounsell` | `Xander` |
+| `Kyle` | `Martell` |
 
 If any *new* unrecognized name appears, ask with `AskQuestion` whether it's a new player or an alias for an existing one before writing. Add confirmed aliases to this table.
 
