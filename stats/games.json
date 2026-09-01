@@ -1,6 +1,94 @@
 {
   "games": [
     {
+      "id": "2026-08-31-home-game-tournament",
+      "date": "2026-08-31",
+      "title": "Home Game Tournament",
+      "mode": "tournament",
+      "players": [
+        {
+          "name": "Mercer",
+          "buyIn": 30,
+          "cashOut": 200,
+          "buyIns": 1
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Toby",
+          "buyIn": 50,
+          "cashOut": 60,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 60,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 90,
+          "cashOut": 0,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
+      "id": "2026-08-27-home-cash-game",
+      "date": "2026-08-27",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "players": [
+        {
+          "name": "Martell",
+          "buyIn": 20,
+          "cashOut": 85,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 40,
+          "cashOut": 75,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 20,
+          "cashOut": 55,
+          "buyIns": 1
+        },
+        {
+          "name": "Ben",
+          "buyIn": 60,
+          "cashOut": 85,
+          "buyIns": 1
+        },
+        {
+          "name": "Toby",
+          "buyIn": 40,
+          "cashOut": 40,
+          "buyIns": 1
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 60,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 100,
+          "cashOut": 0,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
       "id": "2026-08-23-home-game-tournament",
       "date": "2026-08-23",
       "title": "Home Game Tournament",
