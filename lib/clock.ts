@@ -92,12 +92,12 @@ export function fmtTime(totalSec: number): string {
 /**
  * Compact duration formatter.
  * < 1 hour  -> "MM:SS"  (e.g. "45:30")
- * >= 1 hour -> "Xh YYm" (e.g. "1h 40m")
+ * >= 1 hour -> "1hr 10m" (never "70:00")
  */
 export function fmtDuration(totalSec: number): string {
   if (totalSec < 0) totalSec = 0;
   if (totalSec < 3600) return fmtTime(totalSec);
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
-  return `${h}h ${m.toString().padStart(2, "0")}m`;
+  return m > 0 ? `${h}hr ${m}m` : `${h}hr`;
 }

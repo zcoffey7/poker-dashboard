@@ -72,6 +72,33 @@ test("cash clocks are per-player and resume after reopen", async ({ page }) => {
   expect(await playedSeconds(page, "Bob")).toBeGreaterThanOrEqual(4);
 });
 
+test("cash roster shows the full name next to the clock on a phone", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/cash/");
+  await seatCashPlayer(page, "Coffey");
+
+  const nameBtn = page.getByRole("button", { name: "Coffey", exact: true });
+  await expect(nameBtn).toBeVisible();
+  await expect(playedClock(page, "Coffey")).toBeVisible();
+  const clipped = await nameBtn.evaluate(
+    (el) => el.scrollWidth > el.clientWidth + 1,
+  );
+  expect(clipped).toBe(false);
+});
+
+test("cash clock past an hour shows 1hr 10m, not 70 minutes", async ({
+  page,
+}) => {
+  await page.goto("/cash/");
+  await seatCashPlayer(page, "Alice");
+  await page.clock.fastForward(70 * 60 * 1000);
+  await expect(playedClock(page, "Alice")).toContainText("1hr 10m");
+  await expect(playedClock(page, "Alice")).not.toContainText("70");
+  await expect(playedClock(page, "Alice")).not.toContainText("1:10");
+});
+
 test("tournament clocks start with the game and freeze on elimination", async ({
   page,
 }) => {

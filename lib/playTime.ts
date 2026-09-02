@@ -70,16 +70,16 @@ function pad2(n: number): string {
 }
 
 /**
- * Live clock label. Always includes seconds so the UI visibly ticks.
- * < 1 hour  -> "MM:SS"
- * >= 1 hour -> "H:MM:SS"
+ * Live clock label.
+ * < 1 hour  -> "MM:SS" so the seconds tick
+ * >= 1 hour -> "1hr 10m" (never "70:00" or "1:10:00")
  */
 export function fmtPlayedClock(totalSec: number): string {
   if (totalSec < 0) totalSec = 0;
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = Math.floor(totalSec % 60);
-  if (h > 0) return `${h}:${pad2(m)}:${pad2(s)}`;
+  if (h > 0) return m > 0 ? `${h}hr ${m}m` : `${h}hr`;
   return `${pad2(m)}:${pad2(s)}`;
 }
 

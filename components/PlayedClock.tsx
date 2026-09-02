@@ -47,7 +47,7 @@ export default function PlayedClock({ name, intervals }: Props) {
   const label = fmtPlayedClock(sec);
   return (
     <span
-      className="inline-flex items-center gap-0.5 font-mono text-[11px] tabular-nums text-[var(--text-muted)] shrink-0"
+      className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[var(--text-muted)] shrink-0"
       title="Time played"
       aria-label={`${name} played ${label}`}
       data-played-seconds={String(sec)}
@@ -58,11 +58,48 @@ export default function PlayedClock({ name, intervals }: Props) {
   );
 }
 
+/**
+ * Name + clock as one unit so action buttons wrap instead of crushing the
+ * name down to a single truncated letter.
+ */
+export function PlayerNameClock({
+  name,
+  intervals,
+  onNameClick,
+  nameAriaLabel,
+  struck,
+  nameClassName = "",
+}: {
+  name: string;
+  intervals: PlayInterval[] | undefined;
+  onNameClick?: () => void;
+  nameAriaLabel?: string;
+  struck?: boolean;
+  nameClassName?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 min-w-[9.5rem] flex-1">
+      <button
+        type="button"
+        className={`text-left font-medium whitespace-nowrap cursor-pointer hover:underline underline-offset-2 ${
+          struck ? "line-through" : ""
+        } ${nameClassName}`}
+        onClick={onNameClick}
+        aria-label={nameAriaLabel}
+        title="View details"
+      >
+        {name}
+      </button>
+      <PlayedClock name={name} intervals={intervals} />
+    </div>
+  );
+}
+
 function ClockGlyph() {
   return (
     <svg
-      width="12"
-      height="12"
+      width="14"
+      height="14"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"

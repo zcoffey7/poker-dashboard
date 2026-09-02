@@ -6,7 +6,7 @@ import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 import BuyInDialog from "./BuyInDialog";
 import CashOutDialog from "./CashOutDialog";
 import CashPlayerDetailsModal from "./CashPlayerDetailsModal";
-import PlayedClock from "../PlayedClock";
+import { PlayerNameClock } from "../PlayedClock";
 
 export default function CashPlayerRoster() {
   const players = useCash((s) => s.players);
@@ -81,26 +81,23 @@ export default function CashPlayerRoster() {
           return (
             <div
               key={p.id}
-              className="flex items-center gap-2 text-sm px-2 py-1.5 rounded hover:bg-black/20"
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm px-2 py-1.5 rounded hover:bg-black/20"
             >
-              <button
-                className="flex-1 text-left truncate cursor-pointer hover:underline underline-offset-2 min-w-0"
-                onClick={() => setDetailsId(p.id)}
-                title="View details"
-              >
-                {p.name}
-              </button>
-              <PlayedClock name={p.name} intervals={p.playIntervals} />
+              <PlayerNameClock
+                name={p.name}
+                intervals={p.playIntervals}
+                onNameClick={() => setDetailsId(p.id)}
+              />
               <span
-                className="chip chip-accent text-[10px]"
+                className="chip chip-accent text-[10px] shrink-0"
                 title={`${p.buyIns.length} buy-in${p.buyIns.length === 1 ? "" : "s"}`}
               >
                 {p.buyIns.length}×
               </span>
-              <span className="font-mono text-xs tabular-nums min-w-[64px] text-right">
+              <span className="font-mono text-xs tabular-nums min-w-[64px] text-right shrink-0">
                 {fmtMoneyCents(totalIn)}
               </span>
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0 ml-auto">
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
                   onClick={() => setRebuyId(p.id)}
@@ -143,18 +140,16 @@ export default function CashPlayerRoster() {
               return (
                 <div
                   key={p.id}
-                  className="flex items-center gap-2 text-sm px-2 py-1 rounded text-[var(--text-muted)]"
+                  className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm px-2 py-1 rounded text-[var(--text-muted)]"
                 >
-                  <button
-                    className="flex-1 text-left truncate cursor-pointer hover:underline underline-offset-2 min-w-0 text-[var(--text)]"
-                    onClick={() => setDetailsId(p.id)}
-                    title="View details"
-                  >
-                    {p.name}
-                  </button>
-                  <PlayedClock name={p.name} intervals={p.playIntervals} />
+                  <PlayerNameClock
+                    name={p.name}
+                    intervals={p.playIntervals}
+                    onNameClick={() => setDetailsId(p.id)}
+                    nameClassName="text-[var(--text)]"
+                  />
                   <span
-                    className={`font-mono text-xs tabular-nums font-semibold min-w-[72px] text-right ${
+                    className={`font-mono text-xs tabular-nums font-semibold min-w-[72px] text-right shrink-0 ${
                       positive
                         ? "text-[var(--accent)]"
                         : "text-[var(--text-muted)]"
@@ -163,7 +158,7 @@ export default function CashPlayerRoster() {
                     {fmtSignedCents(net)}
                   </span>
                   <button
-                    className="btn btn-ghost btn-sm !px-2 !py-0.5"
+                    className="btn btn-ghost btn-sm !px-2 !py-0.5 shrink-0"
                     onClick={() => {
                       if (
                         confirm(
@@ -178,7 +173,7 @@ export default function CashPlayerRoster() {
                     Undo
                   </button>
                   <button
-                    className="btn btn-ghost btn-sm !px-2 !py-0.5"
+                    className="btn btn-ghost btn-sm !px-2 !py-0.5 shrink-0"
                     onClick={() => {
                       if (confirm(`Remove ${p.name} from the game?`))
                         removePlayer(p.id);

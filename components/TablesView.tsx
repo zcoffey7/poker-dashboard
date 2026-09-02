@@ -4,7 +4,7 @@ import { useTournament } from "@/lib/store";
 import { useMemo, useState } from "react";
 import PlayerDetailsModal from "./PlayerDetailsModal";
 import MovePlayerModal from "./MovePlayerModal";
-import PlayedClock from "./PlayedClock";
+import PlayedClock, { PlayerNameClock } from "./PlayedClock";
 
 export default function TablesView() {
   const tables = useTournament((s) => s.tables);
@@ -81,7 +81,7 @@ export default function TablesView() {
                 onClick={() => setMoveId(p.id)}
                 title="Seat player"
               >
-                <span className="truncate">{p.name}</span>
+                <span className="whitespace-nowrap">{p.name}</span>
                 <PlayedClock name={p.name} intervals={p.playIntervals} />
               </button>
             ))}
@@ -113,41 +113,40 @@ export default function TablesView() {
                   {seated.map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center gap-2 text-sm rounded-md px-2 py-1.5 hover:bg-black/20 transition-colors min-w-0"
+                      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm rounded-md px-2 py-1.5 hover:bg-black/20 transition-colors"
                     >
                       <span className="chip min-w-[28px] justify-center text-xs shrink-0">
                         {p.seat}
                       </span>
-                      <button
-                        className="flex-1 text-left truncate min-w-0 cursor-pointer hover:underline underline-offset-2"
-                        onClick={() => setDetailsId(p.id)}
-                        title="View details"
-                      >
-                        {p.name}
-                      </button>
-                      <PlayedClock name={p.name} intervals={p.playIntervals} />
-                      <button
-                        className="btn btn-sm px-2! py-0.5! shrink-0"
-                        title="Move to another table or seat"
-                        onClick={() => setMoveId(p.id)}
-                      >
-                        Move
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm px-2! py-0.5! shrink-0"
-                        aria-label={`Eliminate ${p.name}`}
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Eliminate ${p.name}? They'll be assigned the next finish place.`,
-                            )
-                          ) {
-                            eliminatePlayer(p.id);
-                          }
-                        }}
-                      >
-                        Out
-                      </button>
+                      <PlayerNameClock
+                        name={p.name}
+                        intervals={p.playIntervals}
+                        onNameClick={() => setDetailsId(p.id)}
+                      />
+                      <div className="flex gap-1 shrink-0 ml-auto">
+                        <button
+                          className="btn btn-sm px-2! py-0.5! shrink-0"
+                          title="Move to another table or seat"
+                          onClick={() => setMoveId(p.id)}
+                        >
+                          Move
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm px-2! py-0.5! shrink-0"
+                          aria-label={`Eliminate ${p.name}`}
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Eliminate ${p.name}? They'll be assigned the next finish place.`,
+                              )
+                            ) {
+                              eliminatePlayer(p.id);
+                            }
+                          }}
+                        >
+                          Out
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

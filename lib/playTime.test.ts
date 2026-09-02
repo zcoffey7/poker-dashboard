@@ -59,12 +59,15 @@ test("stop then start models a cash-out and rejoin", () => {
   assert.equal(playedMs(back, T0 + 40 * MIN), 8 * MIN + 10 * MIN);
 });
 
-test("fmtPlayedClock always shows seconds", () => {
+test("fmtPlayedClock uses MM:SS under an hour and hours past 60 minutes", () => {
   assert.equal(fmtPlayedClock(0), "00:00");
   assert.equal(fmtPlayedClock(5), "00:05");
   assert.equal(fmtPlayedClock(65), "01:05");
-  assert.equal(fmtPlayedClock(3600), "1:00:00");
-  assert.equal(fmtPlayedClock(3661), "1:01:01");
+  assert.equal(fmtPlayedClock(59 * 60 + 59), "59:59");
+  assert.equal(fmtPlayedClock(3600), "1hr");
+  assert.equal(fmtPlayedClock(70 * 60), "1hr 10m");
+  assert.equal(fmtPlayedClock(3661), "1hr 1m");
+  assert.equal(fmtPlayedClock(2 * 3600 + 5 * 60), "2hr 5m");
   assert.equal(fmtPlayedClock(-3), "00:00");
 });
 

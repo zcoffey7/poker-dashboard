@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTournament } from "@/lib/store";
 import PlayerDetailsModal from "./PlayerDetailsModal";
-import PlayedClock from "./PlayedClock";
+import { PlayerNameClock } from "./PlayedClock";
 
 export default function PlayerRoster() {
   const players = useTournament((s) => s.players);
@@ -145,16 +145,14 @@ export default function PlayerRoster() {
         {active.map((p) => (
           <div
             key={p.id}
-            className="flex items-center gap-2 text-sm px-2 py-1.5 rounded hover:bg-black/20"
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm px-2 py-1.5 rounded hover:bg-black/20"
           >
-            <button
-              className="flex-1 text-left truncate cursor-pointer hover:underline underline-offset-2 min-w-0"
-              onClick={() => setDetailsId(p.id)}
-              aria-label={`View details for ${p.name}`}
-            >
-              {p.name}
-            </button>
-            <PlayedClock name={p.name} intervals={p.playIntervals} />
+            <PlayerNameClock
+              name={p.name}
+              intervals={p.playIntervals}
+              onNameClick={() => setDetailsId(p.id)}
+              nameAriaLabel={`View details for ${p.name}`}
+            />
             {(p.rebuys ?? 0) > 0 && (
               <span
                 className="chip chip-accent text-[10px]"
@@ -171,7 +169,7 @@ export default function PlayerRoster() {
                 A{p.addOns}
               </span>
             )}
-            <div className="flex gap-1">
+            <div className="flex gap-1 shrink-0 ml-auto">
               {rebuyChips > 0 && (
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
@@ -222,28 +220,27 @@ export default function PlayerRoster() {
             {eliminated.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center gap-2 text-sm px-2 py-1 rounded text-[var(--text-muted)]"
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm px-2 py-1 rounded text-[var(--text-muted)]"
               >
-                <span className="chip chip-danger text-[10px] min-w-[30px] justify-center">
+                <span className="chip chip-danger text-[10px] min-w-[30px] justify-center shrink-0">
                   #{p.finishPlace}
                 </span>
+                <PlayerNameClock
+                  name={p.name}
+                  intervals={p.playIntervals}
+                  onNameClick={() => setDetailsId(p.id)}
+                  nameAriaLabel={`View details for ${p.name}`}
+                  struck
+                />
                 <button
-                  className="flex-1 text-left truncate line-through cursor-pointer hover:no-underline"
-                  onClick={() => setDetailsId(p.id)}
-                  aria-label={`View details for ${p.name}`}
-                >
-                  {p.name}
-                </button>
-                <PlayedClock name={p.name} intervals={p.playIntervals} />
-                <button
-                  className="btn btn-ghost btn-sm !px-2 !py-0.5"
+                  className="btn btn-ghost btn-sm !px-2 !py-0.5 shrink-0"
                   onClick={() => handleRestore(p)}
                   aria-label={`Restore ${p.name}`}
                 >
                   Undo
                 </button>
                 <button
-                  className="btn btn-ghost btn-sm !px-2 !py-0.5"
+                  className="btn btn-ghost btn-sm !px-2 !py-0.5 shrink-0"
                   onClick={() => handleRemove(p)}
                   title="Remove from tournament"
                 >
