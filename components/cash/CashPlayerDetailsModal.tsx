@@ -7,6 +7,7 @@ import CashOutForm from "./CashOutForm";
 import { StatBox } from "../StatTiles";
 import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
 import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
+import PlayedClock from "../PlayedClock";
 
 type Props = {
   playerId: string;
@@ -95,8 +96,9 @@ export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
                 {player.name}
               </button>
             )}
-            <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              {cashedOut ? "Cashed out" : "Active"}
+            <div className="text-xs text-[var(--text-muted)] mt-0.5 flex items-center gap-2">
+              <span>{cashedOut ? "Cashed out" : "Active"}</span>
+              <PlayedClock name={player.name} intervals={player.playIntervals} />
             </div>
           </div>
           <button

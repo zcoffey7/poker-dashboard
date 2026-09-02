@@ -6,6 +6,7 @@ import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 import BuyInDialog from "./BuyInDialog";
 import CashOutDialog from "./CashOutDialog";
 import CashPlayerDetailsModal from "./CashPlayerDetailsModal";
+import PlayedClock from "../PlayedClock";
 
 export default function CashPlayerRoster() {
   const players = useCash((s) => s.players);
@@ -89,6 +90,7 @@ export default function CashPlayerRoster() {
               >
                 {p.name}
               </button>
+              <PlayedClock name={p.name} intervals={p.playIntervals} />
               <span
                 className="chip chip-accent text-[10px]"
                 title={`${p.buyIns.length} buy-in${p.buyIns.length === 1 ? "" : "s"}`}
@@ -150,6 +152,7 @@ export default function CashPlayerRoster() {
                   >
                     {p.name}
                   </button>
+                  <PlayedClock name={p.name} intervals={p.playIntervals} />
                   <span
                     className={`font-mono text-xs tabular-nums font-semibold min-w-[72px] text-right ${
                       positive

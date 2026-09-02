@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ModalShell from "./ModalShell";
 import { useTournament } from "@/lib/store";
+import PlayedClock from "./PlayedClock";
 
 type Props = {
   playerId: string;
@@ -82,14 +83,17 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
                 }
               }}
             />
-            <div className="text-xs text-[var(--text-muted)] mt-2">
-              {player.eliminated
-                ? `Eliminated${
-                    player.finishPlace ? ` · Finished #${player.finishPlace}` : ""
-                  }`
-                : table
-                  ? `${table.name} · Seat ${player.seat}`
-                  : "Unseated"}
+            <div className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-2">
+              <span>
+                {player.eliminated
+                  ? `Eliminated${
+                      player.finishPlace ? ` · Finished #${player.finishPlace}` : ""
+                    }`
+                  : table
+                    ? `${table.name} · Seat ${player.seat}`
+                    : "Unseated"}
+              </span>
+              <PlayedClock name={player.name} intervals={player.playIntervals} />
             </div>
           </div>
           <button

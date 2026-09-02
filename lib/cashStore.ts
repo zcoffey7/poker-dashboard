@@ -4,6 +4,11 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { CashGameState, CashPlayer } from "./cashTypes";
 import { toCents } from "./money";
+import {
+  migrateCashIntervals,
+  startPlay,
+  stopPlay,
+} from "./playTime";
 
 function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
@@ -101,14 +106,16 @@ export const useCash = create<CashStore>()(
           s.players.map((p) => p.name),
         );
         const amountCents = Math.max(0, toCents(initialBuyIn));
+        const now = Date.now();
         const player: CashPlayer = {
           id: uid("cp"),
           name: unique,
-          buyIns: [{ id: uid("bi"), amount: amountCents, at: Date.now() }],
+          buyIns: [{ id: uid("bi"), amount: amountCents, at: now }],
+          playIntervals: [{ startedAt: now }],
         };
         set({
           players: [...s.players, player],
-          startedAt: s.startedAt ?? Date.now(),
+          startedAt: s.startedAt ?? now,
         });
       },
 
@@ -193,6 +200,7 @@ export const useCash = create<CashStore>()(
 
       cashOutPlayer: (id, amount, opts) => {
         const amtCents = Math.max(0, toCents(amount));
+        const now = Date.now();
         set((s) => ({
           players: s.players.map((p) =>
             p.id === id
@@ -200,21 +208,30 @@ export const useCash = create<CashStore>()(
                   ...p,
                   cashOut: {
                     amount: amtCents,
-                    at: Date.now(),
+                    at: now,
                     ...(opts?.viaEndGame ? { viaEndGame: true } : {}),
                   },
+                  playIntervals: stopPlay(p.playIntervals, now),
                 }
               : p,
           ),
         }));
       },
 
-      reopenPlayer: (id) =>
+      reopenPlayer: (id) => {
+        const now = Date.now();
         set((s) => ({
           players: s.players.map((p) =>
-            p.id === id ? { ...p, cashOut: undefined } : p,
+            p.id === id
+              ? {
+                  ...p,
+                  cashOut: undefined,
+                  playIntervals: startPlay(p.playIntervals, now),
+                }
+              : p,
           ),
-        })),
+        }));
+      },
 
       endGame: () => {
         const s = get();
@@ -226,16 +243,24 @@ export const useCash = create<CashStore>()(
         return true;
       },
 
-      reopenGame: () =>
+      reopenGame: () => {
+        const now = Date.now();
         set((s) => ({
           endedAt: undefined,
           // Undo the End Game settlement: players batch-cashed-out by the
           // end-game flow come back as active, while players who genuinely
           // left mid-game stay settled. Restores the exact pre-end state.
           players: s.players.map((p) =>
-            p.cashOut?.viaEndGame ? { ...p, cashOut: undefined } : p,
+            p.cashOut?.viaEndGame
+              ? {
+                  ...p,
+                  cashOut: undefined,
+                  playIntervals: startPlay(p.playIntervals, now),
+                }
+              : p,
           ),
-        })),
+        }));
+      },
 
       resetGame: () =>
         set({
@@ -247,33 +272,46 @@ export const useCash = create<CashStore>()(
     {
       name: "poker-cash-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
-        // v1 stored amounts as dollar floats. Convert to integer cents.
         if (!persisted || typeof persisted !== "object") return persisted;
-        if (version >= 2) return persisted;
-        const state = persisted as Partial<CashGameState>;
-        const toC = (n: unknown): number => {
-          const v = typeof n === "number" ? n : Number(n);
-          if (!Number.isFinite(v)) return 0;
-          return Math.round(v * 100);
-        };
-        return {
-          ...state,
-          smallBlind: toC(state.smallBlind),
-          bigBlind: toC(state.bigBlind),
-          defaultBuyIn: toC(state.defaultBuyIn),
-          players: (state.players ?? []).map((p) => ({
-            ...p,
-            buyIns: (p.buyIns ?? []).map((b) => ({
-              ...b,
-              amount: toC(b.amount),
+        let state = persisted as Partial<CashGameState>;
+        if (version < 2) {
+          // v1 stored amounts as dollar floats. Convert to integer cents.
+          const toC = (n: unknown): number => {
+            const v = typeof n === "number" ? n : Number(n);
+            if (!Number.isFinite(v)) return 0;
+            return Math.round(v * 100);
+          };
+          state = {
+            ...state,
+            smallBlind: toC(state.smallBlind),
+            bigBlind: toC(state.bigBlind),
+            defaultBuyIn: toC(state.defaultBuyIn),
+            players: (state.players ?? []).map((p) => ({
+              ...p,
+              buyIns: (p.buyIns ?? []).map((b) => ({
+                ...b,
+                amount: toC(b.amount),
+              })),
+              cashOut: p.cashOut
+                ? { ...p.cashOut, amount: toC(p.cashOut.amount) }
+                : p.cashOut,
             })),
-            cashOut: p.cashOut
-              ? { ...p.cashOut, amount: toC(p.cashOut.amount) }
-              : p.cashOut,
-          })),
-        } as CashGameState;
+          };
+        }
+        if (version < 3) {
+          // v3 records seated stints so time-played clocks survive cash-out
+          // and rejoin. Derive the first stint from timestamps we already had.
+          state = {
+            ...state,
+            players: (state.players ?? []).map((p) => ({
+              ...p,
+              playIntervals: migrateCashIntervals(p),
+            })),
+          };
+        }
+        return state as CashGameState;
       },
       // Persist only data fields; see the same pattern in lib/store.ts.
       partialize: (state) =>

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
 import { fmtMoneyCents, fmtSignedCents } from "@/lib/money";
 import { fmtDuration } from "@/lib/clock";
+import { playedSecOrNull } from "@/lib/playTime";
 import { StatCol, MiniStat } from "../StatTiles";
 
 type Row = {
@@ -30,11 +31,16 @@ export default function CashRecap() {
         const moneyIn = totalBuyIns(p);
         const payout = p.cashOut?.amount ?? 0;
         const net = payout - moneyIn;
-        let durationSec: number | null = null;
-        const firstBuyIn = p.buyIns[0]?.at;
-        const end = p.cashOut?.at ?? endedAt;
-        if (firstBuyIn && end) {
-          durationSec = Math.max(0, Math.round((end - firstBuyIn) / 1000));
+        let durationSec: number | null = playedSecOrNull(
+          p.playIntervals,
+          p.cashOut?.at ?? endedAt ?? 0,
+        );
+        if (durationSec == null) {
+          const firstBuyIn = p.buyIns[0]?.at;
+          const end = p.cashOut?.at ?? endedAt;
+          if (firstBuyIn && end) {
+            durationSec = Math.max(0, Math.round((end - firstBuyIn) / 1000));
+          }
         }
         return {
           id: p.id,

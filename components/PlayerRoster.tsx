@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTournament } from "@/lib/store";
 import PlayerDetailsModal from "./PlayerDetailsModal";
+import PlayedClock from "./PlayedClock";
 
 export default function PlayerRoster() {
   const players = useTournament((s) => s.players);
@@ -153,6 +154,7 @@ export default function PlayerRoster() {
             >
               {p.name}
             </button>
+            <PlayedClock name={p.name} intervals={p.playIntervals} />
             {(p.rebuys ?? 0) > 0 && (
               <span
                 className="chip chip-accent text-[10px]"
@@ -232,6 +234,7 @@ export default function PlayerRoster() {
                 >
                   {p.name}
                 </button>
+                <PlayedClock name={p.name} intervals={p.playIntervals} />
                 <button
                   className="btn btn-ghost btn-sm !px-2 !py-0.5"
                   onClick={() => handleRestore(p)}

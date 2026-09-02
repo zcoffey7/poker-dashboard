@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test:unit": "tsx --test --test-reporter=spec lib/*.test.ts",
     "test:integration": "node --test --test-reporter=spec scripts/standings-integration.test.mjs",
-    "test": "npm run test:unit && npm run test:integration"
+    "test:e2e": "playwright test",
+    "test": "npm run test:unit && npm run test:integration && npm run test:e2e"
   },
   "dependencies": {
     "next": "^16.2.9",
@@ -24,6 +25,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^20",
     "@types/react": "^19",

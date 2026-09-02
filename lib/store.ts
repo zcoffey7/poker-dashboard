@@ -37,9 +37,27 @@ function ensureBlindLevelIds(levels: BlindLevel[]): BlindLevel[] {
   }));
 }
 import { playLevelUp, playWarning } from "./clock";
+import {
+  migrateTournamentIntervals,
+  startPlay,
+  stopPlay,
+} from "./playTime";
 
 function uid(prefix = "id") {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
+}
+
+function startActivePlay(players: Player[], now: number): Player[] {
+  return players.map((p) =>
+    p.eliminated ? p : { ...p, playIntervals: startPlay(p.playIntervals, now) },
+  );
+}
+
+function stopAllPlay(players: Player[], now: number): Player[] {
+  return players.map((p) => ({
+    ...p,
+    playIntervals: stopPlay(p.playIntervals, now),
+  }));
 }
 
 /**
@@ -319,20 +337,27 @@ export const useTournament = create<TournamentStore>()(
       addPlayer: (name) => {
         const trimmed = name.trim();
         if (!trimmed) return;
+        const s = get();
+        const now = Date.now();
+        const seatedNow = s.startedAt != null && s.finishedAt == null;
         const p: Player = {
           id: uid("p"),
           name: trimmed,
           tableId: null,
           seat: null,
-          chips: get().startingStack,
+          chips: s.startingStack,
           rebuys: 0,
           addOns: 0,
           eliminated: false,
+          playIntervals: seatedNow ? [{ startedAt: now }] : [],
         };
-        set((s) => ({ players: [...s.players, p] }));
+        set({ players: [...s.players, p] });
       },
       addPlayersBulk: (names) => {
-        const starting = get().startingStack;
+        const s = get();
+        const starting = s.startingStack;
+        const now = Date.now();
+        const seatedNow = s.startedAt != null && s.finishedAt == null;
         const cleaned = names
           .map((n) => n.trim())
           .filter((n) => n.length > 0);
@@ -345,8 +370,9 @@ export const useTournament = create<TournamentStore>()(
           rebuys: 0,
           addOns: 0,
           eliminated: false,
+          playIntervals: seatedNow ? [{ startedAt: now }] : [],
         }));
-        set((s) => ({ players: [...s.players, ...newPlayers] }));
+        set({ players: [...s.players, ...newPlayers] });
       },
       removePlayer: (id) =>
         set((s) => {
@@ -395,6 +421,7 @@ export const useTournament = create<TournamentStore>()(
                 chips: 0,
                 eliminatedAt: now,
                 finishPlace: place,
+                playIntervals: stopPlay(p.playIntervals, now),
               }
             : p,
         );
@@ -420,6 +447,9 @@ export const useTournament = create<TournamentStore>()(
           rebalanceMoves = diffSeating(updated, res.players, s.tables, res.tables);
         }
         const autoFinish = autoFinishWinner || autoFinishElim;
+        if (autoFinish) {
+          nextPlayers = stopAllPlay(nextPlayers, now);
+        }
         set({
           players: nextPlayers,
           tables: nextTables,
@@ -444,20 +474,27 @@ export const useTournament = create<TournamentStore>()(
         });
       },
       restorePlayer: (id) =>
-        set((s) => ({
-          players: s.players.map((p) =>
-            p.id === id
-              ? {
-                  ...p,
-                  eliminated: false,
-                  eliminatedAt: undefined,
-                  finishPlace: undefined,
-                  chips: p.chipsBeforeElim ?? s.startingStack,
-                  chipsBeforeElim: undefined,
-                }
-              : p,
-          ),
-        })),
+        set((s) => {
+          const now = Date.now();
+          const resume = s.startedAt != null && s.finishedAt == null;
+          return {
+            players: s.players.map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    eliminated: false,
+                    eliminatedAt: undefined,
+                    finishPlace: undefined,
+                    chips: p.chipsBeforeElim ?? s.startingStack,
+                    chipsBeforeElim: undefined,
+                    playIntervals: resume
+                      ? startPlay(p.playIntervals, now)
+                      : p.playIntervals,
+                  }
+                : p,
+            ),
+          };
+        }),
       rebuyPlayer: (id) =>
         set((s) => {
           const target = s.players.find((p) => p.id === id);
@@ -765,6 +802,7 @@ export const useTournament = create<TournamentStore>()(
           const lv = s.blindStructure[s.clock.currentLevel];
           const dur = lv?.durationSec ?? s.clock.remainingSec;
           const now = Date.now();
+          const firstStart = s.startedAt == null;
           return {
             clock: {
               ...s.clock,
@@ -773,6 +811,9 @@ export const useTournament = create<TournamentStore>()(
               levelStartedAt: now - (dur - s.clock.remainingSec) * 1000,
             },
             startedAt: s.startedAt ?? now,
+            ...(firstStart
+              ? { players: startActivePlay(s.players, now) }
+              : {}),
           };
         }),
       pauseClock: () =>
@@ -783,6 +824,7 @@ export const useTournament = create<TournamentStore>()(
           const now = Date.now();
           const lv = s.blindStructure[s.clock.currentLevel];
           const dur = lv?.durationSec ?? s.clock.remainingSec;
+          const firstStart = willRun && s.startedAt == null;
           return {
             clock: {
               ...s.clock,
@@ -792,7 +834,10 @@ export const useTournament = create<TournamentStore>()(
                 ? now - (dur - s.clock.remainingSec) * 1000
                 : s.clock.levelStartedAt,
             },
-            ...(willRun && s.startedAt == null ? { startedAt: now } : {}),
+            ...(firstStart ? { startedAt: now } : {}),
+            ...(firstStart
+              ? { players: startActivePlay(s.players, now) }
+              : {}),
           };
         }),
       resetLevel: () =>
@@ -987,7 +1032,7 @@ export const useTournament = create<TournamentStore>()(
           }
         }
         set({
-          players,
+          players: stopAllPlay(players, now),
           finishedAt: now,
           finishType: type,
           chopShares: shares,
@@ -997,22 +1042,32 @@ export const useTournament = create<TournamentStore>()(
       },
 
       unfinishTournament: () =>
-        set((s) => ({
-          finishedAt: undefined,
-          finishType: undefined,
-          chopShares: undefined,
-          chopAmounts: undefined,
-          // Eliminated players keep their earned places, but actives must
-          // not carry finish metadata back into a live game (a reopened
-          // winner with finishPlace 1 corrupts payouts/recap if the game is
-          // finished again later).
-          players: s.players.map((p) =>
-            !p.eliminated && (p.finishPlace != null || p.eliminatedAt != null)
-              ? { ...p, finishPlace: undefined, eliminatedAt: undefined }
-              : p,
-          ),
-          clock: { ...s.clock },
-        })),
+        set((s) => {
+          const now = Date.now();
+          return {
+            finishedAt: undefined,
+            finishType: undefined,
+            chopShares: undefined,
+            chopAmounts: undefined,
+            // Eliminated players keep their earned places, but actives must
+            // not carry finish metadata back into a live game (a reopened
+            // winner with finishPlace 1 corrupts payouts/recap if the game is
+            // finished again later).
+            players: s.players.map((p) => {
+              const cleared =
+                !p.eliminated &&
+                (p.finishPlace != null || p.eliminatedAt != null)
+                  ? { ...p, finishPlace: undefined, eliminatedAt: undefined }
+                  : p;
+              if (cleared.eliminated) return cleared;
+              return {
+                ...cleared,
+                playIntervals: startPlay(cleared.playIntervals, now),
+              };
+            }),
+            clock: { ...s.clock },
+          };
+        }),
 
       resetTournament: () =>
         set({
@@ -1179,7 +1234,7 @@ export const useTournament = create<TournamentStore>()(
     {
       name: "poker-tournament-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 7,
+      version: 8,
       migrate: (persistedState, version) => {
         if (!persistedState) return persistedState as TournamentState;
         let state = persistedState as Partial<TournamentState>;
@@ -1265,6 +1320,21 @@ export const useTournament = create<TournamentStore>()(
           state = {
             ...state,
             blindStructure: ensureBlindLevelIds(state.blindStructure ?? []),
+          };
+        }
+        if (version < 8) {
+          // v8 records seated stints so each player gets a live time-played
+          // clock. Derive the first stint from start / elimination / finish.
+          state = {
+            ...state,
+            players: (state.players ?? []).map((p) => ({
+              ...p,
+              playIntervals: migrateTournamentIntervals(
+                p,
+                state.startedAt,
+                state.finishedAt,
+              ),
+            })),
           };
         }
         return state as TournamentState;

@@ -1,3 +1,5 @@
+import type { PlayInterval } from "./playTime";
+
 export type Player = {
   id: string;
   name: string;
@@ -9,6 +11,12 @@ export type Player = {
   eliminated: boolean;
   eliminatedAt?: number;
   finishPlace?: number;
+  /**
+   * Seated stints. Open interval (`endedAt` missing) means they're currently
+   * in the field. Empty until the tournament actually starts (or until a
+   * late joiner sits down after start).
+   */
+  playIntervals?: PlayInterval[];
   /**
    * Chip count captured at the moment of elimination so a later
    * `restorePlayer` can restore the real stack instead of resetting

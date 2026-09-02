@@ -10,6 +10,7 @@ import {
   CASH_INCREMENT,
 } from "@/lib/payouts";
 import { fmtDuration } from "@/lib/clock";
+import { playedSecOrNull } from "@/lib/playTime";
 import { StatCol, MiniStat } from "./StatTiles";
 import type { Player } from "@/lib/types";
 
@@ -170,8 +171,11 @@ export default function GameRecap() {
         } else if (p.finishPlace != null) {
           payout = placePayouts.get(p.id) ?? 0;
         }
-        let durationSec: number | null = null;
-        if (startedAt) {
+        let durationSec = playedSecOrNull(
+          p.playIntervals,
+          p.eliminatedAt ?? finishedAt ?? now,
+        );
+        if (durationSec == null && startedAt) {
           const end = p.eliminatedAt ?? finishedAt ?? now;
           durationSec = Math.max(0, Math.round((end - startedAt) / 1000));
         }

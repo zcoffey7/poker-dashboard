@@ -4,6 +4,7 @@ import { useTournament } from "@/lib/store";
 import { useMemo, useState } from "react";
 import PlayerDetailsModal from "./PlayerDetailsModal";
 import MovePlayerModal from "./MovePlayerModal";
+import PlayedClock from "./PlayedClock";
 
 export default function TablesView() {
   const tables = useTournament((s) => s.tables);
@@ -76,11 +77,12 @@ export default function TablesView() {
               <button
                 key={p.id}
                 type="button"
-                className="chip chip-amber cursor-pointer hover:brightness-110"
+                className="chip chip-amber cursor-pointer hover:brightness-110 gap-1.5"
                 onClick={() => setMoveId(p.id)}
                 title="Seat player"
               >
-                {p.name}
+                <span className="truncate">{p.name}</span>
+                <PlayedClock name={p.name} intervals={p.playIntervals} />
               </button>
             ))}
           </div>
@@ -123,6 +125,7 @@ export default function TablesView() {
                       >
                         {p.name}
                       </button>
+                      <PlayedClock name={p.name} intervals={p.playIntervals} />
                       <button
                         className="btn btn-sm px-2! py-0.5! shrink-0"
                         title="Move to another table or seat"

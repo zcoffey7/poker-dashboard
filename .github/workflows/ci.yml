@@ -34,6 +34,12 @@ jobs:
       - name: Standings integration test
         run: npm run test:integration
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
       # Mirror the deploy workflow's env so basePath/static-export issues
       # surface on the PR instead of on main.
       - name: Build static export

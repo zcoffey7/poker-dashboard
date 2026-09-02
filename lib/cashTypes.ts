@@ -1,3 +1,5 @@
+import type { PlayInterval } from "./playTime";
+
 export type CashBuyIn = {
   id: string;
   /** Stored as integer cents. */
@@ -22,7 +24,12 @@ export type CashPlayer = {
   name: string;
   buyIns: CashBuyIn[];
   cashOut?: CashOut;
-};
+  /**
+   * Seated stints. Opens on buy-in, closes on cash-out, reopens if they
+   * sit back down. Gaps between stints don't count as time played.
+   */
+  playIntervals: PlayInterval[];
+}
 
 export type CashGameState = {
   name: string;
