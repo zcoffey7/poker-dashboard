@@ -26,31 +26,13 @@ export default function CashDashboardClient() {
       <div className="card p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
         <div className="min-w-0 flex-1">
           <div className="label">{name}</div>
-          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mt-1">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[var(--text-muted)] text-xs uppercase tracking-wider shrink-0">
-                Blinds
-              </span>
-              <span className="font-mono text-xl font-semibold tabular-nums">
-                {fmtMoneyCents(smallBlind)} / {fmtMoneyCents(bigBlind)}
-              </span>
-            </div>
-            {stats.avgActiveStack != null && bigBlind > 0 && (
-              <div className="flex items-baseline gap-2">
-                <span className="text-[var(--text-muted)] text-xs uppercase tracking-wider shrink-0">
-                  Avg stack
-                </span>
-                <span
-                  className="font-mono text-xl font-semibold tabular-nums"
-                  data-testid="cash-avg-stack-header"
-                >
-                  {fmtStackWithBBs(
-                    Math.round(stats.avgActiveStack),
-                    bigBlind,
-                  )}
-                </span>
-              </div>
-            )}
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-[var(--text-muted)] text-xs uppercase tracking-wider">
+              Blinds
+            </span>
+            <span className="font-mono text-xl font-semibold tabular-nums">
+              {fmtMoneyCents(smallBlind)} / {fmtMoneyCents(bigBlind)}
+            </span>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">

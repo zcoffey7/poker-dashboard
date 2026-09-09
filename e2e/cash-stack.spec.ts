@@ -26,33 +26,31 @@ async function seatCashPlayerFor(page: Page, name: string, dollars: number) {
 test("avg stack and per-player stacks update as players join, rebuy, and cash out", async ({
   page,
 }) => {
-  const avgHeader = page.getByTestId("cash-avg-stack-header");
   const avgTile = page.getByTestId("cash-avg-stack-tile");
 
   await seatCashPlayer(page, "Alice");
-  await expect(avgHeader).toHaveText("$20.00 · 100 BB");
   await expect(avgTile).toContainText("$20.00 · 100 BB");
   await expect(playerStack(page, "Alice")).toHaveText("$20.00 · 100 BB");
 
   await seatCashPlayerFor(page, "Bob", 50);
-  await expect(avgHeader).toHaveText("$35.00 · 175 BB");
+  await expect(avgTile).toContainText("$35.00 · 175 BB");
   await expect(playerStack(page, "Bob")).toHaveText("$50.00 · 250 BB");
 
   await activeRow(page, "Alice").getByTitle("Add another buy-in").click();
   await page.getByRole("button", { name: "Add Buy-in" }).click();
 
   await expect(playerStack(page, "Alice")).toHaveText("$40.00 · 200 BB");
-  await expect(avgHeader).toHaveText("$45.00 · 225 BB");
+  await expect(avgTile).toContainText("$45.00 · 225 BB");
 
   await activeRow(page, "Bob").getByTitle("Cash out this player").click();
   await page.getByLabel("Cashing out with").fill("60");
   await page.getByRole("button", { name: "Confirm Cash Out" }).click();
 
-  await expect(avgHeader).toHaveText("$40.00 · 200 BB");
+  await expect(avgTile).toContainText("$40.00 · 200 BB");
   await expect(playerStack(page, "Alice")).toHaveText("$40.00 · 200 BB");
   await expect(page.getByTestId("cash-player-stack")).toHaveCount(1);
 
   await page.getByLabel("Reopen Bob").click();
   await expect(playerStack(page, "Bob")).toHaveText("$50.00 · 250 BB");
-  await expect(avgHeader).toHaveText("$45.00 · 225 BB");
+  await expect(avgTile).toContainText("$45.00 · 225 BB");
 });
