@@ -5,6 +5,7 @@ import { useCash } from "@/lib/cashStore";
 import { fromCents } from "@/lib/money";
 import { useHasHydrated } from "@/lib/useHasHydrated";
 import NumberInput from "../NumberInput";
+import SheetSyncCard from "../standings/SheetSyncCard";
 
 type Draft = {
   name: string;
@@ -147,6 +148,8 @@ function SettingsFormInner({ initial }: { initial: Draft }) {
           </button>
         </div>
       </div>
+
+      <SheetSyncCard />
 
       <div className="card p-4 flex flex-col gap-2">
         <div className="label">Danger Zone</div>

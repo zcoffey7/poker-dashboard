@@ -8,8 +8,8 @@
     "start": "npx serve out",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:unit": "tsx --test --test-reporter=spec lib/*.test.ts",
-    "test:integration": "node --test --test-reporter=spec scripts/standings-integration.test.mjs",
+    "test:unit": "tsx --test --test-reporter=spec lib/*.test.ts lib/standings/*.test.ts",
+    "test:integration": "node --test --test-reporter=spec scripts/standings-integration.test.mjs && tsx --test --test-reporter=spec scripts/update-sheet-integration.test.ts",
     "test:e2e": "playwright test",
     "test": "npm run test:unit && npm run test:integration && npm run test:e2e"
   },

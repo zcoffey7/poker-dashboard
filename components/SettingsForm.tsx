@@ -17,6 +17,7 @@ import TablesEditor from "./TablesEditor";
 import PayoutsEditor from "./PayoutsEditor";
 import BlindStructureEditor from "./BlindStructureEditor";
 import ChipDenomEditor from "./ChipDenomEditor";
+import SheetSyncCard from "./standings/SheetSyncCard";
 
 type Draft = {
   general: GeneralDraft;
@@ -215,6 +216,7 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
         structure={draft.blindStructure}
         onChange={updateStructure}
       />
+      <SheetSyncCard />
     </div>
   );
 }

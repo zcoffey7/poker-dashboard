@@ -59,6 +59,14 @@ Session history lives in **`stats/games.json`**, which backs the **History** tab
 - `durationMinutes` is optional but preferred when the screenshot shows session length (e.g. `2h 40m` → `160`).
 - Each player object: `name` (canonical alias), `buyIn` and `cashOut` as **whole-dollar numbers** (no decimals — `40`, not `40.00`), and `buyIns` (integer count from the `Nx` badge; default `1` if not shown).
 
+## Relationship to the in-app "Update Sheet" button
+
+The recap screen can publish a finished game directly from the phone, using the
+same arithmetic ported to `lib/standings/`. Use this skill when the results
+arrive as a screenshot or pasted text (a session that was never tracked in the
+app), or when a published session needs correcting. If both are changed, keep
+the rules here and the code in `lib/standings/` in step.
+
 ## Which files to update for a session
 
 Every session is one of the two game modes. For each session, you must update **three** files:
@@ -90,7 +98,9 @@ Also extract session-level fields for `games.json`:
 - Mode (`cash` or `tournament`)
 - Duration (convert to `durationMinutes` when shown, e.g. `1h 53m` → `113`)
 
-**Player aliases — apply silently, do not ask:**
+**Player aliases — apply silently, do not ask.** The same table is implemented
+in `lib/standings/aliases.ts`, which backs the in-app "Update Sheet" button;
+change both together.
 
 | Alias seen in screenshots/sheets | Canonical name to write in the CSV |
 |---|---|

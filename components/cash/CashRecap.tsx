@@ -7,6 +7,11 @@ import { fmtMoneyCents, fmtSignedCents } from "@/lib/money";
 import { fmtDuration } from "@/lib/clock";
 import { playedSecOrNull } from "@/lib/playTime";
 import { StatCol, MiniStat } from "../StatTiles";
+import UpdateSheetButton from "../standings/UpdateSheetButton";
+import {
+  buildSessionDraft,
+  dollarsFromCents,
+} from "@/lib/standings/fromRecap";
 
 type Row = {
   id: string;
@@ -89,6 +94,25 @@ export default function CashRecap() {
       ? Math.max(0, Math.round((endedAt - startedAt) / 1000))
       : null;
 
+  // Built from the same rows shown above, so what gets published is exactly
+  // what the recap reports. Cash amounts are cents; the sheet is whole dollars.
+  const sessionDraft = useMemo(
+    () =>
+      buildSessionDraft({
+        title: name,
+        mode: "cash",
+        startedAt,
+        endedAt,
+        rows: rows.map((r) => ({
+          name: r.name,
+          buyIn: dollarsFromCents(r.moneyIn),
+          cashOut: dollarsFromCents(r.payout),
+          buyIns: r.buyInCount,
+        })),
+      }),
+    [name, startedAt, endedAt, rows],
+  );
+
   const positiveNet = (n: number) => (n === 0 ? null : n > 0);
 
   return (
@@ -113,7 +137,8 @@ export default function CashRecap() {
               {totals.winners} up, {totals.losers} down
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <UpdateSheetButton session={sessionDraft} />
             <button
               className="btn btn-ghost"
               onClick={() => {
