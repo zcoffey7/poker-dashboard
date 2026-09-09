@@ -51,7 +51,8 @@ export function StatCol({
   positive,
   muted,
   emphasize,
-}: StatProps & { emphasize?: boolean }) {
+  hint,
+}: StatProps & { emphasize?: boolean; hint?: string }) {
   return (
     <div className="flex flex-col">
       <StatLabel>{label}</StatLabel>
@@ -62,6 +63,11 @@ export function StatCol({
       >
         {value}
       </div>
+      {hint && (
+        <div className="text-[11px] text-[var(--text-muted)] font-mono tabular-nums">
+          {hint}
+        </div>
+      )}
     </div>
   );
 }

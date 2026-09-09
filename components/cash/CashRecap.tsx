@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
+import { avgStackCents, fmtBBCount, stackBB } from "@/lib/cashStack";
 import { fmtMoneyCents, fmtSignedCents } from "@/lib/money";
 import { fmtDuration } from "@/lib/clock";
 import { playedSecOrNull } from "@/lib/playTime";
@@ -19,6 +20,7 @@ type Row = {
 
 export default function CashRecap() {
   const name = useCash((s) => s.name);
+  const bigBlind = useCash((s) => s.bigBlind);
   const players = useCash((s) => s.players);
   const startedAt = useCash((s) => s.startedAt);
   const endedAt = useCash((s) => s.endedAt);
@@ -66,8 +68,21 @@ export default function CashRecap() {
     const biggestWin = rows.length > 0 ? rows[0] : null;
     const winners = rows.filter((r) => r.net > 0).length;
     const losers = rows.filter((r) => r.net < 0).length;
-    return { totalIn, totalOut, biggestWin, winners, losers };
-  }, [rows]);
+    const avgFinalStack = avgStackCents(players);
+    const avgBuyIn =
+      rows.length > 0
+        ? rows.reduce((s, r) => s + r.moneyIn, 0) / rows.length
+        : null;
+    return {
+      totalIn,
+      totalOut,
+      biggestWin,
+      winners,
+      losers,
+      avgFinalStack,
+      avgBuyIn,
+    };
+  }, [rows, players]);
 
   const totalDurationSec =
     startedAt && endedAt
@@ -191,7 +206,7 @@ export default function CashRecap() {
             </section>
           )}
 
-          <section className="card p-3 grid grid-cols-3 gap-2 text-sm">
+          <section className="card p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-sm">
             <StatCol label="Total in" value={fmtMoneyCents(totals.totalIn)} />
             <StatCol
               label="Total out"
@@ -201,6 +216,32 @@ export default function CashRecap() {
               label={totals.totalIn === totals.totalOut ? "Balanced" : "Diff"}
               value={fmtMoneyCents(Math.abs(totals.totalIn - totals.totalOut))}
               muted={totals.totalIn !== totals.totalOut}
+            />
+            <StatCol
+              label="Avg final stack"
+              value={
+                totals.avgFinalStack != null
+                  ? fmtMoneyCents(Math.round(totals.avgFinalStack))
+                  : "—"
+              }
+              hint={
+                totals.avgFinalStack != null && bigBlind > 0
+                  ? fmtBBCount(stackBB(totals.avgFinalStack, bigBlind))
+                  : undefined
+              }
+            />
+            <StatCol
+              label="Avg buy-in"
+              value={
+                totals.avgBuyIn != null
+                  ? fmtMoneyCents(Math.round(totals.avgBuyIn))
+                  : "—"
+              }
+              hint={
+                totals.avgBuyIn != null && bigBlind > 0
+                  ? fmtBBCount(stackBB(totals.avgBuyIn, bigBlind))
+                  : undefined
+              }
             />
           </section>
         </div>

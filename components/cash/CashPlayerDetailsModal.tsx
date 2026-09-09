@@ -6,6 +6,7 @@ import ModalShell from "../ModalShell";
 import CashOutForm from "./CashOutForm";
 import { StatBox } from "../StatTiles";
 import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
+import { useCashPlayer } from "@/lib/cashSelectors";
 import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 import PlayedClock from "../PlayedClock";
 
@@ -23,7 +24,7 @@ function fmtShortTime(ts: number): string {
 }
 
 export default function CashPlayerDetailsModal({ playerId, onClose }: Props) {
-  const player = useCash((s) => s.players.find((p) => p.id === playerId));
+  const player = useCashPlayer(playerId);
   const renamePlayer = useCash((s) => s.renamePlayer);
   const rebuy = useCash((s) => s.rebuy);
   const editBuyIn = useCash((s) => s.editBuyIn);

@@ -5,6 +5,7 @@ import ModalShell from "../ModalShell";
 import CashOutForm from "./CashOutForm";
 import { StatBox } from "../StatTiles";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
+import { useCashPlayer } from "@/lib/cashSelectors";
 import { fmtMoneyCents } from "@/lib/money";
 
 type Props = {
@@ -13,7 +14,7 @@ type Props = {
 };
 
 export default function CashOutDialog({ playerId, onClose }: Props) {
-  const player = useCash((s) => s.players.find((p) => p.id === playerId));
+  const player = useCashPlayer(playerId);
   const cashOutPlayer = useCash((s) => s.cashOutPlayer);
 
   const titleId = useId();

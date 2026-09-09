@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useCash, totalBuyIns } from "@/lib/cashStore";
+import { useCash } from "@/lib/cashStore";
+import { useCashLiveStats } from "@/lib/cashSelectors";
+import { fmtStackWithBBs } from "@/lib/cashStack";
 import { fmtMoneyCents } from "@/lib/money";
 import CashPlayerRoster from "./CashPlayerRoster";
 import EndGameDialog from "./EndGameDialog";
@@ -12,43 +14,43 @@ import { StatTile } from "../StatTiles";
 export default function CashDashboardClient() {
   const name = useCash((s) => s.name);
   const smallBlind = useCash((s) => s.smallBlind);
-  const bigBlind = useCash((s) => s.bigBlind);
   const players = useCash((s) => s.players);
   const endedAt = useCash((s) => s.endedAt);
+  const stats = useCashLiveStats();
+  const { bigBlind } = stats;
 
   const [endOpen, setEndOpen] = useState(false);
-
-  const stats = useMemo(() => {
-    const totalIn = players.reduce((sum, p) => sum + totalBuyIns(p), 0);
-    const totalOut = players.reduce(
-      (sum, p) => sum + (p.cashOut?.amount ?? 0),
-      0,
-    );
-    const active = players.filter((p) => !p.cashOut);
-    const settled = players.filter((p) => !!p.cashOut);
-    const inPlay = totalIn - totalOut;
-    return {
-      totalIn,
-      totalOut,
-      inPlay,
-      activeCount: active.length,
-      settledCount: settled.length,
-      totalPlayers: players.length,
-    };
-  }, [players]);
 
   return (
     <div className="flex flex-col gap-3 p-3 md:p-4 min-h-[100dvh]">
       <div className="card p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
         <div className="min-w-0 flex-1">
           <div className="label">{name}</div>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-[var(--text-muted)] text-xs uppercase tracking-wider">
-              Blinds
-            </span>
-            <span className="font-mono text-xl font-semibold tabular-nums">
-              {fmtMoneyCents(smallBlind)} / {fmtMoneyCents(bigBlind)}
-            </span>
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mt-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[var(--text-muted)] text-xs uppercase tracking-wider shrink-0">
+                Blinds
+              </span>
+              <span className="font-mono text-xl font-semibold tabular-nums">
+                {fmtMoneyCents(smallBlind)} / {fmtMoneyCents(bigBlind)}
+              </span>
+            </div>
+            {stats.avgActiveStack != null && bigBlind > 0 && (
+              <div className="flex items-baseline gap-2">
+                <span className="text-[var(--text-muted)] text-xs uppercase tracking-wider shrink-0">
+                  Avg stack
+                </span>
+                <span
+                  className="font-mono text-xl font-semibold tabular-nums"
+                  data-testid="cash-avg-stack-header"
+                >
+                  {fmtStackWithBBs(
+                    Math.round(stats.avgActiveStack),
+                    bigBlind,
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -70,7 +72,7 @@ export default function CashDashboardClient() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
         <StatTile label="Players" value={String(stats.totalPlayers)} />
         <StatTile
           label="Active"
@@ -86,6 +88,19 @@ export default function CashDashboardClient() {
               : undefined
           }
         />
+        <div data-testid="cash-avg-stack-tile">
+          <StatTile
+            label="Avg stack"
+            value={
+              stats.avgActiveStack != null && bigBlind > 0
+                ? fmtStackWithBBs(Math.round(stats.avgActiveStack), bigBlind)
+                : "—"
+            }
+            hint={
+              stats.activeCount === 0 ? "No active players" : undefined
+            }
+          />
+        </div>
       </div>
 
       <CashPlayerRoster />

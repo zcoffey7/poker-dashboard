@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
+import { fmtStackWithBBs, playerStackCents } from "@/lib/cashStack";
 import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 import BuyInDialog from "./BuyInDialog";
 import CashOutDialog from "./CashOutDialog";
@@ -10,6 +11,7 @@ import { PlayerNameClock } from "../PlayedClock";
 
 export default function CashPlayerRoster() {
   const players = useCash((s) => s.players);
+  const bigBlind = useCash((s) => s.bigBlind);
   const defaultBuyIn = useCash((s) => s.defaultBuyIn);
   const addPlayer = useCash((s) => s.addPlayer);
   const removePlayer = useCash((s) => s.removePlayer);
@@ -77,10 +79,16 @@ export default function CashPlayerRoster() {
           </div>
         )}
         {active.map((p) => {
-          const totalIn = totalBuyIns(p);
+          const stack = playerStackCents(p);
+          const stackLabel =
+            bigBlind > 0
+              ? fmtStackWithBBs(stack, bigBlind)
+              : fmtMoneyCents(stack);
           return (
             <div
-              key={p.id}
+              key={`${p.id}:${stack}`}
+              data-testid="cash-active-player-row"
+              data-player={p.name}
               className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm px-2 py-1.5 rounded hover:bg-black/20"
             >
               <PlayerNameClock
@@ -94,8 +102,12 @@ export default function CashPlayerRoster() {
               >
                 {p.buyIns.length}×
               </span>
-              <span className="font-mono text-xs tabular-nums min-w-[64px] text-right shrink-0">
-                {fmtMoneyCents(totalIn)}
+              <span
+                className="font-mono text-xs tabular-nums text-right shrink-0"
+                data-testid="cash-player-stack"
+                data-player={p.name}
+              >
+                {stackLabel}
               </span>
               <div className="flex gap-1 shrink-0 ml-auto">
                 <button
