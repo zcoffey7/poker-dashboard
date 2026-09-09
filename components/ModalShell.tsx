@@ -43,15 +43,23 @@ export default function ModalShell({
   const fallbackTitleId = useId();
   const titleId = labelledBy ?? (label ? fallbackTitleId : undefined);
 
+  // Mount-scoped: take focus once when the dialog opens, hand it back once
+  // when it closes. This deliberately does not depend on `onClose` — a parent
+  // that passes an inline callback, or swaps it out to block dismissal mid-
+  // action, would otherwise yank the caret back to the first field on every
+  // re-render.
   useEffect(() => {
-    const pop = pushOverlay(onClose);
     const previous = document.activeElement as HTMLElement | null;
-
     const card = cardRef.current;
     if (card) {
       const first = card.querySelector<HTMLElement>(FOCUSABLE);
       (first ?? card).focus();
     }
+    return () => previous?.focus?.();
+  }, []);
+
+  useEffect(() => {
+    const pop = pushOverlay(onClose);
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -79,7 +87,6 @@ export default function ModalShell({
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
       pop();
-      previous?.focus?.();
     };
   }, [onClose]);
 

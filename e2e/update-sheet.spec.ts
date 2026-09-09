@@ -260,6 +260,34 @@ test("a finished tournament publishes to the tournament standings", async ({
   );
 });
 
+test("publishing keeps focus on the button instead of jumping to the title", async ({
+  page,
+}) => {
+  await playAndEndCashGame(page);
+  await page.getByTestId("update-sheet-button").click();
+  await page.getByLabel("GitHub token").fill(TOKEN);
+  await page.getByRole("button", { name: "Save token" }).click();
+
+  // Hold the first request open so the publishing state is observable. The
+  // dialog drops its onClose handler here to block dismissal, which used to
+  // re-run the modal's focus-on-open effect and steal the caret.
+  await page.route("**/git/ref/heads/**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.fallback();
+  });
+
+  const publish = page.getByTestId("sheet-publish");
+  await publish.click();
+  await expect(publish).toHaveText("Publishing…");
+
+  const focused = await page.evaluate(
+    () => document.activeElement?.getAttribute("aria-label") ?? null,
+  );
+  expect(focused).not.toBe("Session title");
+
+  await expect(page.getByTestId("sheet-success")).toBeVisible();
+});
+
 test("an unbalanced night is called out before publishing", async ({ page }) => {
   await seat(page, "Toby", 40);
   await seat(page, "Coffey", 20);
