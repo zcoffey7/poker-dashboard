@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCash, totalBuyIns, playerNet } from "@/lib/cashStore";
+import { useCash, playerNet } from "@/lib/cashStore";
 import { fmtStackWithBBs, playerStackCents } from "@/lib/cashStack";
 import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 import BuyInDialog from "./BuyInDialog";

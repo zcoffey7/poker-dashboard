@@ -12,6 +12,8 @@ import {
 import { fmtDuration } from "@/lib/clock";
 import { playedSecOrNull } from "@/lib/playTime";
 import { StatCol, MiniStat } from "./StatTiles";
+import UpdateSheetButton from "./standings/UpdateSheetButton";
+import { buildSessionDraft } from "@/lib/standings/fromRecap";
 import type { Player } from "@/lib/types";
 
 type Row = {
@@ -225,6 +227,25 @@ export default function GameRecap() {
       ? Math.max(0, Math.round((finishedAt - startedAt) / 1000))
       : null;
 
+  // Reuses the rows rendered below so payouts, rebuys and add-ons reach the
+  // sheet exactly as they appear in the recap.
+  const sessionDraft = useMemo(
+    () =>
+      buildSessionDraft({
+        title: name,
+        mode: "tournament",
+        startedAt,
+        endedAt: finishedAt,
+        rows: rows.map((r) => ({
+          name: r.name,
+          buyIn: r.moneyIn,
+          cashOut: r.payout,
+          buyIns: r.entries,
+        })),
+      }),
+    [name, startedAt, finishedAt, rows],
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col overflow-hidden">
       <div className="flex-none px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3 border-b border-[var(--border)]">
@@ -246,7 +267,8 @@ export default function GameRecap() {
               {stats.totalPlayers === 1 ? "" : "s"}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <UpdateSheetButton session={sessionDraft} />
             <button
               className="btn btn-ghost"
               onClick={() => {
