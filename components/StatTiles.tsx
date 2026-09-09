@@ -91,15 +91,22 @@ export function StatTile({
   label,
   value,
   hint,
+  wide,
 }: {
   label: string;
   value: string;
   hint?: string;
+  /** When true, don't truncate the value (for wider tiles). */
+  wide?: boolean;
 }) {
   return (
-    <div className="card p-3">
+    <div className="card p-3 h-full">
       <StatLabel>{label}</StatLabel>
-      <div className="text-lg font-semibold font-mono tabular-nums truncate">
+      <div
+        className={`text-lg font-semibold font-mono tabular-nums ${
+          wide ? "" : "truncate"
+        }`}
+      >
         {value}
       </div>
       {hint && (

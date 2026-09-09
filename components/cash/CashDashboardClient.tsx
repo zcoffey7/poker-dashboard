@@ -88,9 +88,13 @@ export default function CashDashboardClient() {
               : undefined
           }
         />
-        <div data-testid="cash-avg-stack-tile">
+        <div
+          data-testid="cash-avg-stack-tile"
+          className="col-span-2 sm:col-span-2 lg:col-span-2"
+        >
           <StatTile
             label="Avg stack"
+            wide
             value={
               stats.avgActiveStack != null && bigBlind > 0
                 ? fmtStackWithBBs(Math.round(stats.avgActiveStack), bigBlind)
