@@ -1,6 +1,132 @@
 {
   "games": [
     {
+      "id": "2026-09-18-home-cash-game",
+      "date": "2026-09-18",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "players": [
+        {
+          "name": "Toby",
+          "buyIn": 40,
+          "cashOut": 180,
+          "buyIns": 1
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 60,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 80,
+          "cashOut": 60,
+          "buyIns": 1
+        },
+        {
+          "name": "Donnelly",
+          "buyIn": 50,
+          "cashOut": 20,
+          "buyIns": 1
+        },
+        {
+          "name": "Rodgers",
+          "buyIn": 30,
+          "cashOut": 0,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
+      "id": "2026-09-13-home-cash-game",
+      "date": "2026-09-13",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "players": [
+        {
+          "name": "Rodgers",
+          "buyIn": 40,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Toby",
+          "buyIn": 20,
+          "cashOut": 45,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 20,
+          "cashOut": 20,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 20,
+          "cashOut": 65,
+          "buyIns": 1
+        },
+        {
+          "name": "Martell",
+          "buyIn": 40,
+          "cashOut": 10,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
+      "id": "2026-09-12-home-cash-game",
+      "date": "2026-09-12",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "players": [
+        {
+          "name": "Rodgers",
+          "buyIn": 20,
+          "cashOut": 75,
+          "buyIns": 1
+        },
+        {
+          "name": "Toby",
+          "buyIn": 60,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 40,
+          "cashOut": 65,
+          "buyIns": 1
+        },
+        {
+          "name": "Martell",
+          "buyIn": 40,
+          "cashOut": 55,
+          "buyIns": 1
+        },
+        {
+          "name": "Shknight",
+          "buyIn": 20,
+          "cashOut": 10,
+          "buyIns": 1
+        },
+        {
+          "name": "Ron",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Worms",
+          "buyIn": 100,
+          "cashOut": 95,
+          "buyIns": 1
+        }
+      ]
+    },
+    {
       "id": "2026-09-09-home-cash-game",
       "date": "2026-09-09",
       "title": "Home Cash Game",
