@@ -3,11 +3,11 @@
   "short_name": "Standings",
   "description": "Cumulative poker ledger and season standings.",
   "start_url": "./",
-  "scope": "./",
+  "scope": "../",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0f",
-  "theme_color": "#0a0a0f",
+  "background_color": "#070d0b",
+  "theme_color": "#070d0b",
   "icons": [
     {
       "src": "./standings-icon-192.png",
