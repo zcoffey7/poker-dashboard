@@ -106,7 +106,7 @@ export function RecapTable({
               <div className="font-semibold sm:font-medium text-[0.9375rem] sm:text-sm truncate">
                 {r.name}
               </div>
-              <div className="sm:hidden text-xs text-muted tabular-nums truncate mt-0.5">
+              <div className="sm:hidden text-xs text-muted tabular-nums leading-snug mt-0.5">
                 {r.moneyIn} in · {r.moneyOut} out · {r.played}
               </div>
             </div>

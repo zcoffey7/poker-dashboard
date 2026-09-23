@@ -30,16 +30,16 @@ export default function LandingPage() {
           href={`${basePath}/standings/`}
           className="card group flex items-center gap-4 px-5 py-4 transition-colors hover:border-gold/50"
         >
-          <span className="inline-flex size-10 items-center justify-center rounded-xl bg-gold/12 text-gold text-lg ring-1 ring-gold/25">
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-gold/12 text-gold text-lg ring-1 ring-gold/25">
             <IconChart />
           </span>
           <span className="flex-1 min-w-0">
             <span className="block font-semibold">Season standings</span>
-            <span className="block text-sm text-muted truncate">
+            <span className="block text-sm text-muted leading-snug mt-0.5">
               Leaderboards, net P/L, and every session&apos;s history
             </span>
           </span>
-          <IconArrowRight className="text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-gold" />
+          <IconArrowRight className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-gold" />
         </a>
       </div>
     </div>

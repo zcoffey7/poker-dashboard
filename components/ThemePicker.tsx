@@ -120,7 +120,7 @@ export default function ThemePicker({ align = "right" }: { align?: "left" | "rig
                 <Swatch colors={t.swatch} />
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-medium">{t.label}</span>
-                  <span className="block text-xs text-muted truncate">
+                  <span className="block text-xs text-muted leading-snug">
                     {t.description}
                   </span>
                 </span>
