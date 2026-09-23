@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCash, playerNet } from "@/lib/cashStore";
-import { fmtBBCount, playerStackCents, stackBB } from "@/lib/cashStack";
+import { playerStackCents } from "@/lib/cashStack";
 import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
 import { confirmAction } from "@/lib/confirm";
 import BuyInDialog from "./BuyInDialog";
@@ -13,7 +13,6 @@ import { IconLogOut, IconPlus, IconUndo, IconUserPlus } from "../icons";
 
 export default function CashPlayerRoster() {
   const players = useCash((s) => s.players);
-  const bigBlind = useCash((s) => s.bigBlind);
   const defaultBuyIn = useCash((s) => s.defaultBuyIn);
   const addPlayer = useCash((s) => s.addPlayer);
   const reopenPlayer = useCash((s) => s.reopenPlayer);
@@ -119,23 +118,13 @@ export default function CashPlayerRoster() {
                       </span>
                     </div>
                   </div>
-                  <div
-                    className="shrink-0 text-right tabular-nums"
+                  <span
+                    className="shrink-0 text-xl font-semibold leading-tight tracking-tight tabular-nums"
                     data-testid="cash-player-stack"
                     data-player={p.name}
                   >
-                    <span className="block text-xl font-semibold leading-tight tracking-tight">
-                      {fmtMoneyCents(stack)}
-                    </span>
-                    {bigBlind > 0 && (
-                      <>
-                        <span className="sr-only"> · </span>
-                        <span className="block text-xs text-muted mt-0.5">
-                          {fmtBBCount(stackBB(stack, bigBlind))}
-                        </span>
-                      </>
-                    )}
-                  </div>
+                    {fmtMoneyCents(stack)}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
