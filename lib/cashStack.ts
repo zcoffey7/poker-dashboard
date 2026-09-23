@@ -1,5 +1,4 @@
 import type { CashPlayer } from "./cashTypes";
-import { fmtMoneyCents } from "./money";
 
 function buyInTotal(player: CashPlayer): number {
   return player.buyIns.reduce((sum, b) => sum + b.amount, 0);
@@ -38,12 +37,4 @@ export function fmtBBCount(bb: number): string {
   const text =
     Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
   return `${text} BB`;
-}
-
-export function fmtStackWithBBs(
-  stackCents: number,
-  bigBlindCents: number,
-): string {
-  const bb = stackBB(stackCents, bigBlindCents);
-  return `${fmtMoneyCents(stackCents)} · ${fmtBBCount(bb)}`;
 }
