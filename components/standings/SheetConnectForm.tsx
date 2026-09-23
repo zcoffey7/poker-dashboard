@@ -7,6 +7,8 @@ import {
   DEFAULT_REPO,
   useSheet,
 } from "@/lib/sheetStore";
+import { Field } from "../Section";
+import { IconExternal } from "../icons";
 
 const TOKEN_HELP_URL =
   "https://github.com/settings/personal-access-tokens/new";
@@ -38,7 +40,7 @@ export default function SheetConnectForm({ onConnected, compact }: Props) {
 
   return (
     <form
-      className="flex flex-col gap-3"
+      className="flex flex-col gap-4"
       onSubmit={(e) => {
         e.preventDefault();
         if (!canSave) return;
@@ -52,24 +54,27 @@ export default function SheetConnectForm({ onConnected, compact }: Props) {
         onConnected?.();
       }}
     >
-      <p className="text-xs text-[var(--text-muted)]">
+      <p className="text-sm text-muted leading-relaxed">
         Publishing writes straight to the repo, so this device needs a GitHub
         token. Create a{" "}
         <a
-          className="underline underline-offset-2"
+          className="inline-flex items-center gap-1 font-medium text-primary underline-offset-2 hover:underline"
           href={TOKEN_HELP_URL}
           target="_blank"
           rel="noreferrer"
         >
           fine-grained token
+          <IconExternal size="0.9em" />
         </a>{" "}
-        limited to <span className="font-mono">{repoDraft}</span> with
-        <span className="font-mono"> Contents: Read and write</span>. It is
-        saved on this phone only.
+        limited to <span className="font-mono text-[0.8125rem] text-text">{repoDraft}</span>{" "}
+        with{" "}
+        <span className="font-mono text-[0.8125rem] text-text">
+          Contents: Read and write
+        </span>
+        . It&apos;s saved on this device only.
       </p>
 
-      <label className="flex flex-col gap-1">
-        <span className="label">GitHub token</span>
+      <Field label="GitHub token">
         <input
           className="input font-mono text-sm"
           type="password"
@@ -80,51 +85,51 @@ export default function SheetConnectForm({ onConnected, compact }: Props) {
           onChange={(e) => setToken(e.target.value)}
           aria-label="GitHub token"
         />
-      </label>
+      </Field>
 
       {showAdvanced ? (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <label className="flex flex-col gap-1">
-            <span className="label">Owner</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Owner">
             <input
-              className="input font-mono text-sm"
+              className="input input-sm font-mono"
               value={ownerDraft}
               onChange={(e) => setOwnerDraft(e.target.value)}
               aria-label="Repository owner"
             />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="label">Repo</span>
+          </Field>
+          <Field label="Repo">
             <input
-              className="input font-mono text-sm"
+              className="input input-sm font-mono"
               value={repoDraft}
               onChange={(e) => setRepoDraft(e.target.value)}
               aria-label="Repository name"
             />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="label">Branch</span>
+          </Field>
+          <Field label="Branch">
             <input
-              className="input font-mono text-sm"
+              className="input input-sm font-mono"
               value={branchDraft}
               onChange={(e) => setBranchDraft(e.target.value)}
               aria-label="Repository branch"
             />
-          </label>
+          </Field>
         </div>
-      ) : (
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm self-start"
-          onClick={() => setShowAdvanced(true)}
-        >
-          Change repository
-        </button>
-      )}
+      ) : null}
 
-      <button className="btn btn-primary self-start" disabled={!canSave}>
-        Save token
-      </button>
+      <div className="flex items-center gap-2">
+        <button className="btn btn-primary" disabled={!canSave}>
+          Save token
+        </button>
+        {!showAdvanced && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setShowAdvanced(true)}
+          >
+            Change repository
+          </button>
+        )}
+      </div>
     </form>
   );
 }

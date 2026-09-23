@@ -4,8 +4,11 @@ import { useState } from "react";
 import { useCash } from "@/lib/cashStore";
 import { fromCents } from "@/lib/money";
 import { useHasHydrated } from "@/lib/useHasHydrated";
+import { confirmAction } from "@/lib/confirm";
 import NumberInput from "../NumberInput";
 import SheetSyncCard from "../standings/SheetSyncCard";
+import { Affixed, Field, Section } from "../Section";
+import { IconCheck } from "../icons";
 
 type Draft = {
   name: string;
@@ -32,7 +35,7 @@ export default function CashSettingsForm() {
 
   if (!hydrated) {
     return (
-      <div className="card p-4 text-sm text-[var(--text-muted)]" aria-busy="true">
+      <div className="card p-5 text-sm text-muted" aria-busy="true">
         Loading settings…
       </div>
     );
@@ -70,107 +73,105 @@ function SettingsFormInner({ initial }: { initial: Draft }) {
     saveSettings(draft);
   }
 
+  async function handleReset() {
+    const ok = await confirmAction({
+      title: "Reset the cash game?",
+      message: "This clears every player, buy-in, and cash-out.",
+      confirmLabel: "Reset cash game",
+      tone: "danger",
+    });
+    if (ok) resetGame();
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="card p-4 flex flex-col gap-4">
-        <div>
-          <div className="label">Cash Game Settings</div>
-          <div className="text-xs text-[var(--text-muted)] mt-0.5">
-            These only affect display and defaults. Players can always buy in
-            for any amount.
-          </div>
-        </div>
-
-        <label className="flex flex-col gap-1">
-          <span className="label">Game name</span>
+      <Section
+        title="Game"
+        description="These only affect display and defaults."
+      >
+        <Field label="Game name">
           <input
             className="input"
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
-        </label>
+        </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="label">Small blind</span>
-            <NumberInput
-              className="input font-mono"
-              value={draft.smallBlind}
-              onChange={(n) => setDraft({ ...draft, smallBlind: n })}
-              step={0.01}
-              min={0}
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="label">Big blind</span>
-            <NumberInput
-              className="input font-mono"
-              value={draft.bigBlind}
-              onChange={(n) => setDraft({ ...draft, bigBlind: n })}
-              step={0.01}
-              min={0}
-            />
-          </label>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Small blind">
+            <Affixed prefix="$">
+              <NumberInput
+                className="input pl-7 tabular-nums"
+                value={draft.smallBlind}
+                onChange={(n) => setDraft({ ...draft, smallBlind: n })}
+                step={0.01}
+                min={0}
+              />
+            </Affixed>
+          </Field>
+          <Field label="Big blind">
+            <Affixed prefix="$">
+              <NumberInput
+                className="input pl-7 tabular-nums"
+                value={draft.bigBlind}
+                onChange={(n) => setDraft({ ...draft, bigBlind: n })}
+                step={0.01}
+                min={0}
+              />
+            </Affixed>
+          </Field>
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="label">Default buy-in</span>
-          <NumberInput
-            className="input font-mono"
-            value={draft.defaultBuyIn}
-            onChange={(n) => setDraft({ ...draft, defaultBuyIn: n })}
-            step={0.01}
-            min={0}
-          />
-          <span className="text-[11px] text-[var(--text-muted)]">
-            Pre-fills the buy-in dialog. Players can always override.
-          </span>
-        </label>
+        <Field
+          label="Default buy-in"
+          hint="Pre-fills the buy-in dialog. Players can always override."
+        >
+          <Affixed prefix="$">
+            <NumberInput
+              className="input pl-7 tabular-nums"
+              value={draft.defaultBuyIn}
+              onChange={(n) => setDraft({ ...draft, defaultBuyIn: n })}
+              step={0.01}
+              min={0}
+            />
+          </Affixed>
+        </Field>
 
-        <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3">
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
           <span
-            className={`text-xs ${
-              blindsInvalid ? "text-[var(--amber)]" : "text-[var(--text-muted)]"
+            className={`text-sm inline-flex items-center gap-1.5 ${
+              blindsInvalid ? "text-warn" : dirty ? "text-gold" : "text-muted"
             }`}
           >
-            {blindsInvalid
-              ? "Big blind must be at least the small blind."
-              : dirty
-                ? "Unsaved changes"
-                : "All changes saved"}
+            {blindsInvalid ? (
+              "Big blind must be at least the small blind."
+            ) : dirty ? (
+              "Unsaved changes"
+            ) : (
+              <>
+                <IconCheck />
+                All changes saved
+              </>
+            )}
           </span>
-          <button
-            className="btn btn-primary"
-            onClick={save}
-            disabled={!canSave}
-          >
+          <button className="btn btn-primary" onClick={save} disabled={!canSave}>
             Save
           </button>
         </div>
-      </div>
+      </Section>
 
       <SheetSyncCard />
 
-      <div className="card p-4 flex flex-col gap-2">
-        <div className="label">Danger Zone</div>
-        <div className="text-xs text-[var(--text-muted)]">
-          Wipe all players, buy-ins, and cash-outs and start fresh.
-        </div>
-        <button
-          className="btn btn-danger self-start mt-1"
-          onClick={() => {
-            if (
-              confirm(
-                "Reset the cash game? This clears every player and transaction.",
-              )
-            ) {
-              resetGame();
-            }
-          }}
-        >
-          Reset cash game
-        </button>
-      </div>
+      <Section
+        title="Danger zone"
+        description="Wipe all players, buy-ins, and cash-outs and start fresh."
+        tone="danger"
+        actions={
+          <button className="btn btn-danger" onClick={handleReset}>
+            Reset cash game
+          </button>
+        }
+      />
     </div>
   );
 }

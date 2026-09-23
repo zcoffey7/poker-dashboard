@@ -6,12 +6,15 @@ import { avgStackCents, fmtBBCount, stackBB } from "@/lib/cashStack";
 import { fmtMoneyCents, fmtSignedCents } from "@/lib/money";
 import { fmtDuration } from "@/lib/clock";
 import { playedSecOrNull } from "@/lib/playTime";
-import { StatCol, MiniStat } from "../StatTiles";
+import { confirmAction } from "@/lib/confirm";
+import { StatCol, netTone } from "../StatTiles";
+import RecapShell, { RecapTable, type RecapRow } from "../RecapShell";
 import UpdateSheetButton from "../standings/UpdateSheetButton";
 import {
   buildSessionDraft,
   dollarsFromCents,
 } from "@/lib/standings/fromRecap";
+import { IconPlus, IconRotateCcw, IconTrophy, IconUsers } from "../icons";
 
 type Row = {
   id: string;
@@ -113,197 +116,172 @@ export default function CashRecap() {
     [name, startedAt, endedAt, rows],
   );
 
-  const positiveNet = (n: number) => (n === 0 ? null : n > 0);
+  async function handleReopen() {
+    const ok = await confirmAction({
+      title: "Reopen the game?",
+      message:
+        "Players settled when the game ended become active again; anyone who cashed out earlier stays settled.",
+      confirmLabel: "Reopen",
+    });
+    if (ok) reopenGame();
+  }
+
+  async function handleNew() {
+    const ok = await confirmAction({
+      title: "Start a brand-new cash game?",
+      message: "This clears all players and transactions.",
+      confirmLabel: "Start new",
+      tone: "danger",
+    });
+    if (ok) resetGame();
+  }
+
+  const balanced = totals.totalIn === totals.totalOut;
+  const winner = totals.biggestWin && totals.biggestWin.net > 0 ? totals.biggestWin : null;
+
+  const tableRows: RecapRow[] = rows.map((r, idx) => ({
+    id: r.id,
+    rank: `#${idx + 1}`,
+    name: r.name,
+    detail: `${r.buyInCount}×`,
+    played: r.durationSec != null ? fmtDuration(r.durationSec) : "—",
+    moneyIn: fmtMoneyCents(r.moneyIn),
+    moneyOut: fmtMoneyCents(r.payout),
+    net: fmtSignedCents(r.net),
+    netValue: r.net,
+    highlight: r.net > 0,
+  }));
 
   return (
-    <div className="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col overflow-hidden">
-      <div className="flex-none px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3 border-b border-[var(--border)]">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">
-              Game Complete
+    <RecapShell
+      eyebrow="Game Complete"
+      title={name}
+      meta={
+        <>
+          {fmtMoneyCents(totals.totalIn)} in play
+          {totalDurationSec != null && <> · {fmtDuration(totalDurationSec)}</>}
+          {" · "}
+          {rows.length} player{rows.length === 1 ? "" : "s"}
+        </>
+      }
+      actions={
+        <>
+          <UpdateSheetButton session={sessionDraft} />
+          <button
+            className="btn btn-icon md:w-auto md:px-3.5"
+            onClick={handleReopen}
+            aria-label="Reopen"
+            title="Reopen"
+          >
+            <IconRotateCcw />
+            <span className="hidden md:inline">Reopen</span>
+          </button>
+          <button
+            className="btn btn-icon md:w-auto md:px-3.5"
+            onClick={handleNew}
+            aria-label="New Game"
+            title="New game"
+          >
+            <IconPlus />
+            <span className="hidden md:inline">New Game</span>
+          </button>
+        </>
+      }
+    >
+      {winner && (
+        <section className="card relative overflow-hidden p-4 sm:p-5 border-gold/40">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-10 -top-24 size-72 rounded-full blur-3xl"
+            style={{ background: "color-mix(in oklab, var(--gold) 14%, transparent)" }}
+          />
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
+            <div className="flex items-center gap-4 md:min-w-[15rem]">
+              <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-gold/15 text-gold text-2xl ring-1 ring-gold/35">
+                <IconTrophy />
+              </span>
+              <div className="min-w-0">
+                <div className="label text-gold">Biggest winner</div>
+                <div className="text-2xl font-semibold tracking-tight truncate">
+                  {winner.name}
+                </div>
+              </div>
             </div>
-            <div className="text-xl sm:text-2xl font-semibold truncate">
-              {name}
-            </div>
-            <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              {fmtMoneyCents(totals.totalIn)} in play
-              {totalDurationSec != null && (
-                <> · Ran for {fmtDuration(totalDurationSec)}</>
+            <div className="grid grid-cols-3 md:grid-cols-5 gap-x-6 gap-y-3 flex-1">
+              <StatCol
+                label="Net"
+                value={fmtSignedCents(winner.net)}
+                emphasize
+                tone={netTone(winner.net)}
+              />
+              <StatCol label="In for" value={fmtMoneyCents(winner.moneyIn)} emphasize />
+              <StatCol
+                label="Out for"
+                value={fmtMoneyCents(winner.payout)}
+                emphasize
+                tone="gold"
+              />
+              <StatCol label="Buy-ins" value={`${winner.buyInCount}×`} />
+              {winner.durationSec != null && (
+                <StatCol label="Played" value={fmtDuration(winner.durationSec)} />
               )}
-              {" · "}
-              {rows.length} player{rows.length === 1 ? "" : "s"}
-              {" · "}
-              {totals.winners} up, {totals.losers} down
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <UpdateSheetButton session={sessionDraft} />
-            <button
-              className="btn btn-ghost"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Reopen the game? Players settled when the game ended become active again; anyone who cashed out earlier stays settled.",
-                  )
-                ) {
-                  reopenGame();
-                }
-              }}
-            >
-              Reopen
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Start a brand-new cash game? This clears all players and transactions.",
-                  )
-                ) {
-                  resetGame();
-                }
-              }}
-            >
-              New Game
-            </button>
+        </section>
+      )}
+
+      {rows.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="label flex items-center justify-between gap-2 px-1">
+            <span className="flex items-center gap-2">
+              <IconUsers />
+              All players
+            </span>
+            <span className="normal-case tracking-normal font-medium">
+              <span className="text-gain">{totals.winners} up</span>
+              {" · "}
+              <span className="text-loss">{totals.losers} down</span>
+            </span>
           </div>
-        </div>
-      </div>
+          <RecapTable rows={tableRows} rankLabel="Rank" />
+        </section>
+      )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 py-4 sm:px-6 sm:py-6 flex flex-col gap-5">
-          {totals.biggestWin && totals.biggestWin.net > 0 && (
-            <section className="flex flex-col gap-3">
-              <div className="label">Biggest Winner</div>
-              <div className="card p-4 flex flex-col gap-3 border-[var(--accent)]/40 bg-gradient-to-br from-[var(--accent)]/10 to-transparent">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl leading-none">🏆</span>
-                  <div className="min-w-0">
-                    <div className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
-                      1st (by net)
-                    </div>
-                    <div className="text-lg font-semibold truncate">
-                      {totals.biggestWin.name}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <StatCol
-                    label="In for"
-                    value={fmtMoneyCents(totals.biggestWin.moneyIn)}
-                    emphasize
-                  />
-                  <StatCol
-                    label="Out for"
-                    value={fmtMoneyCents(totals.biggestWin.payout)}
-                    emphasize
-                  />
-                  <StatCol
-                    label="Buy-ins"
-                    value={`${totals.biggestWin.buyInCount}×`}
-                  />
-                  {totals.biggestWin.durationSec != null && (
-                    <StatCol
-                      label="Played"
-                      value={fmtDuration(totals.biggestWin.durationSec)}
-                    />
-                  )}
-                  <StatCol
-                    label="Net"
-                    value={fmtSignedCents(totals.biggestWin.net)}
-                    emphasize
-                    positive={positiveNet(totals.biggestWin.net)}
-                  />
-                </div>
-              </div>
-            </section>
-          )}
-
-          {rows.length > 0 && (
-            <section className="flex flex-col gap-2">
-              <div className="label">All Players</div>
-              <div className="flex flex-col gap-2">
-                {rows.map((r, idx) => (
-                  <ParticipantRow key={r.id} row={r} place={idx + 1} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className="card p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-sm">
-            <StatCol label="Total in" value={fmtMoneyCents(totals.totalIn)} />
-            <StatCol
-              label="Total out"
-              value={fmtMoneyCents(totals.totalOut)}
-            />
-            <StatCol
-              label={totals.totalIn === totals.totalOut ? "Balanced" : "Diff"}
-              value={fmtMoneyCents(Math.abs(totals.totalIn - totals.totalOut))}
-              muted={totals.totalIn !== totals.totalOut}
-            />
-            <StatCol
-              label="Avg final stack"
-              value={
-                totals.avgFinalStack != null
-                  ? fmtMoneyCents(Math.round(totals.avgFinalStack))
-                  : "—"
-              }
-              hint={
-                totals.avgFinalStack != null && bigBlind > 0
-                  ? fmtBBCount(stackBB(totals.avgFinalStack, bigBlind))
-                  : undefined
-              }
-            />
-            <StatCol
-              label="Avg buy-in"
-              value={
-                totals.avgBuyIn != null
-                  ? fmtMoneyCents(Math.round(totals.avgBuyIn))
-                  : "—"
-              }
-              hint={
-                totals.avgBuyIn != null && bigBlind > 0
-                  ? fmtBBCount(stackBB(totals.avgBuyIn, bigBlind))
-                  : undefined
-              }
-            />
-          </section>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ParticipantRow({ row, place }: { row: Row; place: number }) {
-  const positive = row.net >= 0;
-  return (
-    <div className="card p-3 flex flex-col gap-2 text-sm">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="chip min-w-[46px] justify-center font-semibold shrink-0">
-          #{place}
-        </span>
-        <span className="truncate font-medium flex-1">{row.name}</span>
-        <span className="text-xs text-[var(--text-muted)] shrink-0">
-          {row.buyInCount}×
-        </span>
-        {row.durationSec != null && (
-          <span className="text-xs text-[var(--text-muted)] font-mono shrink-0">
-            {fmtDuration(row.durationSec)}
-          </span>
-        )}
-      </div>
-      <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm border-t border-[var(--border)] pt-2">
-        <MiniStat label="In for" value={fmtMoneyCents(row.moneyIn)} />
-        <MiniStat label="Out for" value={fmtMoneyCents(row.payout)} />
-        <MiniStat
-          label="Net"
-          value={fmtSignedCents(row.net)}
-          positive={positive}
-          muted={!positive}
+      <section className="card p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-4">
+        <StatCol label="Total in" value={fmtMoneyCents(totals.totalIn)} />
+        <StatCol label="Total out" value={fmtMoneyCents(totals.totalOut)} />
+        <StatCol
+          label={balanced ? "Balanced" : "Diff"}
+          value={fmtMoneyCents(Math.abs(totals.totalIn - totals.totalOut))}
+          tone={balanced ? "gain" : "loss"}
         />
-      </div>
-    </div>
+        <StatCol
+          label="Avg final stack"
+          value={
+            totals.avgFinalStack != null
+              ? fmtMoneyCents(Math.round(totals.avgFinalStack))
+              : "—"
+          }
+          hint={
+            totals.avgFinalStack != null && bigBlind > 0
+              ? fmtBBCount(stackBB(totals.avgFinalStack, bigBlind))
+              : undefined
+          }
+        />
+        <StatCol
+          label="Avg buy-in"
+          value={
+            totals.avgBuyIn != null
+              ? fmtMoneyCents(Math.round(totals.avgBuyIn))
+              : "—"
+          }
+          hint={
+            totals.avgBuyIn != null && bigBlind > 0
+              ? fmtBBCount(stackBB(totals.avgBuyIn, bigBlind))
+              : undefined
+          }
+        />
+      </section>
+    </RecapShell>
   );
 }
-

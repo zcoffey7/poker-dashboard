@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTournament } from "@/lib/store";
-import { computeStats } from "@/lib/selectors";
+import { useTournamentStats } from "@/lib/useTournamentStats";
 import { computeCashPayouts } from "@/lib/payouts";
+import { confirmAction } from "@/lib/confirm";
 import type { PayoutSpot } from "@/lib/types";
 import NumberInput from "./NumberInput";
+import { Affixed, Section } from "./Section";
+import { IconPlus, IconTrash } from "./icons";
 
 type Props = {
   payouts: PayoutSpot[];
@@ -22,32 +24,8 @@ export default function PayoutsEditor({
   addOnCost,
   onChange,
 }: Props) {
-  const players = useTournament((s) => s.players);
-  const blindStructure = useTournament((s) => s.blindStructure);
-  const currentLevel = useTournament((s) => s.clock.currentLevel);
-  const removedEntries = useTournament((s) => s.removedEntries);
-  const stats = useMemo(
-    () =>
-      computeStats(
-        players,
-        blindStructure,
-        currentLevel,
-        buyIn,
-        addOnCost,
-        {},
-        rebuyCost,
-        removedEntries,
-      ),
-    [
-      players,
-      blindStructure,
-      currentLevel,
-      buyIn,
-      addOnCost,
-      rebuyCost,
-      removedEntries,
-    ],
-  );
+  // Preview against the draft prices, not the saved ones.
+  const stats = useTournamentStats({ buyIn, rebuyCost, addOnCost });
 
   const total = payouts.reduce((s, p) => s + p.percent, 0);
   const totalOk = Math.abs(total - 100) < 0.01;
@@ -63,8 +41,13 @@ export default function PayoutsEditor({
   function addSpot() {
     onChange([...payouts, { place: payouts.length + 1, percent: 0 }]);
   }
-  function removeSpot(place: number) {
-    if (!confirm(`Remove payout spot #${place}?`)) return;
+  async function removeSpot(place: number) {
+    const ok = await confirmAction({
+      title: `Remove payout spot #${place}?`,
+      confirmLabel: "Remove",
+      tone: "danger",
+    });
+    if (!ok) return;
     onChange(
       payouts
         .filter((p) => p.place !== place)
@@ -73,54 +56,72 @@ export default function PayoutsEditor({
   }
 
   return (
-    <div className="card p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="label">Payouts</div>
-          <div className="text-sm text-[var(--text-muted)] mt-1">
-            Pool ${stats.prizePool.toLocaleString()} • Total {total.toFixed(1)}%{" "}
-            {totalOk ? (
-              <span className="chip chip-green">OK</span>
-            ) : (
-              <span className="chip chip-amber">
-                {total > 100 ? "Over 100%" : "Under 100%"}
-              </span>
-            )}
-          </div>
-        </div>
-        <button className="btn btn-sm btn-primary" onClick={addSpot}>
-          + Place
+    <Section
+      title="Payouts"
+      description={
+        <span className="inline-flex items-center gap-2 flex-wrap tabular-nums">
+          <span>
+            Pool{" "}
+            <span className="text-gold font-medium">
+              ${stats.prizePool.toLocaleString()}
+            </span>{" "}
+            · {total.toFixed(1)}% allocated
+          </span>
+          {totalOk ? (
+            <span className="chip chip-primary">Adds up</span>
+          ) : (
+            <span className="chip chip-gold">
+              {total > 100 ? "Over 100%" : "Under 100%"}
+            </span>
+          )}
+        </span>
+      }
+      actions={
+        <button className="btn btn-sm" onClick={addSpot}>
+          <IconPlus />
+          Place
         </button>
-      </div>
-      <div className="flex flex-col gap-1">
+      }
+    >
+      <div className="flex flex-col gap-2">
         {payouts.map((p) => (
-          <div key={p.place} className="flex items-center gap-2">
-            <span className="chip min-w-[40px] justify-center">
+          <div key={p.place} className="flex items-center gap-2.5">
+            <span
+              className={`chip min-w-[2.75rem] justify-center tabular-nums ${
+                p.place === 1 ? "chip-gold" : ""
+              }`}
+            >
               #{p.place}
             </span>
-            <NumberInput
-              className="input !py-1 !text-sm w-[100px]"
-              value={p.percent}
-              min={0}
-              max={100}
-              step={0.5}
-              aria-label={`Payout percent for place ${p.place}`}
-              onChange={(n) => updatePayout(p.place, n)}
-            />
-            <span className="text-xs text-[var(--text-muted)]">%</span>
-            <span className="flex-1 text-right font-mono text-sm">
+            <div className="w-28">
+              <Affixed suffix="%">
+                <NumberInput
+                  className="input input-sm pr-7 tabular-nums"
+                  value={p.percent}
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  aria-label={`Payout percent for place ${p.place}`}
+                  onChange={(n) => updatePayout(p.place, n)}
+                />
+              </Affixed>
+            </div>
+            <span className="flex-1 text-right font-semibold tabular-nums">
               ${(cashAmounts[p.place] ?? 0).toLocaleString()}
             </span>
             <button
-              className="btn btn-sm btn-danger"
+              className="btn btn-ghost btn-sm btn-icon hover:text-loss"
               onClick={() => removeSpot(p.place)}
               aria-label={`Remove payout spot ${p.place}`}
             >
-              ×
+              <IconTrash />
             </button>
           </div>
         ))}
+        {payouts.length === 0 && (
+          <div className="text-sm text-muted italic">No paid places yet.</div>
+        )}
       </div>
-    </div>
+    </Section>
   );
 }

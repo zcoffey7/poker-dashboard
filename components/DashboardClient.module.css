@@ -1,0 +1,29 @@
+/* Phones stack the blocks in reading order (clock first); from `md` up the
+   dashboard becomes a fixed-height grid sized for a laptop or TV. */
+@media (min-width: 768px) {
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 4fr);
+    grid-template-rows: auto auto minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-areas:
+      "stats stats"
+      "actions actions"
+      "chips clock"
+      "chips payouts";
+  }
+  .stats {
+    grid-area: stats;
+  }
+  .actions {
+    grid-area: actions;
+  }
+  .chips {
+    grid-area: chips;
+  }
+  .clock {
+    grid-area: clock;
+  }
+  .payouts {
+    grid-area: payouts;
+  }
+}

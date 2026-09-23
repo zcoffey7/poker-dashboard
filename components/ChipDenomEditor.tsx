@@ -1,17 +1,17 @@
 "use client";
 
 import type { ChipColor, ChipDenom } from "@/lib/types";
+import { uid } from "@/lib/id";
+import { confirmAction } from "@/lib/confirm";
 import { CHIP_COLOR_MAP, CHIP_COLOR_OPTIONS, ChipDisk } from "./ChipLegend";
 import { chipImageForValue } from "@/lib/chipImages";
+import { Section } from "./Section";
+import { IconPlus, IconTrash } from "./icons";
 
 type Props = Readonly<{
   chipDenoms: ChipDenom[];
   onChange: (chipDenoms: ChipDenom[]) => void;
 }>;
-
-function newId() {
-  return `c_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
-}
 
 export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
   function updateChipColor(id: string, color: ChipColor) {
@@ -34,27 +34,28 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
     if (!next) return;
     onChange([
       ...chipDenoms,
-      { id: newId(), value: next.chipValue, color: next.value },
+      { id: uid("c"), value: next.chipValue, color: next.value },
     ]);
   }
-  function removeChip(id: string) {
-    onChange(chipDenoms.filter((c) => c.id !== id));
+  async function removeChip(c: ChipDenom) {
+    const ok = await confirmAction({
+      title: `Remove the $${c.value.toLocaleString()} chip?`,
+      confirmLabel: "Remove chip",
+      tone: "danger",
+    });
+    if (ok) onChange(chipDenoms.filter((d) => d.id !== c.id));
   }
 
   const allPresetsUsed =
     new Set(chipDenoms.map((c) => c.color)).size >= CHIP_COLOR_OPTIONS.length;
 
   return (
-    <div className="card p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="label">Chip denominations</div>
-          <div className="text-sm text-muted mt-1">
-            Shown on the dashboard so everyone knows each chip&apos;s value.
-          </div>
-        </div>
+    <Section
+      title="Chip denominations"
+      description="Shown on the dashboard so everyone knows each chip's value."
+      actions={
         <button
-          className="btn btn-sm btn-primary"
+          className="btn btn-sm"
           onClick={addChip}
           disabled={allPresetsUsed}
           title={
@@ -63,15 +64,17 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
               : "Add a chip"
           }
         >
-          + Chip
+          <IconPlus />
+          Chip
         </button>
-      </div>
-      <div className="flex flex-col gap-3">
-        {chipDenoms.length === 0 && (
-          <div className="text-sm text-muted italic">
-            No chips defined. Add one to show a legend on the dashboard.
-          </div>
-        )}
+      }
+    >
+      {chipDenoms.length === 0 && (
+        <div className="text-sm text-muted italic">
+          No chips defined. Add one to show a legend on the dashboard.
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {chipDenoms.map((c) => {
           const palette = CHIP_COLOR_MAP[c.color];
           const imageSrc = chipImageForValue(c.value);
@@ -79,28 +82,25 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
             chipDenoms.filter((d) => d.id !== c.id).map((d) => d.color),
           );
           return (
-            <div key={c.id} className="flex items-center gap-4">
+            <div key={c.id} className="card-2 flex items-center gap-3 p-2.5 pr-2">
               <ChipDisk
                 color={c.color}
-                size={64}
+                size="2.75rem"
                 imageSrc={imageSrc}
                 imageAlt={`$${c.value.toLocaleString()} chip`}
               />
-              {/* Wrap the select in a fixed-width container: the global
-                  `.select { width: 100% }` rule outranks Tailwind width
-                  utilities here, so without the wrapper the dropdown would
-                  stretch across the row. */}
-              <div className="w-[220px] shrink-0">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold tabular-nums text-lg leading-tight">
+                  ${c.value.toLocaleString()}
+                </div>
                 <select
-                  className="select"
+                  className="select input-sm mt-1 max-w-[13rem]"
                   value={c.color}
                   aria-label={`Color for $${c.value.toLocaleString()} chip`}
                   onChange={(e) =>
                     updateChipColor(c.id, e.target.value as ChipColor)
                   }
-                  style={{
-                    borderLeft: `4px solid ${palette.face}`,
-                  }}
+                  style={{ borderLeft: `3px solid ${palette.face}` }}
                 >
                   {CHIP_COLOR_OPTIONS.map((o) => (
                     <option
@@ -114,23 +114,17 @@ export default function ChipDenomEditor({ chipDenoms, onChange }: Props) {
                   ))}
                 </select>
               </div>
-              <div className="flex-1 font-mono tabular-nums text-lg font-semibold">
-                ${c.value.toLocaleString()}
-              </div>
               <button
-                className="btn btn-sm btn-danger"
-                onClick={() => {
-                  if (confirm(`Remove the $${c.value.toLocaleString()} chip?`))
-                    removeChip(c.id);
-                }}
+                className="btn btn-ghost btn-sm btn-icon hover:text-loss"
+                onClick={() => removeChip(c)}
                 aria-label={`Remove $${c.value.toLocaleString()} chip`}
               >
-                ×
+                <IconTrash />
               </button>
             </div>
           );
         })}
       </div>
-    </div>
+    </Section>
   );
 }

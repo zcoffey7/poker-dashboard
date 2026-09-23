@@ -1,8 +1,8 @@
 "use client";
 
-import { useTournament } from "@/lib/store";
 import type { TournamentSettings } from "@/lib/types";
 import NumberInput from "./NumberInput";
+import { Affixed, Field, Section, Toggle } from "./Section";
 
 export type GeneralDraft = {
   name: string;
@@ -21,154 +21,123 @@ type Props = {
 };
 
 export default function GeneralSettings({ draft, onChange }: Props) {
-  const resetTournament = useTournament((s) => s.resetTournament);
-
   function updateSettings(patch: Partial<TournamentSettings>) {
     onChange({ settings: { ...draft.settings, ...patch } });
   }
 
   return (
-    <div className="card p-4 flex flex-col gap-3">
-      <div className="label">Tournament</div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">Name</label>
-          <input
-            className="input"
-            value={draft.name}
-            onChange={(e) => onChange({ name: e.target.value })}
-          />
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <Section
+        title="Game"
+        description="Name, entry, and how the dashboard behaves."
+        className="lg:col-span-3"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Name" className="sm:col-span-2">
+            <input
+              className="input"
+              value={draft.name}
+              onChange={(e) => onChange({ name: e.target.value })}
+            />
+          </Field>
+          <Field label="Buy-in">
+            <Affixed prefix="$">
+              <NumberInput
+                className="input pl-7 tabular-nums"
+                value={draft.buyIn}
+                onChange={(n) => onChange({ buyIn: n })}
+              />
+            </Affixed>
+          </Field>
+          <Field label="Starting stack">
+            <Affixed suffix="chips">
+              <NumberInput
+                className="input pr-14 tabular-nums"
+                value={draft.startingStack}
+                onChange={(n) => onChange({ startingStack: n })}
+              />
+            </Affixed>
+          </Field>
+          <Field label="Seating mode">
+            <select
+              className="select"
+              value={draft.settings.seatingMode}
+              onChange={(e) =>
+                updateSettings({
+                  seatingMode: e.target.value as "spread" | "fill",
+                })
+              }
+            >
+              <option value="spread">Spread (evenly across tables)</option>
+              <option value="fill">Fill (fill first table first)</option>
+            </select>
+          </Field>
+          <Field label="Warning threshold">
+            <Affixed suffix="sec">
+              <NumberInput
+                className="input pr-12 tabular-nums"
+                value={draft.settings.warnSec}
+                onChange={(n) => updateSettings({ warnSec: n })}
+              />
+            </Affixed>
+          </Field>
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Starting stack
-          </label>
-          <NumberInput
-            className="input"
-            value={draft.startingStack}
-            onChange={(n) => onChange({ startingStack: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">Buy-in ($)</label>
-          <NumberInput
-            className="input"
-            value={draft.buyIn}
-            onChange={(n) => onChange({ buyIn: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Warning threshold (sec)
-          </label>
-          <NumberInput
-            className="input"
-            value={draft.settings.warnSec}
-            onChange={(n) => updateSettings({ warnSec: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Rebuy cost ($)
-          </label>
-          <NumberInput
-            className="input"
-            value={draft.rebuyCost}
-            onChange={(n) => onChange({ rebuyCost: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Rebuy chips (0 to disable)
-          </label>
-          <NumberInput
-            className="input"
-            value={draft.rebuyChips}
-            onChange={(n) => onChange({ rebuyChips: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Add-on cost ($)
-          </label>
-          <NumberInput
-            className="input"
-            value={draft.addOnCost}
-            onChange={(n) => onChange({ addOnCost: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Add-on chips (0 to disable)
-          </label>
-          <NumberInput
-            className="input"
-            value={draft.addOnChips}
-            onChange={(n) => onChange({ addOnChips: n })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--text-muted)]">
-            Seating mode
-          </label>
-          <select
-            className="select"
-            value={draft.settings.seatingMode}
-            onChange={(e) =>
-              updateSettings({
-                seatingMode: e.target.value as "spread" | "fill",
-              })
-            }
-          >
-            <option value="spread">Spread (evenly across tables)</option>
-            <option value="fill">Fill (fill first table first)</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4 pt-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border">
+          <Toggle
             checked={draft.settings.autoBalance}
-            onChange={(e) =>
-              updateSettings({ autoBalance: e.target.checked })
-            }
+            onChange={(v) => updateSettings({ autoBalance: v })}
+            label="Auto-balance tables"
+            description="Rebalance seats whenever a player is eliminated."
           />
-          Auto-balance tables on elimination
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Toggle
             checked={draft.settings.soundEnabled}
-            onChange={(e) =>
-              updateSettings({ soundEnabled: e.target.checked })
-            }
+            onChange={(v) => updateSettings({ soundEnabled: v })}
+            label="Sound alerts"
+            description="Chime at the warning threshold and on level up."
           />
-          Sound alerts
-        </label>
-      </div>
+        </div>
+      </Section>
 
-      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)] mt-2">
-        <div className="flex-1" />
-        <button
-          className="btn btn-sm btn-danger"
-          onClick={() => {
-            if (
-              confirm(
-                "Reset tournament to defaults? All players and progress will be lost. This takes effect immediately (no Save needed).",
-              )
-            ) {
-              resetTournament();
-            }
-          }}
-        >
-          Reset to defaults
-        </button>
-      </div>
-      <div className="text-xs text-[var(--text-muted)]">
-        Reset applies immediately; other fields need Save.
-      </div>
+      <Section
+        title="Rebuys & add-ons"
+        description="Set chips to 0 to turn either one off."
+        className="lg:col-span-2"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Rebuy cost">
+            <Affixed prefix="$">
+              <NumberInput
+                className="input pl-7 tabular-nums"
+                value={draft.rebuyCost}
+                onChange={(n) => onChange({ rebuyCost: n })}
+              />
+            </Affixed>
+          </Field>
+          <Field label="Rebuy chips">
+            <NumberInput
+              className="input tabular-nums"
+              value={draft.rebuyChips}
+              onChange={(n) => onChange({ rebuyChips: n })}
+            />
+          </Field>
+          <Field label="Add-on cost">
+            <Affixed prefix="$">
+              <NumberInput
+                className="input pl-7 tabular-nums"
+                value={draft.addOnCost}
+                onChange={(n) => onChange({ addOnCost: n })}
+              />
+            </Affixed>
+          </Field>
+          <Field label="Add-on chips">
+            <NumberInput
+              className="input tabular-nums"
+              value={draft.addOnChips}
+              onChange={(n) => onChange({ addOnChips: n })}
+            />
+          </Field>
+        </div>
+      </Section>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import NumberInput from "../NumberInput";
-import { StatBox } from "../StatTiles";
+import { StatBox, netTone } from "../StatTiles";
+import { confirmAction } from "@/lib/confirm";
 import { fmtMoneyCents, fmtSignedCents, toCents } from "@/lib/money";
 
 type Props = {
@@ -27,31 +28,36 @@ export default function CashOutForm({
 }: Props) {
   const [amount, setAmount] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const amountId = useId();
   const amountCents = toCents(amount);
   const netCents = amountCents - totalInCents;
-  const positive = netCents >= 0;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!dirty) return;
-    if (
-      amount <= 0 &&
-      !confirm(
-        "Cash out for $0.00? Use this when the player busted with nothing left.",
-      )
-    ) {
-      return;
+    if (amount <= 0) {
+      const ok = await confirmAction({
+        title: "Cash out for $0.00?",
+        message: "Use this when the player busted with nothing left.",
+        confirmLabel: "Cash out $0",
+      });
+      if (!ok) return;
     }
     onSubmit(amount);
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="flex flex-col gap-1">
-        <span className="label">Cashing out with</span>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-lg">$</span>
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor={amountId} className="label">
+          Cashing out with
+        </label>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-semibold text-muted">
+            $
+          </span>
           <NumberInput
-            className="input flex-1 font-mono text-lg"
+            id={amountId}
+            className="input h-14 pl-9 text-2xl font-semibold tabular-nums"
             value={amount}
             onChange={(n) => {
               setDirty(true);
@@ -59,32 +65,29 @@ export default function CashOutForm({
             }}
             step={0.01}
             min={0}
-            autoFocus={autoFocus}
+            data-autofocus={autoFocus || undefined}
             placeholder="Final stack"
           />
         </div>
-      </label>
+      </div>
 
-      <div className="grid grid-cols-2 gap-2 text-sm">
+      <div className="grid grid-cols-2 gap-2">
         <StatBox label="Out for" value={fmtMoneyCents(amountCents)} />
         <StatBox
           label="Net"
           value={fmtSignedCents(netCents)}
-          positive={positive}
-          muted={!positive}
+          tone={dirty ? netTone(netCents) : undefined}
         />
       </div>
 
-      <div className="flex justify-end">
-        <button
-          className="btn btn-primary"
-          onClick={handleSubmit}
-          disabled={!dirty}
-          title={!dirty ? "Enter a final stack amount first" : undefined}
-        >
-          {confirmLabel}
-        </button>
-      </div>
+      <button
+        className="btn btn-primary btn-lg w-full mt-1"
+        onClick={handleSubmit}
+        disabled={!dirty}
+        title={!dirty ? "Enter a final stack amount first" : undefined}
+      >
+        {confirmLabel}
+      </button>
     </div>
   );
 }

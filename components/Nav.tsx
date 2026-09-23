@@ -5,6 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTournament } from "@/lib/store";
 import { useCash } from "@/lib/cashStore";
+import { useHasHydrated } from "@/lib/useHasHydrated";
+import Logo, { LogoMark } from "./Logo";
+import ThemePicker, { ThemeSwatches } from "./ThemePicker";
+import {
+  IconLayoutGrid,
+  IconMenu,
+  IconRepeat,
+  IconSliders,
+  IconX,
+} from "./icons";
 
 type Mode = "tournament" | "cash" | "none";
 
@@ -15,9 +25,18 @@ function modeFromPath(pathname: string | null): Mode {
   return "none";
 }
 
-type NavItem =
-  | { kind: "link"; href: string; label: string; active: boolean }
-  | { kind: "action"; label: string; title?: string; onClick: () => void };
+type NavLink = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+};
+
+const MODE_LABEL: Record<Mode, string> = {
+  tournament: "Tournament",
+  cash: "Cash game",
+  none: "",
+};
 
 export default function Nav() {
   const pathname = usePathname();
@@ -25,99 +44,126 @@ export default function Nav() {
 
   const tournamentName = useTournament((s) => s.name);
   const cashName = useCash((s) => s.name);
+  // Names come from localStorage; wait for rehydration so the static HTML
+  // (defaults) and the first client render agree.
+  const tournamentReady = useHasHydrated(useTournament);
+  const cashReady = useHasHydrated(useCash);
 
   const name =
-    mode === "tournament"
+    mode === "tournament" && tournamentReady
       ? tournamentName
-      : mode === "cash"
+      : mode === "cash" && cashReady
         ? cashName
         : "";
 
   const basePath = mode === "cash" ? "/cash" : "/tournament";
-  const dashboardActive =
-    pathname === basePath || pathname === `${basePath}/`;
-  const settingsActive = !!pathname?.startsWith(`${basePath}/settings`);
-
-  const items: NavItem[] = [];
-  if (mode !== "none") {
-    items.push({
-      kind: "link",
-      href: basePath,
-      label: "Dashboard",
-      active: dashboardActive,
-    });
-  }
-  items.push({
-    kind: "link",
-    href: "/",
-    label: mode === "none" ? "Home" : "Switch mode",
-    active: pathname === "/",
-  });
-  if (mode !== "none") {
-    items.push({
-      kind: "link",
-      href: `${basePath}/settings`,
-      label: "Settings",
-      active: settingsActive,
-    });
-  }
+  const onSettings = !!pathname?.startsWith(`${basePath}/settings`);
+  const links: NavLink[] =
+    mode === "none"
+      ? []
+      : [
+          {
+            href: basePath,
+            label: "Dashboard",
+            icon: <IconLayoutGrid />,
+            active: !onSettings,
+          },
+          {
+            href: `${basePath}/settings`,
+            label: "Settings",
+            icon: <IconSliders />,
+            active: onSettings,
+          },
+        ];
 
   return (
-    <nav className="border-b border-[var(--border)] bg-[var(--surface)] px-4 sm:px-6 py-3 flex items-center gap-3 sm:gap-6 sticky top-0 z-20">
-      <Link href="/" className="font-semibold text-lg tracking-tight shrink-0">
-        <span className="text-[var(--accent)]">Poker</span>Clock
-      </Link>
-      {mode !== "none" && (
-        <span className="chip chip-accent uppercase hidden sm:inline-flex">
-          {mode === "tournament" ? "Tournament" : "Cash"}
-        </span>
-      )}
-      <div className="hidden md:block text-[var(--text-muted)] text-sm truncate max-w-[320px]">
-        {name}
-      </div>
-      <div className="flex-1" />
+    <nav className="sticky top-0 z-20 border-b border-border bg-[color-mix(in_oklab,var(--surface)_82%,transparent)] backdrop-blur-md pt-[env(safe-area-inset-top)]">
+      <div className="h-14 flex items-center gap-3 sm:gap-4 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:px-6">
+        {/* Phone: compact title bar — which game you're in, at a glance. */}
+        <Link
+          href="/"
+          className="sm:hidden shrink-0 rounded-lg"
+          aria-label="PokerClock home"
+        >
+          <LogoMark className="size-9" />
+        </Link>
+        <div className="sm:hidden min-w-0 flex-1 leading-tight">
+          {mode !== "none" && (
+            <div className="text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-primary">
+              {MODE_LABEL[mode]}
+              {onSettings && <span className="text-muted"> · Settings</span>}
+            </div>
+          )}
+          <div className="font-semibold truncate text-[0.9375rem]">
+            {name || "\u00a0"}
+          </div>
+        </div>
 
-      {/* Desktop / tablet inline links */}
-      <div className="hidden sm:flex items-center gap-2">
-        {items.map((it, i) =>
-          it.kind === "link" ? (
-            <Link
-              key={`l-${i}`}
-              href={it.href}
-              className={`btn btn-sm ${it.active ? "btn-primary" : "btn-ghost"}`}
-            >
-              {it.label}
-            </Link>
-          ) : (
-            <button
-              key={`a-${i}`}
-              className="btn btn-sm btn-ghost"
-              onClick={it.onClick}
-              title={it.title}
-            >
-              {it.label}
-            </button>
-          ),
+        {/* Desktop */}
+        <Link
+          href="/"
+          className="hidden sm:inline-flex shrink-0 rounded-lg"
+          aria-label="PokerClock home"
+        >
+          <Logo />
+        </Link>
+        {mode !== "none" && (
+          <span className="chip chip-primary hidden sm:inline-flex">
+            {MODE_LABEL[mode]}
+          </span>
         )}
-      </div>
+        <div className="hidden md:block text-sm text-muted truncate max-w-[320px]">
+          {name}
+        </div>
+        <div className="hidden sm:block flex-1" />
 
-      {/* Mobile hamburger — remount on route change so menu state resets without an effect */}
-      <MobileMenu
-        key={pathname ?? ""}
-        items={items}
-        mode={mode}
-        name={name}
-      />
+        <div className="hidden sm:flex items-center gap-2">
+          {links.length > 0 && (
+            <div className="segmented">
+              {links.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  aria-current={l.active ? "page" : undefined}
+                >
+                  {l.icon}
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          )}
+          <Link href="/" className="btn btn-ghost btn-sm">
+            <IconRepeat />
+            Switch mode
+          </Link>
+          <span className="w-px h-5 bg-border" aria-hidden="true" />
+          <ThemePicker />
+        </div>
+
+        <div className="sm:hidden flex items-center">
+          {mode !== "none" && (
+            <Link
+              href={onSettings ? basePath : `${basePath}/settings`}
+              className="btn btn-ghost btn-icon"
+              aria-label={onSettings ? "Back to dashboard" : "Settings"}
+            >
+              {onSettings ? <IconLayoutGrid /> : <IconSliders />}
+            </Link>
+          )}
+          {/* Remount on route change so menu state resets without an effect. */}
+          <MobileMenu key={pathname ?? ""} links={links} mode={mode} name={name} />
+        </div>
+      </div>
     </nav>
   );
 }
 
 function MobileMenu({
-  items,
+  links,
   mode,
   name,
 }: {
-  items: NavItem[];
+  links: NavLink[];
   mode: Mode;
   name: string;
 }) {
@@ -141,92 +187,63 @@ function MobileMenu({
     };
   }, [menuOpen]);
 
+  const itemClass = (active: boolean) =>
+    `flex items-center gap-3 px-3 h-12 rounded-[12px] text-[0.9375rem] font-medium ${
+      active ? "bg-primary/12 text-primary" : "active:bg-hover"
+    }`;
+
   return (
-    <div className="sm:hidden relative" ref={menuRef}>
+    <div className="relative" ref={menuRef}>
       <button
-        className="btn btn-sm btn-ghost !px-2.5"
+        className="btn btn-ghost btn-icon"
         aria-label="Menu"
         aria-expanded={menuOpen}
         aria-haspopup="menu"
         onClick={() => setMenuOpen((v) => !v)}
       >
-        <HamburgerIcon open={menuOpen} />
+        {menuOpen ? <IconX /> : <IconMenu />}
       </button>
       {menuOpen && (
         <div
           role="menu"
-          className="absolute right-0 top-full mt-2 min-w-[200px] card p-1 shadow-2xl z-30"
+          className="absolute right-0 top-full mt-2 w-[min(19rem,calc(100vw-1.5rem))] card p-2 shadow-2xl z-30 animate-pop-in"
         >
           {mode !== "none" && (
-            <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-[var(--text-muted)] border-b border-[var(--border)] mb-1 flex items-center justify-between gap-2">
-              <span>{mode === "tournament" ? "Tournament" : "Cash"}</span>
+            <div className="px-3 pt-1.5 pb-3 mb-1 border-b border-border">
+              <div className="label">{MODE_LABEL[mode]}</div>
               {name && (
-                <span className="truncate text-[var(--text)] font-medium normal-case tracking-normal">
-                  {name}
-                </span>
+                <div className="font-semibold truncate mt-0.5">{name}</div>
               )}
             </div>
           )}
-          {items.map((it, i) =>
-            it.kind === "link" ? (
-              <Link
-                key={`ml-${i}`}
-                href={it.href}
-                role="menuitem"
-                className={`block px-3 py-2 rounded text-sm ${
-                  it.active
-                    ? "bg-[var(--accent)] text-white"
-                    : "hover:bg-black/30"
-                }`}
-                onClick={() => setMenuOpen(false)}
-              >
-                {it.label}
-              </Link>
-            ) : (
-              <button
-                key={`ma-${i}`}
-                role="menuitem"
-                className="w-full text-left px-3 py-2 rounded text-sm hover:bg-black/30"
-                onClick={() => {
-                  it.onClick();
-                  setMenuOpen(false);
-                }}
-              >
-                {it.label}
-              </button>
-            ),
-          )}
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              role="menuitem"
+              className={itemClass(l.active)}
+              aria-current={l.active ? "page" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
+              {l.icon}
+              {l.label}
+            </Link>
+          ))}
+          <Link
+            href="/"
+            role="menuitem"
+            className={itemClass(false)}
+            onClick={() => setMenuOpen(false)}
+          >
+            <IconRepeat />
+            Switch mode
+          </Link>
+          <div className="px-1 pt-3 pb-1 mt-1 border-t border-border">
+            <div className="label px-2 mb-2">Theme</div>
+            <ThemeSwatches />
+          </div>
         </div>
       )}
     </div>
-  );
-}
-
-function HamburgerIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {open ? (
-        <>
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </>
-      ) : (
-        <>
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <line x1="3" y1="18" x2="21" y2="18" />
-        </>
-      )}
-    </svg>
   );
 }

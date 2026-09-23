@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
-import { computeStats } from "@/lib/selectors";
+import { useTournamentStats } from "@/lib/useTournamentStats";
+import { confirmAction } from "@/lib/confirm";
 import {
   computeCashPayouts,
   computeChopAmounts,
@@ -11,10 +12,12 @@ import {
 } from "@/lib/payouts";
 import { fmtDuration } from "@/lib/clock";
 import { playedSecOrNull } from "@/lib/playTime";
-import { StatCol, MiniStat } from "./StatTiles";
+import { StatCol, netTone } from "./StatTiles";
+import RecapShell, { RecapTable, type RecapRow } from "./RecapShell";
 import UpdateSheetButton from "./standings/UpdateSheetButton";
 import { buildSessionDraft } from "@/lib/standings/fromRecap";
 import type { Player } from "@/lib/types";
+import { IconPlus, IconRotateCcw, IconTrophy, IconUsers } from "./icons";
 
 type Row = {
   id: string;
@@ -31,7 +34,7 @@ type Row = {
 };
 
 function placeLabel(place: number | null, isCoWinner: boolean): string {
-  if (isCoWinner) return "CHOP";
+  if (isCoWinner) return "Chop";
   if (place == null) return "—";
   if (place === 1) return "1st";
   if (place === 2) return "2nd";
@@ -39,12 +42,8 @@ function placeLabel(place: number | null, isCoWinner: boolean): string {
   return `${place}th`;
 }
 
-function placeMedal(place: number | null, isCoWinner: boolean): string {
-  if (isCoWinner) return "🤝";
-  if (place === 1) return "🏆";
-  if (place === 2) return "🥈";
-  if (place === 3) return "🥉";
-  return "";
+function fmtSignedDollars(n: number): string {
+  return `${n >= 0 ? "+" : "−"}$${Math.abs(n).toLocaleString()}`;
 }
 
 export default function GameRecap() {
@@ -55,39 +54,15 @@ export default function GameRecap() {
   const addOnCost = useTournament((s) => s.addOnCost);
   const rebuyCost = useTournament((s) => s.rebuyCost);
   const payouts = useTournament((s) => s.payouts);
-  const blindStructure = useTournament((s) => s.blindStructure);
   const startedAt = useTournament((s) => s.startedAt);
   const finishedAt = useTournament((s) => s.finishedAt);
   const finishType = useTournament((s) => s.finishType);
   const chopShares = useTournament((s) => s.chopShares);
   const storedChopAmounts = useTournament((s) => s.chopAmounts);
-  const currentLevelIdx = useTournament((s) => s.clock.currentLevel);
   const unfinishTournament = useTournament((s) => s.unfinishTournament);
   const resetTournament = useTournament((s) => s.resetTournament);
-  const removedEntries = useTournament((s) => s.removedEntries);
 
-  const stats = useMemo(
-    () =>
-      computeStats(
-        players,
-        blindStructure,
-        currentLevelIdx,
-        buyIn,
-        addOnCost,
-        {},
-        rebuyCost,
-        removedEntries,
-      ),
-    [
-      players,
-      blindStructure,
-      currentLevelIdx,
-      buyIn,
-      addOnCost,
-      rebuyCost,
-      removedEntries,
-    ],
-  );
+  const stats = useTournamentStats();
   const pool = stats.prizePool;
 
   // Only pay as many spots as there are ranked finishers. Everything else
@@ -246,170 +221,156 @@ export default function GameRecap() {
     [name, startedAt, finishedAt, rows],
   );
 
+  async function handleReopen() {
+    const ok = await confirmAction({
+      title: "Reopen the tournament?",
+      message:
+        "You can keep playing; the recap will still be available once it ends again.",
+      confirmLabel: "Reopen",
+    });
+    if (ok) unfinishTournament();
+  }
+
+  async function handleNew() {
+    const ok = await confirmAction({
+      title: "Start a brand-new tournament?",
+      message: "This clears all players, chips, and settings.",
+      confirmLabel: "Start new",
+      tone: "danger",
+    });
+    if (ok) resetTournament();
+  }
+
+  const tableRows: RecapRow[] = others.map((r) => ({
+    id: r.id,
+    rank: placeLabel(r.place, r.isCoWinner),
+    name: r.name,
+    detail: `${r.entries}×${r.addOns > 0 ? ` · ${r.addOns} add-on${r.addOns === 1 ? "" : "s"}` : ""}`,
+    played: r.durationSec != null ? fmtDuration(r.durationSec) : "—",
+    moneyIn: `$${r.moneyIn.toLocaleString()}`,
+    moneyOut: `$${r.payout.toLocaleString()}`,
+    net: fmtSignedDollars(r.net),
+    netValue: r.net,
+    highlight: r.payout > 0,
+  }));
+
   return (
-    <div className="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col overflow-hidden">
-      <div className="flex-none px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-3 border-b border-[var(--border)]">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">
-              {finishType === "chop" ? "Chopped" : "Tournament Complete"}
-            </div>
-            <div className="text-xl sm:text-2xl font-semibold truncate">
-              {name}
-            </div>
-            <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              ${pool.toLocaleString()} prize pool
-              {totalDurationSec != null && (
-                <> · Ran for {fmtDuration(totalDurationSec)}</>
-              )}
-              {" · "}
-              {stats.totalPlayers} player
-              {stats.totalPlayers === 1 ? "" : "s"}
-            </div>
+    <RecapShell
+      eyebrow={finishType === "chop" ? "Chopped" : "Tournament Complete"}
+      title={name}
+      meta={
+        <>
+          <span className="text-gold font-medium">${pool.toLocaleString()}</span> prize pool
+          {totalDurationSec != null && <> · Ran for {fmtDuration(totalDurationSec)}</>}
+          {" · "}
+          {stats.totalPlayers} player{stats.totalPlayers === 1 ? "" : "s"}
+        </>
+      }
+      actions={
+        <>
+          <UpdateSheetButton session={sessionDraft} />
+          <button
+            className="btn btn-icon md:w-auto md:px-3.5"
+            onClick={handleReopen}
+            aria-label="Reopen"
+            title="Reopen"
+          >
+            <IconRotateCcw />
+            <span className="hidden md:inline">Reopen</span>
+          </button>
+          <button
+            className="btn btn-icon md:w-auto md:px-3.5"
+            onClick={handleNew}
+            aria-label="New Tournament"
+            title="New tournament"
+          >
+            <IconPlus />
+            <span className="hidden md:inline">New Tournament</span>
+          </button>
+        </>
+      }
+    >
+      {winners.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="label">
+            {finishType === "chop" ? "Co-winners" : "Champion"}
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <UpdateSheetButton session={sessionDraft} />
-            <button
-              className="btn btn-ghost"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Reopen the tournament? You can keep playing; the recap will still be available once it ends again.",
-                  )
-                ) {
-                  unfinishTournament();
-                }
-              }}
-            >
-              Reopen
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Start a brand-new tournament? This will clear all players, chips, and settings.",
-                  )
-                ) {
-                  resetTournament();
-                }
-              }}
-            >
-              New Tournament
-            </button>
+          <div
+            className={`grid gap-3 ${
+              winners.length > 1 ? "sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
+            }`}
+          >
+            {winners.map((w) => (
+              <WinnerCard key={w.id} row={w} wide={winners.length === 1} />
+            ))}
           </div>
-        </div>
-      </div>
+        </section>
+      )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 py-4 sm:px-6 sm:py-6 flex flex-col gap-5">
-          {winners.length > 0 && (
-            <section className="flex flex-col gap-3">
-              <div className="label">
-                {finishType === "chop" ? "Co-Winners" : "Champion"}
-              </div>
-              <div
-                className={`grid gap-3 ${
-                  winners.length > 1
-                    ? "sm:grid-cols-2 lg:grid-cols-3"
-                    : "grid-cols-1"
-                }`}
-              >
-                {winners.map((w) => (
-                  <WinnerCard key={w.id} row={w} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {others.length > 0 && (
-            <section className="flex flex-col gap-2">
-              <div className="label">Participants</div>
-              <div className="flex flex-col gap-2">
-                {others.map((r) => (
-                  <ParticipantRow key={r.id} row={r} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
-    </div>
+      {tableRows.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="label flex items-center gap-2">
+            <IconUsers />
+            Participants
+          </div>
+          <RecapTable rows={tableRows} rankLabel="Place" />
+        </section>
+      )}
+    </RecapShell>
   );
 }
 
-function WinnerCard({ row }: { row: Row }) {
+function WinnerCard({ row, wide }: { row: Row; wide: boolean }) {
   return (
-    <div className="card p-4 flex flex-col gap-3 border-[var(--accent)]/40 bg-gradient-to-br from-[var(--accent)]/10 to-transparent">
-      <div className="flex items-center gap-2">
-        <span className="text-2xl leading-none">
-          {placeMedal(row.place, row.isCoWinner)}
-        </span>
-        <div className="min-w-0">
-          <div className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
-            {placeLabel(row.place, row.isCoWinner)}
-          </div>
-          <div className="text-lg font-semibold truncate">{row.name}</div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <StatCol
-          label="In for"
-          value={`$${row.moneyIn.toLocaleString()}`}
-          emphasize
-        />
-        <StatCol
-          label="Out for"
-          value={`$${row.payout.toLocaleString()}`}
-          emphasize
-        />
-        <StatCol label="Buy-ins" value={`${row.entries}×`} />
-        <StatCol label="Add-ons" value={`${row.addOns}×`} />
-        <StatCol
-          label="Net"
-          value={`${row.net >= 0 ? "+" : "−"}$${Math.abs(row.net).toLocaleString()}`}
-          emphasize
-          positive={row.net >= 0}
-        />
-        {row.durationSec != null && (
-          <StatCol label="Played" value={fmtDuration(row.durationSec)} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ParticipantRow({ row }: { row: Row }) {
-  const positive = row.net >= 0;
-  const netStr = `${positive ? "+" : "−"}$${Math.abs(row.net).toLocaleString()}`;
-  return (
-    <div className="card p-3 flex flex-col gap-2 text-sm">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="chip min-w-[46px] justify-center font-semibold shrink-0">
-          {placeLabel(row.place, row.isCoWinner)}
-        </span>
-        <span className="truncate font-medium flex-1">{row.name}</span>
-        <span className="text-xs text-[var(--text-muted)] shrink-0">
-          {row.entries}×
-          {row.addOns > 0 ? ` · ${row.addOns}A` : ""}
-        </span>
-        {row.durationSec != null && (
-          <span className="text-xs text-[var(--text-muted)] font-mono shrink-0">
-            {fmtDuration(row.durationSec)}
+    <div className="card relative overflow-hidden p-5 border-gold/40">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-10 -top-24 size-72 rounded-full blur-3xl"
+        style={{ background: "color-mix(in oklab, var(--gold) 14%, transparent)" }}
+      />
+      <div
+        className={`relative flex gap-5 ${
+          wide ? "flex-col md:flex-row md:items-center" : "flex-col"
+        }`}
+      >
+        <div className="flex items-center gap-4 md:min-w-[16rem]">
+          <span className="inline-flex size-14 items-center justify-center rounded-2xl bg-gold/15 text-gold text-2xl ring-1 ring-gold/35">
+            <IconTrophy />
           </span>
-        )}
-      </div>
-      <div className="grid grid-cols-3 gap-2 text-xs sm:text-sm border-t border-[var(--border)] pt-2">
-        <MiniStat label="In for" value={`$${row.moneyIn.toLocaleString()}`} />
-        <MiniStat label="Out for" value={`$${row.payout.toLocaleString()}`} />
-        <MiniStat
-          label="Net"
-          value={netStr}
-          positive={positive}
-          muted={!positive}
-        />
+          <div className="min-w-0">
+            <div className="label text-gold">
+              {placeLabel(row.place, row.isCoWinner)}
+            </div>
+            <div className="text-2xl font-semibold tracking-tight truncate">
+              {row.name}
+            </div>
+          </div>
+        </div>
+        <div
+          className={`grid gap-x-6 gap-y-3 flex-1 ${
+            wide ? "grid-cols-3 md:grid-cols-6" : "grid-cols-3"
+          }`}
+        >
+          <StatCol label="In for" value={`$${row.moneyIn.toLocaleString()}`} emphasize />
+          <StatCol
+            label="Out for"
+            value={`$${row.payout.toLocaleString()}`}
+            emphasize
+            tone="gold"
+          />
+          <StatCol
+            label="Net"
+            value={fmtSignedDollars(row.net)}
+            emphasize
+            tone={netTone(row.net)}
+          />
+          <StatCol label="Buy-ins" value={`${row.entries}×`} />
+          <StatCol label="Add-ons" value={`${row.addOns}×`} />
+          {row.durationSec != null && (
+            <StatCol label="Played" value={fmtDuration(row.durationSec)} />
+          )}
+        </div>
       </div>
     </div>
   );
 }
-

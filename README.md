@@ -7,6 +7,7 @@ A static home-game dashboard for running **tournaments** and **cash games**, plu
 - **Tournament mode** — blind clock with sound warnings, table seating and auto-balance, rebuys/add-ons, payout structure, finish/chop flow, and end-of-game recap
 - **Cash game mode** — per-player buy-ins and rebuys, individual cash-outs, end-game settlement with balance check, and recap
 - **Standings** — cumulative stats from `stats/PokerSummary.csv`, bundled as a standalone PWA at `/standings/`
+- **Phone-first UI** — bottom sheets that stay above the on-screen keyboard, sticky thumb-reach action bars, and three color themes (Felt, Midnight, Daylight) from the palette button
 
 State persists in the browser via Zustand + `localStorage`. There is no backend.
 
@@ -59,6 +60,9 @@ scripts/       Integration tests
 
 ## Tech notes
 
-- Uses system fonts (no Geist / `next/font`)
+- Geist Sans / Mono come from the `geist` package (self-hosted through `next/font/local`, so builds need no network)
+- Every color is a CSS variable in `app/globals.css`; a theme is a `[data-theme]` block, applied before first paint by the boot script in `app/layout.tsx`
+- Component classes (`.btn`, `.input`, `.card`, …) live in `@layer components`, so Tailwind utilities override them without `!important`
+- Confirmations use the in-app `confirmAction()` dialog (`lib/confirm.ts`) instead of `window.confirm`, which would freeze the blind clock while open
 - Money in the cash module is stored as **integer cents** internally; UI inputs are dollars
 - Tournament blind levels carry stable `id` fields so the structure editor survives reorder without losing row state

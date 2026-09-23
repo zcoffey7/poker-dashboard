@@ -5,6 +5,7 @@ import UpdateSheetDialog from "./UpdateSheetDialog";
 import { useSheet } from "@/lib/sheetStore";
 import { sessionFingerprint } from "@/lib/standings/session";
 import type { SessionDraft } from "@/lib/standings/types";
+import { IconUpload } from "../icons";
 
 type Props = {
   session: SessionDraft;
@@ -25,7 +26,7 @@ export default function UpdateSheetButton({ session, className }: Props) {
   return (
     <>
       <button
-        className={className ?? "btn"}
+        className={className ?? (alreadyPublished ? "btn" : "btn btn-primary")}
         onClick={() => setOpen(true)}
         disabled={session.players.length === 0}
         title={
@@ -35,6 +36,7 @@ export default function UpdateSheetButton({ session, className }: Props) {
         }
         data-testid="update-sheet-button"
       >
+        {!alreadyPublished && <IconUpload />}
         {alreadyPublished ? "Sheet updated ✓" : "Update Sheet"}
       </button>
       {open && (

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
 import { useHasHydrated } from "@/lib/useHasHydrated";
+import { confirmAction, showNotice } from "@/lib/confirm";
 import type {
   BlindLevel,
   ChipDenom,
@@ -18,6 +19,8 @@ import PayoutsEditor from "./PayoutsEditor";
 import BlindStructureEditor from "./BlindStructureEditor";
 import ChipDenomEditor from "./ChipDenomEditor";
 import SheetSyncCard from "./standings/SheetSyncCard";
+import { Section } from "./Section";
+import { IconCheck } from "./icons";
 
 type Draft = {
   general: GeneralDraft;
@@ -50,9 +53,9 @@ function snapshot(): Draft {
 /**
  * Outer wrapper. Subscribes to the handful of store fields that form the
  * "baseline" for the form and derives a stable `storedKey`. When an external
- * change (Save, Reset, Import JSON, another tab) updates the store, the key
- * changes and the inner form remounts with a fresh draft rather than relying
- * on a set-state-in-effect sync (which React 19 flags as impure).
+ * change (Save, Reset) updates the store, the key changes and the inner form
+ * remounts with a fresh draft rather than relying on a set-state-in-effect
+ * sync (which React 19 flags as impure).
  */
 export default function SettingsForm() {
   // Zustand's `persist` middleware rehydrates the store from localStorage on
@@ -115,10 +118,7 @@ export default function SettingsForm() {
 
   if (!hydrated) {
     return (
-      <div
-        className="card-2 p-6 text-sm text-muted"
-        aria-busy="true"
-      >
+      <div className="card p-6 text-sm text-muted" aria-busy="true">
         Loading settings…
       </div>
     );
@@ -129,6 +129,7 @@ export default function SettingsForm() {
 
 function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
   const saveSettings = useTournament((s) => s.saveSettings);
+  const resetTournament = useTournament((s) => s.resetTournament);
 
   // Initialize from the current store snapshot. Because the parent remounts us
   // whenever `baselineKey` changes, we can treat `baselineKey` as an immutable
@@ -165,11 +166,11 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
 
   function handleSave() {
     if (draft.tables.length === 0) {
-      alert("You must have at least one table.");
+      void showNotice("You must have at least one table.");
       return;
     }
     if (draft.blindStructure.length === 0) {
-      alert("You must have at least one blind level.");
+      void showNotice("You must have at least one blind level.");
       return;
     }
     const settings: TournamentSettings = { ...draft.general.settings };
@@ -192,6 +193,17 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
 
   function handleDiscard() {
     setDraft(snapshot());
+  }
+
+  async function handleReset() {
+    const ok = await confirmAction({
+      title: "Reset tournament to defaults?",
+      message:
+        "All players and progress will be lost. This takes effect immediately — no Save needed.",
+      confirmLabel: "Reset tournament",
+      tone: "danger",
+    });
+    if (ok) resetTournament();
   }
 
   return (
@@ -217,6 +229,16 @@ function SettingsFormInner({ baselineKey }: { baselineKey: string }) {
         onChange={updateStructure}
       />
       <SheetSyncCard />
+      <Section
+        title="Danger zone"
+        description="Reset clears every player and restores the default structure. It applies immediately."
+        tone="danger"
+        actions={
+          <button className="btn btn-danger" onClick={handleReset}>
+            Reset to defaults
+          </button>
+        }
+      />
     </div>
   );
 }
@@ -232,35 +254,31 @@ function SaveBar({
 }) {
   return (
     <div
-      className={`card-2 p-3 flex items-center gap-3 sticky top-[57px] z-10 border ${
-        dirty
-          ? "border-[var(--accent)]/60"
-          : "border-[var(--border)]"
+      className={`sticky top-[calc(3.5rem+1px)] z-10 card px-4 py-3 flex items-center gap-3 backdrop-blur-md bg-[color-mix(in_oklab,var(--surface)_88%,transparent)] transition-colors ${
+        dirty ? "border-gold/50" : ""
       }`}
     >
-      <div className="flex-1 text-sm">
+      <div className="flex-1 min-w-0 flex items-center gap-3 text-sm">
         {dirty ? (
-          <span className="chip chip-amber">Unsaved changes</span>
+          <span className="chip chip-gold">
+            Unsaved<span className="hidden sm:inline"> changes</span>
+          </span>
         ) : (
-          <span className="chip chip-green">All changes saved</span>
+          <span className="chip chip-primary">
+            <IconCheck />
+            <span className="sm:hidden">Saved</span>
+            <span className="hidden sm:inline">All changes saved</span>
+          </span>
         )}
-        <span className="text-[var(--text-muted)] ml-3 hidden md:inline">
-          Changes in this form do not affect the dashboard until you save.
+        <span className="text-muted hidden md:inline truncate">
+          Changes here don&apos;t affect the dashboard until you save.
         </span>
       </div>
-      <button
-        className="btn btn-sm"
-        onClick={onDiscard}
-        disabled={!dirty}
-      >
+      <button className="btn btn-sm btn-ghost" onClick={onDiscard} disabled={!dirty}>
         Discard
       </button>
-      <button
-        className="btn btn-sm btn-primary"
-        onClick={onSave}
-        disabled={!dirty}
-      >
-        Save changes
+      <button className="btn btn-sm btn-primary" onClick={onSave} disabled={!dirty}>
+        Save<span className="hidden sm:inline"> changes</span>
       </button>
     </div>
   );

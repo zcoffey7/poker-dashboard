@@ -2,7 +2,10 @@
 
 import type { BlindLevel } from "@/lib/types";
 import { newBlindLevelId } from "@/lib/blindLevelId";
+import { confirmAction } from "@/lib/confirm";
 import NumberInput from "./NumberInput";
+import { Section } from "./Section";
+import { IconArrowDown, IconArrowUp, IconCoffee, IconPlus, IconTrash } from "./icons";
 
 type Props = {
   structure: BlindLevel[];
@@ -13,21 +16,40 @@ function renumber(levels: BlindLevel[]): BlindLevel[] {
   return levels.map((lv, i) => ({ ...lv, level: i + 1 }));
 }
 
+function MiniField({
+  label,
+  className = "",
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex flex-col gap-1 min-w-0 ${className}`}>
+      <span className="text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-subtle">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
 export default function BlindStructureEditor({ structure, onChange }: Props) {
   function updateLevel(index: number, patch: Partial<BlindLevel>) {
     onChange(
       structure.map((lv, i) => (i === index ? { ...lv, ...patch } : lv)),
     );
   }
-  function removeLevel(index: number) {
+  async function removeLevel(index: number) {
     const lv = structure[index];
-    if (
-      !confirm(
-        `Remove level ${lv.level}${lv.isBreak ? " (break)" : ""}? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmAction({
+      title: `Remove level ${lv.level}${lv.isBreak ? " (break)" : ""}?`,
+      message: "The levels after it are renumbered.",
+      confirmLabel: "Remove level",
+      tone: "danger",
+    });
+    if (!ok) return;
     onChange(renumber(structure.filter((_, i) => i !== index)));
   }
   function moveLevel(index: number, dir: -1 | 1) {
@@ -51,16 +73,16 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
     onChange([...structure, next]);
   }
 
+  const totalMin = Math.round(
+    structure.reduce((s, lv) => s + lv.durationSec, 0) / 60,
+  );
+
   return (
-    <div className="card p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="label">Blind Structure</div>
-          <div className="text-sm text-[var(--text-muted)] mt-1">
-            {structure.length} level{structure.length === 1 ? "" : "s"}
-          </div>
-        </div>
-        <div className="flex gap-2">
+    <Section
+      title="Blind structure"
+      description={`${structure.length} level${structure.length === 1 ? "" : "s"} · ${Math.floor(totalMin / 60)}h ${totalMin % 60}m total`}
+      actions={
+        <>
           <button
             className="btn btn-sm"
             onClick={() =>
@@ -73,67 +95,181 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
               })
             }
           >
-            + Break
+            <IconCoffee />
+            Break
           </button>
-          <button
-            className="btn btn-sm btn-primary"
-            onClick={() => addLevel()}
+          <button className="btn btn-sm btn-primary" onClick={() => addLevel()}>
+            <IconPlus />
+            Level
+          </button>
+        </>
+      }
+    >
+      {/* Phones: one compact card per level instead of a wide table. */}
+      <ol className="sm:hidden flex flex-col gap-2">
+        {structure.map((lv, i) => (
+          <li
+            key={lv.id}
+            className={`card-2 px-3 pt-2 pb-3 flex flex-col gap-2 ${
+              lv.isBreak ? "border-gold/35 bg-gold/[0.05]" : ""
+            }`}
           >
-            + Level
-          </button>
-        </div>
-      </div>
+            <div className="flex items-center gap-1">
+              <span
+                className={`flex-1 text-sm font-semibold ${lv.isBreak ? "text-gold" : ""}`}
+              >
+                {lv.isBreak ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <IconCoffee />
+                    Break
+                  </span>
+                ) : (
+                  `Level ${lv.level}`
+                )}
+              </span>
+              <button
+                className={`btn btn-ghost btn-xs btn-icon ${lv.isBreak ? "text-gold" : ""}`}
+                onClick={() => updateLevel(i, { isBreak: !lv.isBreak })}
+                aria-pressed={!!lv.isBreak}
+                aria-label={`Level ${lv.level} is a break`}
+              >
+                <IconCoffee />
+              </button>
+              <button
+                className="btn btn-ghost btn-xs btn-icon"
+                onClick={() => moveLevel(i, -1)}
+                disabled={i === 0}
+                aria-label={`Move level ${lv.level} up`}
+              >
+                <IconArrowUp />
+              </button>
+              <button
+                className="btn btn-ghost btn-xs btn-icon"
+                onClick={() => moveLevel(i, 1)}
+                disabled={i === structure.length - 1}
+                aria-label={`Move level ${lv.level} down`}
+              >
+                <IconArrowDown />
+              </button>
+              <button
+                className="btn btn-ghost btn-xs btn-icon hover:text-loss"
+                onClick={() => removeLevel(i)}
+                aria-label={`Remove level ${lv.level}`}
+              >
+                <IconTrash />
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {!lv.isBreak && (
+                <>
+                  <MiniField label="SB">
+                    <NumberInput
+                      className="input input-sm px-2 tabular-nums"
+                      value={lv.smallBlind}
+                      aria-label={`Level ${lv.level} small blind`}
+                      onChange={(n) => updateLevel(i, { smallBlind: n })}
+                    />
+                  </MiniField>
+                  <MiniField label="BB">
+                    <NumberInput
+                      className="input input-sm px-2 tabular-nums"
+                      value={lv.bigBlind}
+                      aria-label={`Level ${lv.level} big blind`}
+                      onChange={(n) => updateLevel(i, { bigBlind: n })}
+                    />
+                  </MiniField>
+                  <MiniField label="Ante">
+                    <NumberInput
+                      className="input input-sm px-2 tabular-nums"
+                      value={lv.ante}
+                      aria-label={`Level ${lv.level} ante`}
+                      onChange={(n) => updateLevel(i, { ante: n })}
+                    />
+                  </MiniField>
+                </>
+              )}
+              <MiniField label="Min" className={lv.isBreak ? "col-start-4" : ""}>
+                <NumberInput
+                  className="input input-sm px-2 tabular-nums"
+                  value={Math.round(lv.durationSec / 60)}
+                  min={1}
+                  emptyValue={1}
+                  aria-label={`Level ${lv.level} duration in minutes`}
+                  onChange={(n) =>
+                    updateLevel(i, { durationSec: Math.max(1, n) * 60 })
+                  }
+                />
+              </MiniField>
+            </div>
+          </li>
+        ))}
+      </ol>
 
-      <div className="overflow-x-auto scrollbar-thin">
-        <table className="w-full text-sm min-w-[620px]">
+      <div className="hidden sm:block overflow-x-auto scrollbar-thin -mx-5 px-5">
+        <table className="w-full text-sm min-w-[600px] border-separate border-spacing-0">
           <thead>
-            <tr className="text-left text-[var(--text-muted)] text-xs uppercase">
-              <th className="py-2 pr-2 font-medium">#</th>
-              <th className="py-2 pr-2 font-medium">SB</th>
-              <th className="py-2 pr-2 font-medium">BB</th>
-              <th className="py-2 pr-2 font-medium">Ante</th>
-              <th className="py-2 pr-2 font-medium">Min</th>
-              <th className="py-2 pr-2 font-medium">Break</th>
-              <th className="py-2 pr-2 font-medium text-right">Actions</th>
+            <tr className="text-left">
+              <th className="label py-2 pl-2 pr-2 w-10">#</th>
+              <th className="label py-2 pr-2">Small blind</th>
+              <th className="label py-2 pr-2">Big blind</th>
+              <th className="label py-2 pr-2">Ante</th>
+              <th className="label py-2 pr-2">Minutes</th>
+              <th className="label py-2 pr-2 text-center">Break</th>
+              <th className="label py-2 pr-2 text-right">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {structure.map((lv, i) => (
               <tr
                 key={lv.id}
-                className={`border-t border-[var(--border)] ${lv.isBreak ? "bg-[var(--surface2)]" : ""}`}
+                className={lv.isBreak ? "bg-gold/[0.06]" : "hover:bg-hover"}
               >
-                <td className="py-1.5 pr-2 font-mono">{lv.level}</td>
-                <td className="py-1.5 pr-2">
-                  <NumberInput
-                    className="input !py-1 !text-sm w-[90px]"
-                    value={lv.smallBlind}
-                    disabled={lv.isBreak}
-                    aria-label={`Level ${lv.level} small blind`}
-                    onChange={(n) => updateLevel(i, { smallBlind: n })}
-                  />
+                <td className="py-1.5 pl-2 pr-2 border-t border-border tabular-nums text-muted font-medium rounded-l-lg">
+                  {lv.level}
                 </td>
-                <td className="py-1.5 pr-2">
+                {lv.isBreak ? (
+                  <td
+                    colSpan={3}
+                    className="py-1.5 pr-2 border-t border-border text-gold font-medium"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <IconCoffee />
+                      Break
+                    </span>
+                  </td>
+                ) : (
+                  <>
+                    <td className="py-1.5 pr-2 border-t border-border">
+                      <NumberInput
+                        className="input input-sm w-28 tabular-nums"
+                        value={lv.smallBlind}
+                        aria-label={`Level ${lv.level} small blind`}
+                        onChange={(n) => updateLevel(i, { smallBlind: n })}
+                      />
+                    </td>
+                    <td className="py-1.5 pr-2 border-t border-border">
+                      <NumberInput
+                        className="input input-sm w-28 tabular-nums"
+                        value={lv.bigBlind}
+                        aria-label={`Level ${lv.level} big blind`}
+                        onChange={(n) => updateLevel(i, { bigBlind: n })}
+                      />
+                    </td>
+                    <td className="py-1.5 pr-2 border-t border-border">
+                      <NumberInput
+                        className="input input-sm w-24 tabular-nums"
+                        value={lv.ante}
+                        aria-label={`Level ${lv.level} ante`}
+                        onChange={(n) => updateLevel(i, { ante: n })}
+                      />
+                    </td>
+                  </>
+                )}
+                <td className="py-1.5 pr-2 border-t border-border">
                   <NumberInput
-                    className="input !py-1 !text-sm w-[90px]"
-                    value={lv.bigBlind}
-                    disabled={lv.isBreak}
-                    aria-label={`Level ${lv.level} big blind`}
-                    onChange={(n) => updateLevel(i, { bigBlind: n })}
-                  />
-                </td>
-                <td className="py-1.5 pr-2">
-                  <NumberInput
-                    className="input !py-1 !text-sm w-[80px]"
-                    value={lv.ante}
-                    disabled={lv.isBreak}
-                    aria-label={`Level ${lv.level} ante`}
-                    onChange={(n) => updateLevel(i, { ante: n })}
-                  />
-                </td>
-                <td className="py-1.5 pr-2">
-                  <NumberInput
-                    className="input !py-1 !text-sm w-[70px]"
+                    className="input input-sm w-20 tabular-nums"
                     value={Math.round(lv.durationSec / 60)}
                     min={1}
                     emptyValue={1}
@@ -143,7 +279,7 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                     }
                   />
                 </td>
-                <td className="py-1.5 pr-2">
+                <td className="py-1.5 pr-2 border-t border-border text-center">
                   <input
                     type="checkbox"
                     checked={!!lv.isBreak}
@@ -153,30 +289,30 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
                     }
                   />
                 </td>
-                <td className="py-1.5 pr-2 text-right">
-                  <div className="inline-flex gap-1">
+                <td className="py-1.5 pr-2 border-t border-border text-right rounded-r-lg">
+                  <div className="inline-flex gap-0.5">
                     <button
-                      className="btn btn-sm btn-ghost !px-2"
+                      className="btn btn-ghost btn-xs btn-icon"
                       onClick={() => moveLevel(i, -1)}
                       disabled={i === 0}
                       aria-label={`Move level ${lv.level} up`}
                     >
-                      ↑
+                      <IconArrowUp />
                     </button>
                     <button
-                      className="btn btn-sm btn-ghost !px-2"
+                      className="btn btn-ghost btn-xs btn-icon"
                       onClick={() => moveLevel(i, 1)}
                       disabled={i === structure.length - 1}
                       aria-label={`Move level ${lv.level} down`}
                     >
-                      ↓
+                      <IconArrowDown />
                     </button>
                     <button
-                      className="btn btn-sm btn-danger !px-2"
+                      className="btn btn-ghost btn-xs btn-icon hover:text-loss"
                       onClick={() => removeLevel(i)}
                       aria-label={`Remove level ${lv.level}`}
                     >
-                      ×
+                      <IconTrash />
                     </button>
                   </div>
                 </td>
@@ -185,6 +321,6 @@ export default function BlindStructureEditor({ structure, onChange }: Props) {
           </tbody>
         </table>
       </div>
-    </div>
+    </Section>
   );
 }

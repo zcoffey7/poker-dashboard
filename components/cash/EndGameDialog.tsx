@@ -2,8 +2,9 @@
 
 import { useId, useMemo, useState } from "react";
 import NumberInput from "../NumberInput";
-import ModalShell from "../ModalShell";
+import ModalShell, { ModalFooter, ModalHeader } from "../ModalShell";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
+import { confirmAction } from "@/lib/confirm";
 import { fmtMoneyCents, fmtSignedCents, toCents } from "@/lib/money";
 
 type Props = {
@@ -66,14 +67,16 @@ export default function EndGameDialog({ onClose }: Props) {
   }
 
   // Backdrop / Escape / Cancel all funnel through here (via ModalShell):
-  // entered final stacks are real work, don't discard them on a stray click.
+  // entered final stacks are real work, don't discard them on a stray tap.
   const hasEnteredAmounts = unsettled.some((p) => (amounts[p.id] ?? 0) > 0);
-  function requestClose() {
-    if (
-      hasEnteredAmounts &&
-      !confirm("Discard the final stacks you've entered?")
-    ) {
-      return;
+  async function requestClose() {
+    if (hasEnteredAmounts) {
+      const ok = await confirmAction({
+        title: "Discard the final stacks you've entered?",
+        confirmLabel: "Discard",
+        tone: "danger",
+      });
+      if (!ok) return;
     }
     onClose();
   }
@@ -94,102 +97,83 @@ export default function EndGameDialog({ onClose }: Props) {
     <ModalShell
       onClose={requestClose}
       labelledBy={titleId}
-      cardClassName="w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
+      cardClassName="w-full sm:max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
     >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-          <div>
-            <div className="label" id={titleId}>
-              End Game
-            </div>
-            <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              Enter each remaining player&apos;s final stack, then confirm.
-            </div>
-          </div>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={requestClose}
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
+      <ModalHeader
+        titleId={titleId}
+        title="End Game"
+        subtitle="Enter each remaining player's final stack, then confirm."
+        onClose={requestClose}
+      />
 
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-          {unsettled.length === 0 ? (
-            <div className="text-sm text-[var(--text-muted)] italic">
-              Everyone is already cashed out. Confirm to finalize the game.
-            </div>
-          ) : (
-            unsettled.map((p) => {
-              const inForCents = totalBuyIns(p);
-              const val = amounts[p.id] ?? 0;
-              const netCents = toCents(val) - inForCents;
-              const positive = netCents >= 0;
-              return (
-                <div
-                  key={p.id}
-                  className="card-2 p-3 rounded flex flex-col gap-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium truncate flex-1">
-                      {p.name}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col gap-2">
+        {unsettled.length === 0 ? (
+          <div className="text-sm text-muted text-center py-4">
+            Everyone is already cashed out. Confirm to finalize the game.
+          </div>
+        ) : (
+          unsettled.map((p) => {
+            const inForCents = totalBuyIns(p);
+            const val = amounts[p.id] ?? 0;
+            const netCents = toCents(val) - inForCents;
+            return (
+              <div key={p.id} className="card-2 p-3 flex flex-col gap-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-semibold truncate flex-1">{p.name}</span>
+                  <span className="text-xs text-muted tabular-nums shrink-0">
+                    In for {fmtMoneyCents(inForCents)} · {p.buyIns.length}×
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted font-medium">
+                      $
                     </span>
-                    <span className="text-xs text-[var(--text-muted)]">
-                      In for {fmtMoneyCents(inForCents)} ({p.buyIns.length}×)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm shrink-0">$</span>
                     <NumberInput
-                      className="input flex-1 font-mono"
+                      className="input pl-8 font-semibold tabular-nums"
                       value={val}
-                      onChange={(n) =>
-                        setAmounts({ ...amounts, [p.id]: n })
-                      }
+                      onChange={(n) => setAmounts({ ...amounts, [p.id]: n })}
                       step={0.01}
                       min={0}
                       placeholder="Final stack"
+                      aria-label={`Final stack for ${p.name}`}
                     />
-                    <span
-                      className={`font-mono text-sm font-semibold min-w-[80px] text-right ${
-                        positive
-                          ? "text-[var(--accent)]"
-                          : "text-[var(--text-muted)]"
-                      }`}
-                    >
-                      {fmtSignedCents(netCents)}
-                    </span>
                   </div>
+                  <span
+                    className={`min-w-[5.5rem] text-right font-semibold tabular-nums ${
+                      netCents > 0 ? "text-gain" : netCents < 0 ? "text-loss" : "text-muted"
+                    }`}
+                  >
+                    {fmtSignedCents(netCents)}
+                  </span>
                 </div>
-              );
-            })
-          )}
-        </div>
+              </div>
+            );
+          })
+        )}
+      </div>
 
-        <div className="border-t border-[var(--border)] px-4 py-3 flex flex-col gap-2">
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <Summary label="Total in" value={fmtMoneyCents(totalInCents)} />
-            <Summary
-              label="Total out"
-              value={fmtMoneyCents(alreadyOutCents + pendingOutCents)}
-            />
-            <Summary
-              label={
-                balanced ? "Balanced" : diffCents > 0 ? "Missing" : "Over"
-              }
-              value={fmtMoneyCents(Math.abs(diffCents))}
-              warn={!balanced}
-            />
-          </div>
-          {!balanced && (
-            <div className="text-[11px] text-[var(--text-muted)] italic">
-              Total chips in play should equal the sum of cash-outs. A mismatch
+      <div className="border-t border-border px-4 sm:px-5 pt-3 flex flex-col gap-2.5 shrink-0">
+        <div className="grid grid-cols-3 gap-2">
+          <Summary label="Total in" value={fmtMoneyCents(totalInCents)} />
+          <Summary
+            label="Total out"
+            value={fmtMoneyCents(alreadyOutCents + pendingOutCents)}
+          />
+          <Summary
+            label={balanced ? "Balanced" : diffCents > 0 ? "Missing" : "Over"}
+            value={fmtMoneyCents(Math.abs(diffCents))}
+            tone={balanced ? "ok" : "warn"}
+          />
+        </div>
+        {!balanced && (
+          <>
+            <p className="text-xs text-muted">
+              Chips in play should equal the total cashed out. A mismatch
               usually means a buy-in or final stack is off.
-            </div>
-          )}
-          {!balanced && (
+            </p>
             <label
-              className="flex items-center gap-2 text-[11px] text-[var(--amber)] cursor-pointer"
+              className="flex items-center gap-2.5 text-sm text-warn cursor-pointer"
               htmlFor={ackId}
             >
               <input
@@ -200,31 +184,33 @@ export default function EndGameDialog({ onClose }: Props) {
               />
               <span>I understand the books are not balanced.</span>
             </label>
-          )}
-          <div className="flex justify-end gap-2 mt-1">
-            <button className="btn btn-ghost" onClick={requestClose}>
-              Cancel
-            </button>
-            {balanced ? (
-              <button
-                className="btn btn-primary"
-                onClick={submit}
-                disabled={!canSubmitBalanced}
-              >
-                End Game
-              </button>
-            ) : (
-              <button
-                className="btn btn-danger"
-                onClick={submit}
-                disabled={!canSubmitOverride}
-                title="End the game even though totals don't balance. You'll have to reconcile manually."
-              >
-                End anyway — I&apos;ll reconcile manually
-              </button>
-            )}
-          </div>
-        </div>
+          </>
+        )}
+      </div>
+
+      <ModalFooter className="border-t-0 bg-transparent">
+        <button className="btn btn-ghost" onClick={requestClose}>
+          Cancel
+        </button>
+        {balanced ? (
+          <button
+            className="btn btn-primary flex-1 sm:flex-none"
+            onClick={submit}
+            disabled={!canSubmitBalanced}
+          >
+            End Game
+          </button>
+        ) : (
+          <button
+            className="btn btn-danger flex-1 sm:flex-none"
+            onClick={submit}
+            disabled={!canSubmitOverride}
+            title="End the game even though totals don't balance. You'll have to reconcile manually."
+          >
+            End anyway
+          </button>
+        )}
+      </ModalFooter>
     </ModalShell>
   );
 }
@@ -232,20 +218,24 @@ export default function EndGameDialog({ onClose }: Props) {
 function Summary({
   label,
   value,
-  warn,
+  tone,
 }: {
   label: string;
   value: string;
-  warn?: boolean;
+  tone?: "ok" | "warn";
 }) {
   return (
-    <div className="card-2 p-2 rounded text-center">
-      <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+    <div
+      className={`card-2 px-2 py-2 text-center ${
+        tone === "warn" ? "border-warn/40" : tone === "ok" ? "border-primary/40" : ""
+      }`}
+    >
+      <div className="text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-muted">
         {label}
       </div>
       <div
-        className={`font-mono font-semibold ${
-          warn ? "text-[var(--amber)]" : ""
+        className={`font-semibold tabular-nums ${
+          tone === "warn" ? "text-warn" : tone === "ok" ? "text-primary" : ""
         }`}
       >
         {value}

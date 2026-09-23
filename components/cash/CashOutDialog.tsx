@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useMemo } from "react";
-import ModalShell from "../ModalShell";
+import ModalShell, { ModalHeader } from "../ModalShell";
 import CashOutForm from "./CashOutForm";
 import { StatBox } from "../StatTiles";
 import { useCash, totalBuyIns } from "@/lib/cashStore";
@@ -30,28 +30,17 @@ export default function CashOutDialog({ playerId, onClose }: Props) {
     <ModalShell
       onClose={onClose}
       labelledBy={titleId}
-      cardClassName="w-full max-w-sm flex flex-col overflow-hidden"
+      cardClassName="w-full sm:max-w-sm flex flex-col overflow-hidden"
     >
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-        <div className="min-w-0">
-          <div className="label" id={titleId}>
-            Cash Out
-          </div>
-          <div className="text-sm font-semibold mt-0.5 truncate">
-            {player.name}
-          </div>
-        </div>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          ×
-        </button>
-      </div>
+      <ModalHeader
+        titleId={titleId}
+        eyebrow="Cash out"
+        title={player.name}
+        onClose={onClose}
+      />
 
-      <div className="p-4 flex flex-col gap-3">
-        <div className="grid grid-cols-2 gap-2 text-sm">
+      <div className="p-4 sm:p-5 pb-[max(1rem,env(safe-area-inset-bottom))] flex flex-col gap-3 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-2">
           <StatBox label="Buy-ins" value={`${player.buyIns.length}×`} />
           <StatBox label="In for" value={fmtMoneyCents(totalInCents)} />
         </div>
@@ -64,12 +53,6 @@ export default function CashOutDialog({ playerId, onClose }: Props) {
             onClose();
           }}
         />
-      </div>
-
-      <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--border)]">
-        <button className="btn btn-ghost" onClick={onClose}>
-          Cancel
-        </button>
       </div>
     </ModalShell>
   );

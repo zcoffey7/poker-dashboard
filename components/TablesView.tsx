@@ -2,9 +2,11 @@
 
 import { useTournament } from "@/lib/store";
 import { useMemo, useState } from "react";
+import { confirmAction } from "@/lib/confirm";
 import PlayerDetailsModal from "./PlayerDetailsModal";
 import MovePlayerModal from "./MovePlayerModal";
 import PlayedClock, { PlayerNameClock } from "./PlayedClock";
+import { IconArrowLeftRight, IconEraser, IconScale, IconShuffle } from "./icons";
 
 export default function TablesView() {
   const tables = useTournament((s) => s.tables);
@@ -30,54 +32,76 @@ export default function TablesView() {
   }, [tables, players]);
 
   const unseated = players.filter((p) => !p.eliminated && !p.tableId);
+  const activeTables = tables.filter((t) => !t.broken).length;
+  const brokenTables = tables.length - activeTables;
+
+  async function handleClearSeats() {
+    const ok = await confirmAction({
+      title: "Clear all seat assignments?",
+      message: "Players stay in the tournament but become unseated.",
+      confirmLabel: "Clear seats",
+      tone: "danger",
+    });
+    if (ok) clearSeats();
+  }
+
+  async function handleEliminate(id: string, name: string) {
+    const ok = await confirmAction({
+      title: `Eliminate ${name}?`,
+      message: "They'll be assigned the next finish place.",
+      confirmLabel: "Eliminate",
+      tone: "danger",
+    });
+    if (ok) eliminatePlayer(id);
+  }
 
   return (
-    <div className="card p-4 flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <div className="label">Tables</div>
-          <div className="text-sm text-muted mt-1">
-            {tables.filter((t) => !t.broken).length} active
-            {tables.some((t) => t.broken) &&
-              `, ${tables.filter((t) => t.broken).length} broken`}
-          </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="text-sm text-muted">
+          {activeTables} active table{activeTables === 1 ? "" : "s"}
+          {brokenTables > 0 && `, ${brokenTables} broken`}
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="grid grid-cols-3 gap-2 sm:flex">
           <button
             className="btn btn-sm"
-            onClick={() => {
-              if (
-                confirm(
-                  "Clear all seat assignments? Players stay in the tournament but become unseated.",
-                )
-              ) {
-                clearSeats();
-              }
-            }}
+            onClick={handleClearSeats}
+            aria-label="Clear seats"
           >
-            Clear seats
+            <IconEraser />
+            <span className="sm:hidden">Clear</span>
+            <span className="hidden sm:inline">Clear seats</span>
           </button>
-          <button className="btn btn-sm" onClick={() => balanceNow()}>
-            Balance now
+          <button
+            className="btn btn-sm"
+            onClick={() => balanceNow()}
+            aria-label="Balance now"
+          >
+            <IconScale />
+            <span className="sm:hidden">Balance</span>
+            <span className="hidden sm:inline">Balance now</span>
           </button>
           <button
             className="btn btn-sm btn-primary"
             onClick={() => assignSeats()}
+            aria-label="Assign seats"
           >
-            Assign seats
+            <IconShuffle />
+            <span className="sm:hidden">Assign</span>
+            <span className="hidden sm:inline">Assign seats</span>
           </button>
         </div>
       </div>
 
       {unseated.length > 0 && (
-        <div className="card-2 p-3">
-          <div className="label mb-2">Unseated ({unseated.length})</div>
+        <div className="rounded-xl border border-dashed border-gold/45 bg-gold/5 p-3">
+          <div className="label text-gold mb-2">Unseated · {unseated.length}</div>
           <div className="flex flex-wrap gap-2">
             {unseated.map((p) => (
               <button
                 key={p.id}
                 type="button"
-                className="chip chip-amber cursor-pointer hover:brightness-110 gap-1.5"
+                className="inline-flex items-center gap-2 h-8 rounded-full border border-gold/40 bg-surface px-3 text-sm font-medium hover:border-gold transition-colors"
                 onClick={() => setMoveId(p.id)}
                 title="Seat player"
               >
@@ -92,30 +116,36 @@ export default function TablesView() {
       <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3">
         {tables.map((t) => {
           const seated = byTable[t.id] ?? [];
+          const full = seated.length >= t.seatCount;
           return (
             <div
               key={t.id}
-              className={`card-2 p-3 flex flex-col gap-2 ${t.broken ? "opacity-40" : ""}`}
+              className={`card-2 p-3 flex flex-col gap-2 ${t.broken ? "opacity-45" : ""}`}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 px-1">
                 <div className="font-semibold">{t.name}</div>
-                <div className="text-xs text-muted">
-                  {seated.length} / {t.seatCount}
-                  {t.broken && " • BROKEN"}
+                <div className="flex items-center gap-2">
+                  {t.broken && <span className="chip chip-loss">Broken</span>}
+                  <span className={`chip tabular-nums ${full ? "chip-gold" : ""}`}>
+                    {seated.length} / {t.seatCount}
+                  </span>
                 </div>
               </div>
               {seated.length === 0 ? (
-                <div className="text-xs text-muted italic py-3 text-center">
+                <div className="text-sm text-muted italic py-4 text-center">
                   {t.broken ? "Table broken" : "No players seated"}
                 </div>
               ) : (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col">
                   {seated.map((p) => (
                     <div
                       key={p.id}
-                      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm rounded-md px-2 py-1.5 hover:bg-black/20 transition-colors"
+                      className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm rounded-lg px-1.5 py-1.5 hover:bg-hover transition-colors"
                     >
-                      <span className="chip min-w-[28px] justify-center text-xs shrink-0">
+                      <span
+                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-3 text-xs font-semibold tabular-nums text-muted"
+                        title={`Seat ${p.seat}`}
+                      >
                         {p.seat}
                       </span>
                       <PlayerNameClock
@@ -123,26 +153,19 @@ export default function TablesView() {
                         intervals={p.playIntervals}
                         onNameClick={() => setDetailsId(p.id)}
                       />
-                      <div className="flex gap-1 shrink-0 ml-auto">
+                      <div className="flex gap-1.5 shrink-0 ml-auto">
                         <button
-                          className="btn btn-sm px-2! py-0.5! shrink-0"
+                          className="btn btn-xs"
                           title="Move to another table or seat"
                           onClick={() => setMoveId(p.id)}
                         >
+                          <IconArrowLeftRight />
                           Move
                         </button>
                         <button
-                          className="btn btn-danger btn-sm px-2! py-0.5! shrink-0"
+                          className="btn btn-danger btn-xs"
                           aria-label={`Eliminate ${p.name}`}
-                          onClick={() => {
-                            if (
-                              confirm(
-                                `Eliminate ${p.name}? They'll be assigned the next finish place.`,
-                              )
-                            ) {
-                              eliminatePlayer(p.id);
-                            }
-                          }}
+                          onClick={() => handleEliminate(p.id, p.name)}
                         >
                           Out
                         </button>
