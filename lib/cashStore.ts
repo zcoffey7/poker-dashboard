@@ -3,16 +3,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { CashGameState, CashPlayer } from "./cashTypes";
+import { uid } from "./id";
 import { toCents } from "./money";
 import {
   migrateCashIntervals,
   startPlay,
   stopPlay,
 } from "./playTime";
-
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
-}
 
 // Defaults in integer cents.
 const DEFAULT_SMALL_BLIND = 10;    // $0.10

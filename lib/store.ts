@@ -29,22 +29,19 @@ import {
 } from "./defaults";
 import { newBlindLevelId } from "./blindLevelId";
 import { balanceTables, randomAssign } from "./seating";
-
-function ensureBlindLevelIds(levels: BlindLevel[]): BlindLevel[] {
-  return levels.map((lv) => ({
-    ...lv,
-    id: lv.id ?? newBlindLevelId(),
-  }));
-}
 import { playLevelUp, playWarning } from "./clock";
+import { uid } from "./id";
 import {
   migrateTournamentIntervals,
   startPlay,
   stopPlay,
 } from "./playTime";
 
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now().toString(36)}`;
+function ensureBlindLevelIds(levels: BlindLevel[]): BlindLevel[] {
+  return levels.map((lv) => ({
+    ...lv,
+    id: lv.id ?? newBlindLevelId(),
+  }));
 }
 
 function startActivePlay(players: Player[], now: number): Player[] {
@@ -151,17 +148,12 @@ function clampSeatsToTables(players: Player[], tables: Table[]): Player[] {
   return changed ? next : players;
 }
 
+/**
+ * Tables, payouts, blind levels, and entry pricing are edited as a draft on
+ * the settings page and committed in one step via `saveSettings`, so the
+ * store only exposes the actions the live dashboard needs.
+ */
 type TournamentStore = TournamentState & {
-  // tournament-level
-  setName: (name: string) => void;
-  setStartingStack: (n: number) => void;
-  setBuyIn: (n: number) => void;
-  setRebuyChips: (n: number) => void;
-  setRebuyCost: (n: number) => void;
-  setAddOnChips: (n: number) => void;
-  setAddOnCost: (n: number) => void;
-  updateSettings: (partial: Partial<TournamentSettings>) => void;
-
   // players
   addPlayer: (name: string) => void;
   addPlayersBulk: (names: string[]) => void;
@@ -173,14 +165,6 @@ type TournamentStore = TournamentState & {
   undoRebuy: (id: string) => void;
   addOnPlayer: (id: string) => void;
   undoAddOn: (id: string) => void;
-  adjustChips: (id: string, delta: number) => void;
-  setChips: (id: string, chips: number) => void;
-
-  // tables
-  addTable: (name?: string, seatCount?: number) => void;
-  removeTable: (id: string) => void;
-  renameTable: (id: string, name: string) => void;
-  setTableSeats: (id: string, seatCount: number) => void;
 
   // seating
   assignSeats: () => void;
@@ -192,22 +176,7 @@ type TournamentStore = TournamentState & {
   ) => void;
   acknowledgeRebalance: () => void;
 
-  // blind structure
-  addLevel: (level?: Partial<BlindLevel>) => void;
-  updateLevel: (index: number, partial: Partial<BlindLevel>) => void;
-  removeLevel: (index: number) => void;
-  moveLevel: (index: number, dir: -1 | 1) => void;
-  setBlindStructure: (levels: BlindLevel[]) => void;
-
-  // payouts
-  setPayouts: (spots: PayoutSpot[]) => void;
-  updatePayout: (place: number, percent: number) => void;
-  addPayoutSpot: () => void;
-  removePayoutSpot: (place: number) => void;
-
   // clock
-  startClock: () => void;
-  pauseClock: () => void;
   toggleClock: () => void;
   resetLevel: () => void;
   nextLevel: () => void;
@@ -225,7 +194,6 @@ type TournamentStore = TournamentState & {
 
   // bulk
   resetTournament: () => void;
-  importState: (state: Partial<TournamentState>) => void;
   saveSettings: (draft: {
     name: string;
     startingStack: number;
@@ -323,16 +291,6 @@ export const useTournament = create<TournamentStore>()(
   persist(
     (set, get) => ({
       ...initialState,
-
-      setName: (name) => set({ name }),
-      setStartingStack: (n) => set({ startingStack: Math.max(0, n) }),
-      setBuyIn: (n) => set({ buyIn: Math.max(0, n) }),
-      setRebuyChips: (n) => set({ rebuyChips: Math.max(0, n) }),
-      setRebuyCost: (n) => set({ rebuyCost: Math.max(0, n) }),
-      setAddOnChips: (n) => set({ addOnChips: Math.max(0, n) }),
-      setAddOnCost: (n) => set({ addOnCost: Math.max(0, n) }),
-      updateSettings: (partial) =>
-        set((s) => ({ settings: { ...s.settings, ...partial } })),
 
       addPlayer: (name) => {
         const trimmed = name.trim();
@@ -562,53 +520,6 @@ export const useTournament = create<TournamentStore>()(
             };
           }),
         })),
-      adjustChips: (id, delta) =>
-        set((s) => ({
-          players: s.players.map((p) =>
-            p.id === id
-              ? { ...p, chips: Math.max(0, p.chips + delta) }
-              : p,
-          ),
-        })),
-      setChips: (id, chips) =>
-        set((s) => ({
-          players: s.players.map((p) =>
-            p.id === id ? { ...p, chips: Math.max(0, chips) } : p,
-          ),
-        })),
-
-      addTable: (name, seatCount) => {
-        const s = get();
-        const n = s.tables.length + 1;
-        const newTable: Table = {
-          id: uid("t"),
-          name: name || `Table ${n}`,
-          seatCount: seatCount ?? 9,
-        };
-        set({ tables: [...s.tables, newTable] });
-      },
-      removeTable: (id) =>
-        set((s) => ({
-          tables: s.tables.filter((t) => t.id !== id),
-          players: s.players.map((p) =>
-            p.tableId === id ? { ...p, tableId: null, seat: null } : p,
-          ),
-        })),
-      renameTable: (id, name) =>
-        set((s) => ({
-          tables: s.tables.map((t) => (t.id === id ? { ...t, name } : t)),
-        })),
-      setTableSeats: (id, seatCount) =>
-        set((s) => {
-          const tables = s.tables.map((t) =>
-            t.id === id ? { ...t, seatCount: Math.max(2, seatCount) } : t,
-          );
-          return {
-            tables,
-            players: clampSeatsToTables(s.players, tables),
-          };
-        }),
-
       assignSeats: () => {
         const s = get();
         const cleared = s.players.map((p) =>
@@ -693,131 +604,6 @@ export const useTournament = create<TournamentStore>()(
         });
       },
 
-      addLevel: (partial) => {
-        const s = get();
-        const last = s.blindStructure[s.blindStructure.length - 1];
-        const nextLevel: BlindLevel = {
-          id: newBlindLevelId(),
-          level: (last?.level ?? 0) + 1,
-          smallBlind: last ? last.smallBlind * 2 : 25,
-          bigBlind: last ? last.bigBlind * 2 : 50,
-          ante: last?.ante ?? 0,
-          durationSec: last?.durationSec ?? 20 * 60,
-          ...partial,
-        };
-        set({ blindStructure: [...s.blindStructure, nextLevel] });
-      },
-      updateLevel: (index, partial) =>
-        set((s) => ({
-          blindStructure: s.blindStructure.map((lv, i) =>
-            i === index ? { ...lv, ...partial } : lv,
-          ),
-        })),
-      removeLevel: (index) =>
-        set((s) => {
-          const next = s.blindStructure.filter((_, i) => i !== index);
-          const renum = next.map((lv, i) => ({ ...lv, level: i + 1 }));
-          const currentLevel = Math.min(
-            s.clock.currentLevel,
-            Math.max(0, renum.length - 1),
-          );
-          return {
-            blindStructure: renum,
-            clock: {
-              ...s.clock,
-              currentLevel,
-              remainingSec:
-                renum[currentLevel]?.durationSec ?? s.clock.remainingSec,
-            },
-          };
-        }),
-      moveLevel: (index, dir) =>
-        set((s) => {
-          const arr = s.blindStructure.slice();
-          const j = index + dir;
-          if (j < 0 || j >= arr.length) return {};
-          [arr[index], arr[j]] = [arr[j], arr[index]];
-          const renum = arr.map((lv, i) => ({ ...lv, level: i + 1 }));
-          const cur = s.clock.currentLevel;
-          // If the active level identity changed (the row swap affected the
-          // currently-playing level), clamp remaining time to the new level's
-          // duration and reset levelStartedAt so wall-clock reconciliation
-          // stays consistent in the new slot.
-          const activeShifted = cur === index || cur === j;
-          if (!activeShifted) {
-            return { blindStructure: renum };
-          }
-          const newLv = renum[cur];
-          const newDur = newLv?.durationSec ?? s.clock.remainingSec;
-          const remainingSec = Math.min(s.clock.remainingSec, newDur);
-          const levelStartedAt =
-            s.clock.levelStartedAt != null
-              ? Date.now() - (newDur - remainingSec) * 1000
-              : s.clock.levelStartedAt;
-          return {
-            blindStructure: renum,
-            clock: {
-              ...s.clock,
-              remainingSec,
-              levelStartedAt,
-            },
-          };
-        }),
-      setBlindStructure: (levels) =>
-        set({
-          blindStructure: ensureBlindLevelIds(
-            levels.map((lv, i) => ({ ...lv, level: i + 1 })),
-          ),
-        }),
-
-      setPayouts: (spots) =>
-        set({
-          payouts: spots
-            .slice()
-            .sort((a, b) => a.place - b.place)
-            .map((p, i) => ({ ...p, place: i + 1 })),
-        }),
-      updatePayout: (place, percent) =>
-        set((s) => ({
-          payouts: s.payouts.map((p) =>
-            p.place === place ? { ...p, percent } : p,
-          ),
-        })),
-      addPayoutSpot: () =>
-        set((s) => ({
-          payouts: [
-            ...s.payouts,
-            { place: s.payouts.length + 1, percent: 0 },
-          ],
-        })),
-      removePayoutSpot: (place) =>
-        set((s) => ({
-          payouts: s.payouts
-            .filter((p) => p.place !== place)
-            .map((p, i) => ({ ...p, place: i + 1 })),
-        })),
-
-      startClock: () =>
-        set((s) => {
-          const lv = s.blindStructure[s.clock.currentLevel];
-          const dur = lv?.durationSec ?? s.clock.remainingSec;
-          const now = Date.now();
-          const firstStart = s.startedAt == null;
-          return {
-            clock: {
-              ...s.clock,
-              running: true,
-              lastTickAt: now,
-              levelStartedAt: now - (dur - s.clock.remainingSec) * 1000,
-            },
-            startedAt: s.startedAt ?? now,
-            ...(firstStart
-              ? { players: startActivePlay(s.players, now) }
-              : {}),
-          };
-        }),
-      pauseClock: () =>
-        set((s) => ({ clock: { ...s.clock, running: false } })),
       toggleClock: () =>
         set((s) => {
           const willRun = !s.clock.running;
@@ -1091,75 +877,6 @@ export const useTournament = create<TournamentStore>()(
           chopAmounts: undefined,
           pendingRebalanceMoves: undefined,
           removedEntries: undefined,
-        }),
-
-      importState: (state) =>
-        set((s) => {
-          // Deep, validated merge: only accept known top-level keys, deep-merge
-          // clock/settings, and silently skip anything unrecognised. Missing
-          // nested fields fall back to the current value so partial payloads
-          // don't clobber good state.
-          if (!state || typeof state !== "object") return {};
-          const next: Partial<TournamentState> = {};
-          if (typeof state.name === "string") next.name = state.name;
-          if (typeof state.startingStack === "number")
-            next.startingStack = Math.max(0, state.startingStack);
-          if (typeof state.buyIn === "number")
-            next.buyIn = Math.max(0, state.buyIn);
-          if (typeof state.rebuyChips === "number")
-            next.rebuyChips = Math.max(0, state.rebuyChips);
-          if (typeof state.rebuyCost === "number")
-            next.rebuyCost = Math.max(0, state.rebuyCost);
-          if (typeof state.addOnChips === "number")
-            next.addOnChips = Math.max(0, state.addOnChips);
-          if (typeof state.addOnCost === "number")
-            next.addOnCost = Math.max(0, state.addOnCost);
-          if (Array.isArray(state.players)) next.players = state.players;
-          if (Array.isArray(state.tables)) next.tables = state.tables;
-          if (Array.isArray(state.blindStructure))
-            next.blindStructure = state.blindStructure;
-          if (Array.isArray(state.payouts)) next.payouts = state.payouts;
-          if (Array.isArray(state.chipDenoms))
-            next.chipDenoms = state.chipDenoms;
-          if (state.settings && typeof state.settings === "object") {
-            next.settings = { ...s.settings, ...state.settings };
-          }
-          if (state.clock && typeof state.clock === "object") {
-            next.clock = {
-              ...s.clock,
-              ...state.clock,
-              // Ensure levelStartedAt is always defined (null is allowed).
-              levelStartedAt:
-                state.clock.levelStartedAt ?? s.clock.levelStartedAt ?? null,
-            };
-          }
-          if (typeof state.startedAt === "number")
-            next.startedAt = state.startedAt;
-          if (typeof state.finishedAt === "number")
-            next.finishedAt = state.finishedAt;
-          if (
-            state.finishType === "winner" ||
-            state.finishType === "chop" ||
-            state.finishType === "elimination"
-          ) {
-            next.finishType = state.finishType;
-          }
-          if (state.chopShares && typeof state.chopShares === "object") {
-            next.chopShares = state.chopShares;
-          }
-          if (state.chopAmounts && typeof state.chopAmounts === "object") {
-            next.chopAmounts = state.chopAmounts;
-          }
-          if (
-            state.removedEntries &&
-            typeof state.removedEntries === "object" &&
-            typeof state.removedEntries.buyIns === "number" &&
-            typeof state.removedEntries.rebuys === "number" &&
-            typeof state.removedEntries.addOns === "number"
-          ) {
-            next.removedEntries = state.removedEntries;
-          }
-          return next;
         }),
 
       saveSettings: (draft) => {
