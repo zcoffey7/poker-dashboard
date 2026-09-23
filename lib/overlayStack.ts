@@ -7,13 +7,36 @@ type OverlayEntry = {
 
 let stack: OverlayEntry[] = [];
 let nextId = 0;
+let savedBodyOverflow = "";
 
-/** Push an overlay layer. Returns a pop function for cleanup on unmount. */
-export function pushOverlay(onEscape?: () => void): () => void {
+export type OverlayHandle = {
+  /** Remove this layer (call on unmount). */
+  pop: () => void;
+  /** True while no other overlay has been opened on top of this one. */
+  isTop: () => boolean;
+};
+
+/**
+ * Push an overlay layer (modal, drawer, …). While any layer is open the page
+ * behind it is scroll-locked, so dragging on a phone moves the sheet's own
+ * content rather than the dashboard underneath.
+ */
+export function pushOverlay(onEscape?: () => void): OverlayHandle {
   const id = ++nextId;
+  if (stack.length === 0) {
+    savedBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+  }
   stack.push({ id, onEscape });
-  return () => {
-    stack = stack.filter((e) => e.id !== id);
+  return {
+    pop: () => {
+      const before = stack.length;
+      stack = stack.filter((e) => e.id !== id);
+      if (before > 0 && stack.length === 0) {
+        document.body.style.overflow = savedBodyOverflow;
+      }
+    },
+    isTop: () => stack[stack.length - 1]?.id === id,
   };
 }
 

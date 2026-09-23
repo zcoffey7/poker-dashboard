@@ -2,19 +2,20 @@
 
 import { useState } from "react";
 import { useCash, playerNet } from "@/lib/cashStore";
-import { fmtStackWithBBs, playerStackCents } from "@/lib/cashStack";
+import { fmtBBCount, playerStackCents, stackBB } from "@/lib/cashStack";
 import { fmtMoneyCents, fmtSignedCents, fromCents } from "@/lib/money";
+import { confirmAction } from "@/lib/confirm";
 import BuyInDialog from "./BuyInDialog";
 import CashOutDialog from "./CashOutDialog";
 import CashPlayerDetailsModal from "./CashPlayerDetailsModal";
-import { PlayerNameClock } from "../PlayedClock";
+import PlayedClock, { PlayerNameClock } from "../PlayedClock";
+import { IconLogOut, IconPlus, IconUndo, IconUserPlus } from "../icons";
 
 export default function CashPlayerRoster() {
   const players = useCash((s) => s.players);
   const bigBlind = useCash((s) => s.bigBlind);
   const defaultBuyIn = useCash((s) => s.defaultBuyIn);
   const addPlayer = useCash((s) => s.addPlayer);
-  const removePlayer = useCash((s) => s.removePlayer);
   const reopenPlayer = useCash((s) => s.reopenPlayer);
 
   const [addName, setAddName] = useState("");
@@ -35,14 +36,21 @@ export default function CashPlayerRoster() {
     setAddOpen(true);
   }
 
+  async function handleReopen(id: string, name: string) {
+    const ok = await confirmAction({
+      title: `Reopen ${name}?`,
+      message: "Their cash-out is cleared and they're back in the game.",
+      confirmLabel: "Reopen",
+    });
+    if (ok) reopenPlayer(id);
+  }
+
   return (
-    <div className="card p-4 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="label">Players</div>
-          <div className="text-sm text-[var(--text-muted)] mt-1">
-            {active.length} active, {settled.length} cashed out
-          </div>
+    <section aria-label="Players" className="card p-3 sm:p-4 flex flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-3 px-1">
+        <h2 className="font-semibold tracking-tight">Players</h2>
+        <div className="text-sm text-muted">
+          {active.length} seated · {settled.length} cashed out
         </div>
       </div>
 
@@ -59,146 +67,138 @@ export default function CashPlayerRoster() {
         <input
           id="cash-add-player"
           className="input"
-          placeholder="Player name"
+          placeholder="Add a player"
+          autoComplete="off"
+          enterKeyHint="go"
           value={addName}
           onChange={(e) => setAddName(e.target.value)}
         />
         <button
-          className="btn btn-primary"
+          className="btn btn-primary shrink-0"
           type="submit"
           disabled={!addName.trim()}
         >
+          <IconUserPlus />
           Add
         </button>
       </form>
 
-      <div className="flex flex-col gap-1">
-        {active.length === 0 && settled.length === 0 && (
-          <div className="text-sm text-[var(--text-muted)] italic py-2">
-            No players yet. Add one above.
-          </div>
-        )}
-        {active.map((p) => {
-          const stack = playerStackCents(p);
-          const stackLabel =
-            bigBlind > 0
-              ? fmtStackWithBBs(stack, bigBlind)
-              : fmtMoneyCents(stack);
-          return (
-            <div
-              key={`${p.id}:${stack}`}
-              data-testid="cash-active-player-row"
-              data-player={p.name}
-              className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm px-2 py-1.5 rounded hover:bg-black/20"
-            >
-              <PlayerNameClock
-                name={p.name}
-                intervals={p.playIntervals}
-                onNameClick={() => setDetailsId(p.id)}
-              />
-              <span
-                className="chip chip-accent text-[10px] shrink-0"
-                title={`${p.buyIns.length} buy-in${p.buyIns.length === 1 ? "" : "s"}`}
-              >
-                {p.buyIns.length}×
-              </span>
-              <span
-                className="font-mono text-xs tabular-nums text-right shrink-0"
-                data-testid="cash-player-stack"
-                data-player={p.name}
-              >
-                {stackLabel}
-              </span>
-              <div className="flex gap-1 shrink-0 ml-auto">
-                <button
-                  className="btn btn-ghost btn-sm !px-2 !py-0.5"
-                  onClick={() => setRebuyId(p.id)}
-                  title="Add another buy-in"
-                >
-                  +$
-                </button>
-                <button
-                  className="btn btn-danger btn-sm !px-2 !py-0.5"
-                  onClick={() => setCashOutId(p.id)}
-                  title="Cash out this player"
-                >
-                  Cash Out
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm !px-2 !py-0.5"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Remove ${p.name}? This erases their buy-ins — use Cash Out for $0 if they busted.`,
-                      )
-                    )
-                      removePlayer(p.id);
-                  }}
-                  title="Remove from game"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          );
-        })}
+      {active.length === 0 && settled.length === 0 && (
+        <div className="text-sm text-muted text-center py-6">
+          No players yet. Add the first one above.
+        </div>
+      )}
 
-        {settled.length > 0 && (
-          <div className="mt-3 border-t border-[var(--border)] pt-3">
-            <div className="label mb-2">Cashed Out</div>
+      {active.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {active.map((p) => {
+            const stack = playerStackCents(p);
+            const buyIns = p.buyIns.length;
+            return (
+              <li
+                key={p.id}
+                data-testid="cash-active-player-row"
+                data-player={p.name}
+                className="card-2 px-3.5 py-3 flex flex-col gap-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      className="block max-w-full truncate text-left text-base font-semibold rounded hover:text-primary transition-colors"
+                      onClick={() => setDetailsId(p.id)}
+                      title="View details"
+                    >
+                      {p.name}
+                    </button>
+                    <div className="mt-1 flex items-center gap-2 text-xs text-subtle">
+                      <PlayedClock name={p.name} intervals={p.playIntervals} />
+                      <span aria-hidden="true">·</span>
+                      <span className={buyIns > 1 ? "text-info" : ""}>
+                        {buyIns} buy-in{buyIns === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className="shrink-0 text-right tabular-nums"
+                    data-testid="cash-player-stack"
+                    data-player={p.name}
+                  >
+                    <span className="block text-xl font-semibold leading-tight tracking-tight">
+                      {fmtMoneyCents(stack)}
+                    </span>
+                    {bigBlind > 0 && (
+                      <>
+                        <span className="sr-only"> · </span>
+                        <span className="block text-xs text-muted mt-0.5">
+                          {fmtBBCount(stackBB(stack, bigBlind))}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => setRebuyId(p.id)}
+                    title="Add another buy-in"
+                  >
+                    <IconPlus />
+                    Rebuy
+                  </button>
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => setCashOutId(p.id)}
+                    title="Cash out this player"
+                  >
+                    <IconLogOut />
+                    Cash Out
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {settled.length > 0 && (
+        <div className="flex flex-col gap-1.5 pt-1">
+          <div className="label px-1">Cashed out</div>
+          <ul className="flex flex-col">
             {settled.map((p) => {
               const net = playerNet(p) ?? 0;
-              const positive = net >= 0;
               return (
-                <div
+                <li
                   key={p.id}
-                  className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm px-2 py-1 rounded text-[var(--text-muted)]"
+                  className="flex items-center gap-2 px-1 py-1.5 border-b border-border last:border-0"
                 >
                   <PlayerNameClock
                     name={p.name}
                     intervals={p.playIntervals}
                     onNameClick={() => setDetailsId(p.id)}
-                    nameClassName="text-[var(--text)]"
+                    nameClassName="text-muted"
                   />
                   <span
-                    className={`font-mono text-xs tabular-nums font-semibold min-w-[72px] text-right shrink-0 ${
-                      positive
-                        ? "text-[var(--accent)]"
-                        : "text-[var(--text-muted)]"
+                    className={`text-right font-semibold tabular-nums shrink-0 ${
+                      net > 0 ? "text-gain" : net < 0 ? "text-loss" : "text-muted"
                     }`}
                   >
                     {fmtSignedCents(net)}
                   </span>
                   <button
-                    className="btn btn-ghost btn-sm !px-2 !py-0.5 shrink-0"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Reopen ${p.name}? Their cash-out will be cleared and they become active again.`,
-                        )
-                      ) {
-                        reopenPlayer(p.id);
-                      }
-                    }}
+                    className="btn btn-ghost btn-sm shrink-0"
+                    onClick={() => handleReopen(p.id, p.name)}
                     aria-label={`Reopen ${p.name}`}
                   >
+                    <IconUndo />
                     Undo
                   </button>
-                  <button
-                    className="btn btn-ghost btn-sm !px-2 !py-0.5 shrink-0"
-                    onClick={() => {
-                      if (confirm(`Remove ${p.name} from the game?`))
-                        removePlayer(p.id);
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
+                </li>
               );
             })}
-          </div>
-        )}
-      </div>
+          </ul>
+        </div>
+      )}
 
       {addOpen && (
         <BuyInDialog
@@ -238,6 +238,6 @@ export default function CashPlayerRoster() {
           onClose={() => setDetailsId(null)}
         />
       )}
-    </div>
+    </section>
   );
 }

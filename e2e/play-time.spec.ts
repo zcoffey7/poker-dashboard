@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   addTournamentPlayer,
   closePlayersPanel,
+  confirmPrompt,
   openPlayersPanel,
   playedClock,
   playedSeconds,
@@ -66,6 +67,7 @@ test("cash clocks are per-player and resume after reopen", async ({ page }) => {
   expect(frozen).toBe(8);
 
   await page.getByLabel("Reopen Alice").click();
+  await confirmPrompt(page, "Reopen");
   await page.clock.fastForward(4000);
 
   expect(await playedSeconds(page, "Alice")).toBe(frozen + 4);
@@ -125,6 +127,7 @@ test("tournament clocks start with the game and freeze on elimination", async ({
   expect(await playedSeconds(page, "Bob")).toBe(7);
 
   await page.getByLabel("Eliminate Alice").click();
+  await confirmPrompt(page, "Eliminate");
   const frozen = await playedSeconds(page, "Alice");
   expect(frozen).toBe(7);
 

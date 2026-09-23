@@ -22,6 +22,13 @@ export async function addTournamentPlayer(page: Page, name: string) {
   await expect(page.getByRole("button", { name: `View details for ${name}` })).toBeVisible();
 }
 
+/** Accept the in-app confirmation prompt that replaced `window.confirm`. */
+export async function confirmPrompt(page: Page, action: string | RegExp) {
+  const prompt = page.getByRole("alertdialog");
+  await prompt.getByRole("button", { name: action }).click();
+  await expect(prompt).toHaveCount(0);
+}
+
 export async function openPlayersPanel(page: Page) {
   const dialog = page.getByRole("dialog", { name: "Players" });
   if (await dialog.isVisible()) return;

@@ -105,7 +105,8 @@ export const CHIP_COLOR_OPTIONS: {
 
 type ChipDiskProps = Readonly<{
   color: ChipColor;
-  size?: number;
+  /** Pixels, or any CSS length (e.g. "4.5rem") so the chip can scale with the root font. */
+  size?: number | string;
   stripes?: number;
   /**
    * Optional photo of an actual chip face. When provided we render the photo
@@ -125,6 +126,9 @@ export function ChipDisk({
   imageAlt,
 }: ChipDiskProps) {
   const palette = CHIP_COLOR_MAP[color];
+  const cssSize = typeof size === "number" ? `${size}px` : size;
+  // The drawn disk is laid out in `em` against a font-size equal to the chip
+  // diameter, so every proportion holds at any size.
   const stripeEls = useMemo(() => {
     if (imageSrc) return null;
     const out: React.ReactNode[] = [];
@@ -134,18 +138,18 @@ export function ChipDisk({
         <span
           key={i}
           aria-hidden="true"
-          className="absolute left-1/2 top-1/2 rounded-sm"
+          className="absolute left-1/2 top-1/2 rounded-[0.03em]"
           style={{
-            width: `${size * 0.18}px`,
-            height: `${size * 0.22}px`,
+            width: "0.18em",
+            height: "0.22em",
             background: palette.stripe,
-            transform: `translate(-50%, -50%) rotate(${rotation}deg) translateY(-${size * 0.39}px)`,
+            transform: `translate(-50%, -50%) rotate(${rotation}deg) translateY(-0.39em)`,
           }}
         />,
       );
     }
     return out;
-  }, [imageSrc, palette.stripe, size, stripes]);
+  }, [imageSrc, palette.stripe, stripes]);
 
   if (imageSrc) {
     return (
@@ -153,13 +157,11 @@ export function ChipDisk({
       <img
         src={imageSrc}
         alt={imageAlt ?? ""}
-        width={size}
-        height={size}
         className="shrink-0 block"
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          filter: "drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35))",
+          width: cssSize,
+          height: cssSize,
+          filter: "drop-shadow(0 3px 8px rgba(0, 0, 0, 0.35))",
         }}
         draggable={false}
       />
@@ -170,10 +172,11 @@ export function ChipDisk({
     <div
       className="relative rounded-full shrink-0"
       style={{
-        width: `${size}px`,
-        height: `${size}px`,
+        fontSize: cssSize,
+        width: "1em",
+        height: "1em",
         background: palette.face,
-        boxShadow: `0 0 0 1px ${palette.ring}, 0 2px 6px rgba(0, 0, 0, 0.35)`,
+        boxShadow: `0 0 0 1px ${palette.ring}, 0 3px 8px rgba(0, 0, 0, 0.35)`,
       }}
       aria-hidden="true"
     >
@@ -181,7 +184,7 @@ export function ChipDisk({
       <div
         className="absolute rounded-full"
         style={{
-          inset: `${size * 0.18}px`,
+          inset: "0.18em",
           background: palette.inner,
           boxShadow: `inset 0 0 0 1px ${palette.ring}`,
         }}
@@ -194,6 +197,29 @@ function sortedByValue(denoms: ChipDenom[]) {
   return denoms.slice().sort((a, b) => a.value - b.value);
 }
 
+function ChipFace({ denom, size }: { denom: ChipDenom; size: string }) {
+  const palette = CHIP_COLOR_MAP[denom.color];
+  const imageSrc = chipImageForValue(denom.value);
+  return (
+    <div className="relative shrink-0">
+      <ChipDisk
+        color={denom.color}
+        size={size}
+        imageSrc={imageSrc}
+        imageAlt={`$${denom.value.toLocaleString()} chip`}
+      />
+      {!imageSrc && (
+        <div
+          className="absolute inset-0 flex items-center justify-center tabular-nums font-bold text-[0.8125rem] leading-none"
+          style={{ color: palette.text }}
+        >
+          {formatChipFace(denom.value)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChipLegend() {
   const chipDenoms = useTournament((s) => s.chipDenoms);
   const sorted = useMemo(() => sortedByValue(chipDenoms), [chipDenoms]);
@@ -201,42 +227,39 @@ export default function ChipLegend() {
   if (sorted.length === 0) return null;
 
   return (
-    <div className="card p-4 flex flex-col gap-4 h-full min-h-0 overflow-hidden">
+    <section
+      aria-label="Chip values"
+      className="card p-4 flex flex-col gap-3 md:gap-4 h-full min-h-0 overflow-hidden"
+    >
       <div className="label shrink-0">Chip values</div>
-      <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto scrollbar-thin">
-        {sorted.map((d) => {
-          const palette = CHIP_COLOR_MAP[d.color];
-          const imageSrc = chipImageForValue(d.value);
-          return (
-            <div
-              key={d.id}
-              className="flex items-center gap-4"
-              title={`${d.value.toLocaleString()} chip (${d.color})`}
-            >
-              <div className="relative shrink-0">
-                <ChipDisk
-                  color={d.color}
-                  size={88}
-                  imageSrc={imageSrc}
-                  imageAlt={`$${d.value.toLocaleString()} chip`}
-                />
-                {!imageSrc && (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center font-mono tabular-nums font-bold text-sm sm:text-base leading-none"
-                    style={{ color: palette.text }}
-                  >
-                    {formatChipFace(d.value)}
-                  </div>
-                )}
-              </div>
-              <div className="font-mono tabular-nums text-2xl md:text-3xl font-bold">
-                {d.value.toLocaleString()}
-              </div>
+
+      {/* Phones: one compact row so the clock stays near the top. */}
+      <div className="md:hidden grid grid-cols-5 gap-2">
+        {sorted.map((d) => (
+          <div key={d.id} className="flex flex-col items-center gap-1.5 min-w-0">
+            <ChipFace denom={d} size="2.75rem" />
+            <div className="text-xs font-semibold tabular-nums">
+              {formatChipFace(d.value)}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
-    </div>
+
+      <div className="hidden md:flex flex-1 min-h-0 flex-col justify-around gap-3 overflow-y-auto scrollbar-thin">
+        {sorted.map((d) => (
+          <div
+            key={d.id}
+            className="flex items-center gap-4"
+            title={`${d.value.toLocaleString()} chip (${d.color})`}
+          >
+            <ChipFace denom={d} size="clamp(3.5rem, 9vh, 5.25rem)" />
+            <div className="tabular-nums text-2xl lg:text-[1.75rem] font-semibold tracking-tight">
+              {d.value.toLocaleString()}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

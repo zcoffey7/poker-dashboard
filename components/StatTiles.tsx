@@ -1,43 +1,49 @@
 /**
- * Shared stat-tile presentational components. One home for the label/value
- * markup and the sign/color logic that was previously copy-pasted across
- * GameRecap, CashRecap, CashOutDialog, CashPlayerDetailsModal, and
- * CashDashboardClient.
+ * Shared stat-tile presentational components: one home for the label/value
+ * markup and the gain/loss coloring used by the recaps, cash dialogs, and
+ * dashboards.
  */
+
+export type Tone = "gain" | "loss" | "muted" | "gold";
+
+const TONE_CLASS: Record<Tone, string> = {
+  gain: "text-gain",
+  loss: "text-loss",
+  muted: "text-muted",
+  gold: "text-gold",
+};
+
+/** Green when up, red when down, neutral at exactly even. */
+export function netTone(n: number): Tone | undefined {
+  if (n > 0) return "gain";
+  if (n < 0) return "loss";
+  return undefined;
+}
 
 type StatProps = {
   label: string;
   value: string;
-  /**
-   * true → accent (winning), false → muted (losing), null/undefined →
-   * default text color.
-   */
-  positive?: boolean | null;
-  muted?: boolean;
+  tone?: Tone;
 };
 
-function valueColor(positive?: boolean | null, muted?: boolean): string {
-  if (positive === true) return "text-[var(--accent)]";
-  if (muted || positive === false) return "text-[var(--text-muted)]";
-  return "";
+function toneClass(tone?: Tone) {
+  return tone ? TONE_CLASS[tone] : "";
 }
 
 function StatLabel({ children }: { children: string }) {
   return (
-    <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+    <div className="text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-muted">
       {children}
     </div>
   );
 }
 
-/** Boxed tile (card-2) used inside dialogs and modals. */
-export function StatBox({ label, value, positive, muted }: StatProps) {
+/** Boxed tile used inside dialogs and modals. */
+export function StatBox({ label, value, tone }: StatProps) {
   return (
-    <div className="card-2 p-2 rounded">
+    <div className="card-2 px-3 py-2.5">
       <StatLabel>{label}</StatLabel>
-      <div
-        className={`font-mono text-sm font-semibold ${valueColor(positive, muted)}`}
-      >
+      <div className={`mt-0.5 text-[0.9375rem] font-semibold tabular-nums ${toneClass(tone)}`}>
         {value}
       </div>
     </div>
@@ -48,40 +54,21 @@ export function StatBox({ label, value, positive, muted }: StatProps) {
 export function StatCol({
   label,
   value,
-  positive,
-  muted,
+  tone,
   emphasize,
   hint,
 }: StatProps & { emphasize?: boolean; hint?: string }) {
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col min-w-0">
       <StatLabel>{label}</StatLabel>
       <div
-        className={`font-mono ${
-          emphasize ? "text-base font-semibold" : "text-sm"
-        } ${valueColor(positive, muted)}`}
+        className={`mt-0.5 tabular-nums truncate ${
+          emphasize ? "text-lg font-semibold" : "text-sm font-medium"
+        } ${toneClass(tone)}`}
       >
         {value}
       </div>
-      {hint && (
-        <div className="text-[11px] text-[var(--text-muted)] font-mono tabular-nums">
-          {hint}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Compact column for dense participant rows. */
-export function MiniStat({ label, value, positive, muted }: StatProps) {
-  return (
-    <div className="flex flex-col min-w-0">
-      <StatLabel>{label}</StatLabel>
-      <span
-        className={`font-mono font-semibold truncate ${valueColor(positive, muted)}`}
-      >
-        {value}
-      </span>
+      {hint && <div className="text-[0.6875rem] text-muted tabular-nums">{hint}</div>}
     </div>
   );
 }
@@ -92,28 +79,31 @@ export function StatTile({
   value,
   hint,
   wide,
+  tone,
+  icon,
 }: {
   label: string;
   value: string;
   hint?: string;
   /** When true, don't truncate the value (for wider tiles). */
   wide?: boolean;
+  tone?: Tone;
+  icon?: React.ReactNode;
 }) {
   return (
-    <div className="card p-3 h-full">
-      <StatLabel>{label}</StatLabel>
+    <div className="card px-4 py-3 h-full min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <StatLabel>{label}</StatLabel>
+        {icon && <span className="text-subtle text-sm">{icon}</span>}
+      </div>
       <div
-        className={`text-lg font-semibold font-mono tabular-nums ${
+        className={`mt-1 text-xl font-semibold tabular-nums tracking-tight leading-tight ${
           wide ? "" : "truncate"
-        }`}
+        } ${toneClass(tone)}`}
       >
         {value}
       </div>
-      {hint && (
-        <div className="text-[11px] text-[var(--text-muted)] truncate">
-          {hint}
-        </div>
-      )}
+      {hint && <div className="mt-0.5 text-xs text-muted truncate">{hint}</div>}
     </div>
   );
 }

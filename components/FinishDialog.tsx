@@ -1,10 +1,12 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import ModalShell from "./ModalShell";
+import ModalShell, { ModalFooter, ModalHeader } from "./ModalShell";
 import { useTournament } from "@/lib/store";
-import { computeStats } from "@/lib/selectors";
+import { useTournamentStats } from "@/lib/useTournamentStats";
+import { confirmAction, showNotice } from "@/lib/confirm";
 import { CASH_INCREMENT, floorTo } from "@/lib/payouts";
+import { IconTrophy, IconUsers } from "./icons";
 
 type Props = {
   onClose: () => void;
@@ -12,38 +14,10 @@ type Props = {
 
 export default function FinishDialog({ onClose }: Props) {
   const players = useTournament((s) => s.players);
-  const buyIn = useTournament((s) => s.buyIn);
-  const addOnCost = useTournament((s) => s.addOnCost);
-  const rebuyCost = useTournament((s) => s.rebuyCost);
-  const blindStructure = useTournament((s) => s.blindStructure);
-  const currentLevel = useTournament((s) => s.clock.currentLevel);
   const finishTournament = useTournament((s) => s.finishTournament);
-  const removedEntries = useTournament((s) => s.removedEntries);
   const titleId = useId();
 
-  const stats = useMemo(
-    () =>
-      computeStats(
-        players,
-        blindStructure,
-        currentLevel,
-        buyIn,
-        addOnCost,
-        {},
-        rebuyCost,
-        removedEntries,
-      ),
-    [
-      players,
-      blindStructure,
-      currentLevel,
-      buyIn,
-      addOnCost,
-      rebuyCost,
-      removedEntries,
-    ],
-  );
-  const pool = stats.prizePool;
+  const pool = useTournamentStats().prizePool;
 
   const active = useMemo(
     () => players.filter((p) => !p.eliminated),
@@ -78,36 +52,36 @@ export default function FinishDialog({ onClose }: Props) {
     setAmounts({ ...amounts, ...equalSplit(chopIds) });
   }
 
-  function submit() {
+  async function submit() {
     if (mode === "winner") {
       if (active.length !== 1) {
-        if (
-          !confirm(
-            `You're declaring a winner with ${active.length} active players. This will mark the remaining players' seats as won (no payouts for the others). Continue?`,
-          )
-        ) {
-          return;
-        }
+        const ok = await confirmAction({
+          title: "Declare a winner now?",
+          message: `${active.length} players are still active. Declaring a winner ends the tournament and assigns their finish places automatically.`,
+          confirmLabel: "Declare winner",
+        });
+        if (!ok) return;
       }
       finishTournament({ type: "winner" });
     } else {
       if (chopIds.length === 0) {
-        alert("Select at least one player for the chop.");
+        await showNotice("Select at least one player for the chop.");
         return;
       }
       if (allocated > pool) {
-        alert(
+        await showNotice(
+          "Chop is over the prize pool",
           `Allocated $${allocated.toLocaleString()} exceeds the $${pool.toLocaleString()} prize pool. Reduce the amounts before confirming.`,
         );
         return;
       }
-      if (
-        remaining > 0 &&
-        !confirm(
-          `$${remaining.toLocaleString()} of the prize pool is unallocated and will stay unpaid. Continue?`,
-        )
-      ) {
-        return;
+      if (remaining > 0) {
+        const ok = await confirmAction({
+          title: "Leave money unallocated?",
+          message: `$${remaining.toLocaleString()} of the prize pool is unallocated and will stay unpaid.`,
+          confirmLabel: "Confirm chop",
+        });
+        if (!ok) return;
       }
       const chopAmounts = Object.fromEntries(
         chopIds.map((id) => [id, amounts[id] ?? 0]),
@@ -121,102 +95,114 @@ export default function FinishDialog({ onClose }: Props) {
     onClose();
   }
 
+  const allocatedPct = pool > 0 ? Math.min(100, (allocated / pool) * 100) : 0;
+  const meterColor =
+    remaining === 0 ? "bg-primary" : remaining < 0 ? "bg-loss" : "bg-warn";
+
   return (
     <ModalShell
       onClose={onClose}
       labelledBy={titleId}
       cardClassName="w-full max-w-lg max-h-[92dvh] flex flex-col overflow-hidden"
     >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-          <div>
-            <div className="label" id={titleId}>
-              Finish Tournament
-            </div>
-            <div className="text-xs text-[var(--text-muted)] mt-0.5">
-              {active.length} active · ${pool.toLocaleString()} pool
-            </div>
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
-            ×
-          </button>
-        </div>
+      <ModalHeader
+        titleId={titleId}
+        title="Finish Tournament"
+        subtitle={
+          <span className="tabular-nums">
+            {active.length} active ·{" "}
+            <span className="text-gold font-medium">${pool.toLocaleString()}</span>{" "}
+            pool
+          </span>
+        }
+        onClose={onClose}
+      />
 
-        <div className="flex gap-2 px-4 pt-3">
+      <div className="px-5 pt-4">
+        <div className="segmented w-full">
           <button
-            className={`btn btn-sm flex-1 ${mode === "winner" ? "btn-primary" : ""}`}
+            type="button"
+            aria-pressed={mode === "winner"}
             onClick={() => setMode("winner")}
           >
+            <IconTrophy />
             Declare Winner
           </button>
           <button
-            className={`btn btn-sm flex-1 ${mode === "chop" ? "btn-primary" : ""}`}
+            type="button"
+            aria-pressed={mode === "chop"}
             onClick={() => setMode("chop")}
             disabled={active.length < 2}
             title={active.length < 2 ? "Need at least 2 active players" : ""}
           >
+            <IconUsers />
             Chop
           </button>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {mode === "winner" ? (
-            <div className="flex flex-col gap-2 text-sm">
-              {active.length === 1 ? (
-                <div>
-                  <span className="text-[var(--text-muted)]">Winner: </span>
-                  <span className="font-semibold">{active[0].name}</span>
-                </div>
-              ) : active.length === 0 ? (
-                <div className="text-[var(--text-muted)] italic">
-                  No active players remain.
-                </div>
-              ) : (
-                <div className="text-[var(--text-muted)]">
-                  Eliminate players until only one remains, or use Chop to
-                  split the pool.
-                </div>
-              )}
-              <div className="text-xs text-[var(--text-muted)]">
-                Payouts will be awarded by finish place using the configured
-                payout structure.
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div className="text-xs text-[var(--text-muted)]">
-                Select which players are in the chop and enter the dollar
-                amount each player gets. Any unallocated money stays unpaid.
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[var(--text-muted)]">
-                  Prize pool: ${pool.toLocaleString()}
+      <div className="flex-1 overflow-y-auto p-5">
+        {mode === "winner" ? (
+          <div className="flex flex-col gap-3 text-sm">
+            {active.length === 1 ? (
+              <div className="card-2 flex items-center gap-3 p-4 border-gold/40">
+                <span className="inline-flex size-10 items-center justify-center rounded-full bg-gold/15 text-gold text-lg">
+                  <IconTrophy />
                 </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={setEqualShares}
-                >
-                  Equal split
-                </button>
+                <div>
+                  <div className="label">Winner</div>
+                  <div className="text-lg font-semibold">{active[0].name}</div>
+                </div>
               </div>
-              <div className="flex flex-col gap-2">
-                {active.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-2 p-2 rounded bg-black/20"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!selected[p.id]}
-                      aria-label={`Include ${p.name} in chop`}
-                      onChange={(e) =>
-                        setSelected({ ...selected, [p.id]: e.target.checked })
-                      }
-                    />
-                    <span className="flex-1 truncate text-sm font-medium">
-                      {p.name}
-                    </span>
-                    <span className="text-xs text-[var(--text-muted)] w-4 text-right">
+            ) : active.length === 0 ? (
+              <div className="text-muted italic">No active players remain.</div>
+            ) : (
+              <div className="text-muted leading-relaxed">
+                Eliminate players until only one remains, or use Chop to
+                split the pool.
+              </div>
+            )}
+            <div className="text-xs text-muted">
+              Payouts will be awarded by finish place using the configured
+              payout structure.
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-xs text-muted leading-relaxed">
+                Select who&apos;s in the chop and enter each player&apos;s
+                amount. Any unallocated money stays unpaid.
+              </p>
+              <button
+                type="button"
+                className="btn btn-sm shrink-0"
+                onClick={setEqualShares}
+              >
+                Equal split
+              </button>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {active.map((p) => (
+                <label
+                  key={p.id}
+                  className={`card-2 flex items-center gap-3 px-3 py-2 cursor-pointer transition-opacity ${
+                    selected[p.id] ? "" : "opacity-55"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!selected[p.id]}
+                    aria-label={`Include ${p.name} in chop`}
+                    onChange={(e) =>
+                      setSelected({ ...selected, [p.id]: e.target.checked })
+                    }
+                  />
+                  <span className="flex-1 truncate text-sm font-medium">
+                    {p.name}
+                  </span>
+                  <span className="relative">
+                    <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted">
                       $
                     </span>
                     <input
@@ -233,39 +219,51 @@ export default function FinishDialog({ onClose }: Props) {
                           [p.id]: Math.max(0, Number(e.target.value) || 0),
                         })
                       }
-                      className="input w-24 text-right font-mono text-sm"
+                      className="input input-sm w-28 pl-6 text-right tabular-nums"
                     />
-                  </div>
-                ))}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1.5 pt-1">
+              <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${meterColor}`}
+                  style={{ width: `${allocatedPct}%` }}
+                />
               </div>
-              <div className="text-xs text-[var(--text-muted)] flex items-center justify-between">
-                <span>
-                  Allocated: ${allocated.toLocaleString()} / $
+              <div className="text-xs flex items-center justify-between tabular-nums">
+                <span className="text-muted">
+                  Allocated ${allocated.toLocaleString()} of $
                   {pool.toLocaleString()}
                 </span>
                 {remaining > 0 && (
-                  <span className="text-orange-400">
+                  <span className="text-warn font-medium">
                     ${remaining.toLocaleString()} unallocated
                   </span>
                 )}
                 {remaining < 0 && (
-                  <span className="text-red-400">
+                  <span className="text-loss font-medium">
                     Over by ${(-remaining).toLocaleString()}
                   </span>
                 )}
+                {remaining === 0 && (
+                  <span className="text-primary font-medium">Fully allocated</span>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--border)]">
-          <button className="btn btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn btn-primary" onClick={submit}>
-            {mode === "winner" ? "Declare Winner" : "Confirm Chop"}
-          </button>
-        </div>
+      <ModalFooter>
+        <button className="btn btn-ghost" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" onClick={submit}>
+          {mode === "winner" ? "Declare Winner" : "Confirm Chop"}
+        </button>
+      </ModalFooter>
     </ModalShell>
   );
 }

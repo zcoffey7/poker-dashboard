@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { seatCashPlayer } from "./helpers";
+import { confirmPrompt, seatCashPlayer } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   page.on("dialog", (dialog) => dialog.accept());
@@ -51,6 +51,7 @@ test("avg stack and per-player stacks update as players join, rebuy, and cash ou
   await expect(page.getByTestId("cash-player-stack")).toHaveCount(1);
 
   await page.getByLabel("Reopen Bob").click();
+  await confirmPrompt(page, "Reopen");
   await expect(playerStack(page, "Bob")).toHaveText("$50.00 · 250 BB");
   await expect(avgTile).toContainText("$45.00 · 225 BB");
 });

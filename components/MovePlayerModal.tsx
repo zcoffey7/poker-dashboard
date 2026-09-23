@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { pushOverlay } from "@/lib/overlayStack";
+import { useId, useMemo, useState } from "react";
 import { useTournament } from "@/lib/store";
+import ModalShell, { ModalFooter, ModalHeader } from "./ModalShell";
+import { IconAlert, IconArrowRight } from "./icons";
 
 type Props = Readonly<{
   playerId: string;
@@ -18,6 +19,7 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
   const tables = useTournament((s) => s.tables);
   const players = useTournament((s) => s.players);
   const movePlayer = useTournament((s) => s.movePlayer);
+  const titleId = useId();
 
   const activeTables = useMemo(
     () => tables.filter((t) => !t.broken),
@@ -29,32 +31,6 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
 
   const [tableId, setTableId] = useState<string | null>(initialTableId);
   const [seat, setSeat] = useState<number>(initialSeat);
-
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const pop = pushOverlay(onClose);
-    const dialog = dialogRef.current;
-    if (!dialog) return pop;
-    if (!dialog.open) dialog.showModal();
-
-    function onBackdropMouseDown(e: MouseEvent) {
-      if (!dialog) return;
-      const rect = dialog.getBoundingClientRect();
-      const clickedOutside =
-        e.clientX < rect.left ||
-        e.clientX > rect.right ||
-        e.clientY < rect.top ||
-        e.clientY > rect.bottom;
-      if (clickedOutside) onClose();
-    }
-
-    dialog.addEventListener("mousedown", onBackdropMouseDown);
-    return () => {
-      dialog.removeEventListener("mousedown", onBackdropMouseDown);
-      pop();
-    };
-  }, [onClose]);
 
   const selectedTable = tables.find((t) => t.id === tableId);
 
@@ -83,6 +59,9 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
   const currentDescription = player.tableId
     ? `${tables.find((t) => t.id === player.tableId)?.name ?? "Table"} · Seat ${player.seat}`
     : "Unseated";
+  const targetDescription = isUnseatedChoice
+    ? "Unseated"
+    : `${selectedTable?.name ?? "Table"} · Seat ${clampedSeat}`;
 
   const isSameAsCurrent = isUnseatedChoice
     ? player.tableId == null && player.seat == null
@@ -111,90 +90,88 @@ export default function MovePlayerModal({ playerId, onClose }: Props) {
   }
 
   return (
-    <dialog
-      ref={dialogRef}
-      aria-label="Move player"
-      className="card fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(100vw-2rem,24rem)] p-5 flex-col gap-4 text-text open:flex backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+    <ModalShell
       onClose={onClose}
+      labelledBy={titleId}
+      cardClassName="w-full sm:max-w-sm flex flex-col overflow-hidden"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="label mb-1">Move player</div>
-          <div className="text-lg font-semibold truncate">{player.name}</div>
-          <div className="text-xs text-muted mt-1">
-            Currently: {currentDescription}
-          </div>
+      <ModalHeader
+        titleId={titleId}
+        eyebrow="Move player"
+        title={player.name}
+        onClose={onClose}
+      />
+
+      <div className="p-5 flex flex-col gap-4">
+        <div className="card-2 flex items-center gap-2 px-3 py-2.5 text-sm">
+          <span className="text-muted truncate">{currentDescription}</span>
+          <IconArrowRight className="text-primary shrink-0" />
+          <span className="font-semibold truncate">{targetDescription}</span>
         </div>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={onClose}
-          title="Close"
-        >
-          ×
-        </button>
-      </div>
 
-      <div className="flex flex-col gap-2">
-        <label className="label" htmlFor="move-table">
-          Table
-        </label>
-        <select
-          id="move-table"
-          className="input"
-          value={tableId ?? UNSEATED}
-          onChange={(e) => handleTableChange(e.target.value)}
-        >
-          <option value={UNSEATED}>Unseated</option>
-          {activeTables.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {!isUnseatedChoice && selectedTable && (
-        <div className="flex flex-col gap-2">
-          <label className="label" htmlFor="move-seat">
-            Seat
+        <div className="flex flex-col gap-1.5">
+          <label className="label" htmlFor="move-table">
+            Table
           </label>
           <select
-            id="move-seat"
-            className="input"
-            value={clampedSeat}
-            onChange={(e) => setSeat(Number(e.target.value))}
+            id="move-table"
+            className="select"
+            value={tableId ?? UNSEATED}
+            onChange={(e) => handleTableChange(e.target.value)}
           >
-            {Array.from({ length: selectedTable.seatCount }, (_, i) => {
-              const n = i + 1;
-              const occ = occupants.get(n);
-              return (
-                <option key={n} value={n}>
-                  Seat {n}
-                  {occ ? ` — occupied by ${occ}` : ""}
-                </option>
-              );
-            })}
+            <option value={UNSEATED}>Unseated</option>
+            {activeTables.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
           </select>
-          {bumpName && (
-            <div className="text-xs text-muted">
-              {bumpName} will be bumped to Unseated.
-            </div>
-          )}
         </div>
-      )}
 
-      <div className="flex justify-end gap-2 border-t border-border pt-4">
+        {!isUnseatedChoice && selectedTable && (
+          <div className="flex flex-col gap-1.5">
+            <label className="label" htmlFor="move-seat">
+              Seat
+            </label>
+            <select
+              id="move-seat"
+              className="select"
+              value={clampedSeat}
+              onChange={(e) => setSeat(Number(e.target.value))}
+            >
+              {Array.from({ length: selectedTable.seatCount }, (_, i) => {
+                const n = i + 1;
+                const occ = occupants.get(n);
+                return (
+                  <option key={n} value={n}>
+                    Seat {n}
+                    {occ ? ` — occupied by ${occ}` : ""}
+                  </option>
+                );
+              })}
+            </select>
+            {bumpName && (
+              <div className="flex items-center gap-1.5 text-xs text-warn">
+                <IconAlert />
+                {bumpName} will be bumped to Unseated.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <ModalFooter>
         <button className="btn btn-ghost" onClick={onClose}>
           Cancel
         </button>
         <button
-          className="btn btn-primary"
+          className="btn btn-primary flex-1 sm:flex-none"
           onClick={handleConfirm}
           disabled={isSameAsCurrent}
         >
           Move
         </button>
-      </div>
-    </dialog>
+      </ModalFooter>
+    </ModalShell>
   );
 }

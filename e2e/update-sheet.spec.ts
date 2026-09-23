@@ -5,6 +5,7 @@ import { startFakeGitHub, type FakeGitHub } from "../scripts/fake-github";
 import {
   addTournamentPlayer,
   closePlayersPanel,
+  confirmPrompt,
   openPlayersPanel,
 } from "./helpers";
 
@@ -223,6 +224,7 @@ test("a finished tournament publishes to the tournament standings", async ({
   // Knocking out the second-to-last player auto-crowns a winner and ends it.
   await openPlayersPanel(page);
   await page.getByLabel("Eliminate Kyle").click();
+  await confirmPrompt(page, "Eliminate");
   await expect(page.getByText("Tournament Complete")).toBeVisible();
 
   await page.getByTestId("update-sheet-button").click();

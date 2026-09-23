@@ -1,67 +1,47 @@
-import Link from "next/link";
+import { LogoMark } from "@/components/Logo";
+import ModeCards from "@/components/ModeCards";
+import ThemePicker from "@/components/ThemePicker";
+import { IconArrowRight, IconChart } from "@/components/icons";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-3xl flex flex-col gap-6">
-        <div className="text-center">
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-            <span className="text-[var(--accent)]">Poker</span>Clock
-          </h1>
-          <p className="text-[var(--text-muted)] mt-2 text-sm sm:text-base">
-            Pick a game mode to get started.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ModeCard
-            href="/tournament"
-            title="Tournament"
-            description="Timed blinds, seating, payouts, rebuys/add-ons, end-of-game recap."
-            badge="Structured"
-          />
-          <ModeCard
-            href="/cash"
-            title="Cash Game"
-            description="Fixed blinds, one table, unlimited rebuys for any amount, per-player cash-outs."
-            badge="Casual"
-          />
-        </div>
-        <div className="text-center">
-          <a
-            href={`${basePath}/standings/`}
-            className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors"
-          >
-            View season standings &raquo;
-          </a>
-        </div>
+    <div className="relative min-h-[100dvh] flex flex-col items-center justify-center px-5 py-16">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-5">
+        <ThemePicker />
+      </div>
+      <div className="w-full max-w-3xl flex flex-col gap-10">
+        <header className="flex flex-col items-center text-center gap-5">
+          <LogoMark className="size-16 shadow-[0_12px_40px_-12px_var(--primary)]" />
+          <div>
+            <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight">
+              <span className="text-primary">Poker</span>Clock
+            </h1>
+            <p className="text-muted mt-3 text-base sm:text-lg">
+              Run your home game. Pick a mode to get started.
+            </p>
+          </div>
+        </header>
+
+        <ModeCards />
+
+        <a
+          href={`${basePath}/standings/`}
+          className="card group flex items-center gap-4 px-5 py-4 transition-colors hover:border-gold/50"
+        >
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-gold/12 text-gold text-lg ring-1 ring-gold/25">
+            <IconChart />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block font-semibold">Season standings</span>
+            <span className="block text-sm text-muted leading-snug mt-0.5">
+              Leaderboards, net P/L, and every session&apos;s history
+            </span>
+          </span>
+          <IconArrowRight className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-gold" />
+        </a>
       </div>
     </div>
-  );
-}
-
-type ModeCardProps = {
-  href: string;
-  title: string;
-  description: string;
-  badge: string;
-};
-
-function ModeCard({ href, title, description, badge }: ModeCardProps) {
-  return (
-    <Link
-      href={href}
-      className="card p-6 flex flex-col gap-3 hover:border-[var(--accent)] transition-colors group"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xl font-semibold">{title}</div>
-        <span className="chip chip-accent">{badge}</span>
-      </div>
-      <div className="text-sm text-[var(--text-muted)]">{description}</div>
-      <div className="mt-auto pt-3 text-sm font-medium text-[var(--accent)] group-hover:translate-x-1 transition-transform">
-        Open {title} &raquo;
-      </div>
-    </Link>
   );
 }

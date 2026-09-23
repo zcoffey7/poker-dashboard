@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useClockTick } from "@/lib/clock";
-import { overlayDepth, pushOverlay } from "@/lib/overlayStack";
+import { overlayDepth } from "@/lib/overlayStack";
 import { useTournament } from "@/lib/store";
+import { useHasHydrated } from "@/lib/useHasHydrated";
+import ModalShell, { ModalHeader } from "./ModalShell";
 import BlindClock from "./BlindClock";
 import StatsBar from "./StatsBar";
 import ChipLegend from "./ChipLegend";
@@ -13,10 +15,20 @@ import PayoutsPanel from "./PayoutsPanel";
 import GameRecap from "./GameRecap";
 import FinishDialog from "./FinishDialog";
 import RebalancePopup from "./RebalancePopup";
+import { IconFlag, IconLayoutGrid, IconUsers } from "./icons";
+import styles from "./DashboardClient.module.css";
 
 type Panel = "tables" | "players";
 
 export default function DashboardClient() {
+  // The whole dashboard reads persisted state; render a neutral skeleton
+  // until it's loaded so the static HTML never shows a default game.
+  const hydrated = useHasHydrated(useTournament);
+  if (!hydrated) return <DashboardSkeleton />;
+  return <Dashboard />;
+}
+
+function Dashboard() {
   useClockTick();
   const toggleClock = useTournament((s) => s.toggleClock);
   const nextLevel = useTournament((s) => s.nextLevel);
@@ -32,6 +44,9 @@ export default function DashboardClient() {
 
   const [openPanel, setOpenPanel] = useState<Panel | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
+  // Stable so the drawer's overlay registration doesn't churn on re-render
+  // (which would lift it above a dialog opened from inside it).
+  const closePanel = useCallback(() => setOpenPanel(null), []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -65,68 +80,70 @@ export default function DashboardClient() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [
-    toggleClock,
-    nextLevel,
-    prevLevel,
-    openPanel,
-    finishOpen,
-    hasPendingRebalance,
-  ]);
+  }, [toggleClock, nextLevel, prevLevel, hasPendingRebalance]);
 
   return (
-    <div className="flex flex-col gap-3 p-3 md:p-4 min-h-[100dvh] md:h-full md:min-h-0 md:overflow-hidden">
-      <StatsBar />
-
-      <div className="flex items-center justify-center gap-2 flex-wrap">
-        <PanelButton
-          label="Tables"
-          active={openPanel === "tables"}
-          onClick={() =>
-            setOpenPanel((p) => (p === "tables" ? null : "tables"))
-          }
-        />
-        <PanelButton
-          label="Players"
-          active={openPanel === "players"}
-          onClick={() =>
-            setOpenPanel((p) => (p === "players" ? null : "players"))
-          }
-        />
-        <button
-          className="btn"
-          onClick={() => setFinishOpen(true)}
-          disabled={!hasPlayers || activeCount === 0}
-          title={
-            !hasPlayers
-              ? "Add players first"
-              : activeCount === 0
-                ? "No active players"
-                : "Finish or chop the tournament"
-          }
-        >
-          Finish / Chop
-        </button>
+    <div
+      className={`${styles.layout} flex flex-col gap-3 p-3 pb-action-bar md:p-4 md:pb-4 md:h-full md:min-h-0 md:overflow-hidden`}
+    >
+      <div className={`${styles.clock} order-1 md:min-h-0`}>
+        <BlindClock />
+      </div>
+      <div className={`${styles.stats} order-2`}>
+        <StatsBar />
+      </div>
+      <div className={`${styles.payouts} order-3 md:min-h-0`}>
+        <PayoutsPanel />
+      </div>
+      <div className={`${styles.chips} order-4 min-w-0 md:min-h-0`}>
+        <ChipLegend />
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-5 gap-2">
-        <div className="md:col-span-1 min-w-0">
-          <ChipLegend />
-        </div>
-        <div className="md:col-span-4 flex flex-col gap-3 md:min-h-0 min-w-0">
-          <div className="md:flex-[2] md:min-h-0">
-            <BlindClock />
-          </div>
-          <div className="md:flex-1 md:min-h-0">
-            <PayoutsPanel />
-          </div>
+      <div className={`${styles.actions} action-bar`}>
+        <div className="grid grid-cols-3 gap-2 md:flex md:justify-center">
+          <PanelButton
+            label="Players"
+            shortcut="P"
+            icon={<IconUsers />}
+            active={openPanel === "players"}
+            onClick={() =>
+              setOpenPanel((p) => (p === "players" ? null : "players"))
+            }
+          />
+          <PanelButton
+            label="Tables"
+            shortcut="T"
+            icon={<IconLayoutGrid />}
+            active={openPanel === "tables"}
+            onClick={() =>
+              setOpenPanel((p) => (p === "tables" ? null : "tables"))
+            }
+          />
+          <button
+            className="btn"
+            onClick={() => setFinishOpen(true)}
+            disabled={!hasPlayers || activeCount === 0}
+            title={
+              !hasPlayers
+                ? "Add players first"
+                : activeCount === 0
+                  ? "No active players"
+                  : "Finish or chop the tournament"
+            }
+          >
+            <IconFlag />
+            <span className="md:hidden">Finish</span>
+            <span className="hidden md:inline">Finish / Chop</span>
+          </button>
         </div>
       </div>
 
-      {openPanel && (
+      {/* Dialogs portal to <body>, above the recap, so the dashboard's own
+          overlays step aside once the game is over. */}
+      {openPanel && !finishedAt && (
         <SidePanel
           title={openPanel === "tables" ? "Tables" : "Players"}
-          onClose={() => setOpenPanel(null)}
+          onClose={closePanel}
         >
           {openPanel === "tables" && <TablesView />}
           {openPanel === "players" && <PlayerRoster />}
@@ -135,19 +152,21 @@ export default function DashboardClient() {
 
       {finishOpen && <FinishDialog onClose={() => setFinishOpen(false)} />}
 
-      {finishedAt && <GameRecap />}
-
-      <RebalancePopup />
+      {finishedAt ? <GameRecap /> : <RebalancePopup />}
     </div>
   );
 }
 
 function PanelButton({
   label,
+  shortcut,
+  icon,
   active,
   onClick,
 }: {
   label: string;
+  shortcut: string;
+  icon: React.ReactNode;
   active: boolean;
   onClick: () => void;
 }) {
@@ -155,8 +174,13 @@ function PanelButton({
     <button
       className={`btn ${active ? "btn-primary" : ""}`}
       onClick={onClick}
+      aria-pressed={active}
     >
-      {active ? `Close ${label}` : label}
+      {icon}
+      {label}
+      <span className="kbd hidden lg:inline-flex ml-0.5" aria-hidden="true">
+        {shortcut}
+      </span>
     </button>
   );
 }
@@ -170,32 +194,39 @@ function SidePanel({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  useEffect(() => pushOverlay(onClose), [onClose]);
+  const titleId = useId();
+  return (
+    <ModalShell
+      variant="drawer"
+      onClose={onClose}
+      labelledBy={titleId}
+      cardClassName="flex flex-col overflow-hidden pt-[env(safe-area-inset-top)]"
+    >
+      <ModalHeader
+        titleId={titleId}
+        title={title}
+        onClose={onClose}
+        closeLabel={`Close ${title}`}
+      />
+      <div className="flex-1 overflow-y-auto px-3 py-4 sm:p-5 pb-[max(1rem,env(safe-area-inset-bottom))] scrollbar-thin">
+        {children}
+      </div>
+    </ModalShell>
+  );
+}
 
+function DashboardSkeleton() {
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-end bg-black/50 backdrop-blur-sm"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
+      className="flex flex-col gap-3 p-3 md:p-4"
+      aria-busy="true"
+      aria-label="Loading tournament"
     >
-      <div
-        className="h-[100dvh] w-full max-w-2xl bg-[var(--bg)] shadow-2xl flex flex-col overflow-hidden animate-slide-in outline-none"
-        onClick={(e) => e.stopPropagation()}
-        tabIndex={-1}
-      >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
-          <div className="label">{title}</div>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={onClose}
-            aria-label={`Close ${title}`}
-          >
-            ×
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">{children}</div>
+      <div className="card h-[22rem] md:h-[28rem] animate-pulse" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="card h-[4.5rem] animate-pulse" />
+        ))}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import {
   playedSec,
   type PlayInterval,
 } from "@/lib/playTime";
+import { IconClock } from "./icons";
 
 let currentNow = Date.now();
 const listeners = new Set<() => void>();
@@ -47,12 +48,12 @@ export default function PlayedClock({ name, intervals }: Props) {
   const label = fmtPlayedClock(sec);
   return (
     <span
-      className="inline-flex items-center gap-1 font-mono text-xs tabular-nums text-[var(--text-muted)] shrink-0"
+      className="inline-flex items-center gap-1 text-xs tabular-nums text-subtle shrink-0"
       title="Time played"
       aria-label={`${name} played ${label}`}
       data-played-seconds={String(sec)}
     >
-      <ClockGlyph />
+      <IconClock size="0.95em" />
       {label}
     </span>
   );
@@ -81,8 +82,8 @@ export function PlayerNameClock({
     <div className="flex items-center gap-2 min-w-[9.5rem] flex-1">
       <button
         type="button"
-        className={`text-left font-medium whitespace-nowrap cursor-pointer hover:underline underline-offset-2 ${
-          struck ? "line-through" : ""
+        className={`text-left font-medium whitespace-nowrap cursor-pointer rounded hover:text-primary transition-colors ${
+          struck ? "line-through decoration-loss/60" : ""
         } ${nameClassName}`}
         onClick={onNameClick}
         aria-label={nameAriaLabel}
@@ -92,23 +93,5 @@ export function PlayerNameClock({
       </button>
       <PlayedClock name={name} intervals={intervals} />
     </div>
-  );
-}
-
-function ClockGlyph() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="8" cy="8" r="6.25" />
-      <path d="M8 4.5v4l2.5 1.5" />
-    </svg>
   );
 }

@@ -2,40 +2,14 @@
 
 import { useMemo } from "react";
 import { useTournament } from "@/lib/store";
-import { computeStats } from "@/lib/selectors";
+import { useTournamentStats } from "@/lib/useTournamentStats";
 import { computeCashPayouts } from "@/lib/payouts";
+import { IconTrophy } from "./icons";
 
 export default function PayoutsPanel() {
   const payouts = useTournament((s) => s.payouts);
   const players = useTournament((s) => s.players);
-  const blindStructure = useTournament((s) => s.blindStructure);
-  const currentLevel = useTournament((s) => s.clock.currentLevel);
-  const buyIn = useTournament((s) => s.buyIn);
-  const addOnCost = useTournament((s) => s.addOnCost);
-  const rebuyCost = useTournament((s) => s.rebuyCost);
-  const removedEntries = useTournament((s) => s.removedEntries);
-  const stats = useMemo(
-    () =>
-      computeStats(
-        players,
-        blindStructure,
-        currentLevel,
-        buyIn,
-        addOnCost,
-        {},
-        rebuyCost,
-        removedEntries,
-      ),
-    [
-      players,
-      blindStructure,
-      currentLevel,
-      buyIn,
-      addOnCost,
-      rebuyCost,
-      removedEntries,
-    ],
-  );
+  const stats = useTournamentStats();
 
   const pool = stats.prizePool;
   const { amounts: cashAmounts } = useMemo(
@@ -53,17 +27,21 @@ export default function PayoutsPanel() {
     .sort((a, b) => (a.finishPlace ?? 0) - (b.finishPlace ?? 0));
 
   return (
-    <div className="card p-3 flex flex-col gap-2 sm:h-full sm:min-h-0">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="label">Payouts</div>
-          <div className="text-xs text-[var(--text-muted)] mt-0.5">
-            ${pool.toLocaleString()} pool •{" "}
-            {paidSpots} place{paidSpots === 1 ? "" : "s"} paid
-          </div>
+    <section
+      aria-label="Payouts"
+      className="card p-4 flex flex-col gap-3 md:h-full md:min-h-0"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <IconTrophy className="text-gold" />
+          <span className="label">Payouts</span>
+        </div>
+        <div className="text-xs sm:text-sm text-muted tabular-nums">
+          <span className="text-gold font-semibold">${pool.toLocaleString()}</span>{" "}
+          pool · {paidSpots} place{paidSpots === 1 ? "" : "s"} paid
         </div>
       </div>
-      <div className="flex flex-col gap-0.5 overflow-y-auto scrollbar-thin min-h-0 -mr-2 pr-2">
+      <div className="flex flex-col gap-1 overflow-y-auto scrollbar-thin min-h-0 -mx-1.5 px-1.5">
         {payouts.map((p) => {
           const amt = cashAmounts[p.place] ?? 0;
           // A spot is still contested while at least `place` players remain
@@ -71,38 +49,43 @@ export default function PayoutsPanel() {
           // assigned finisher (deep finishes below the field size) show "—".
           const stillIn = activeCount >= p.place;
           const winner = winners.find((w) => w.finishPlace === p.place);
+          const first = p.place === 1;
           return (
             <div
               key={p.place}
-              className="flex items-center gap-3 text-sm px-2 py-1.5 rounded hover:bg-black/20"
+              className="flex items-center gap-3 rounded-[10px] px-2.5 py-2 bg-surface-2/60 border border-border/60"
             >
-              <span className="chip min-w-[40px] justify-center font-semibold">
+              <span
+                className={`chip min-w-[2.75rem] justify-center tabular-nums ${
+                  first ? "chip-gold" : ""
+                }`}
+              >
                 #{p.place}
               </span>
               <span className="flex-1 truncate">
                 {winner ? (
-                  <span className="font-medium">{winner.name}</span>
+                  <span className="font-semibold">{winner.name}</span>
                 ) : (
-                  <span className="text-[var(--text-muted)]">
-                    {stillIn ? "TBD" : "—"}
-                  </span>
+                  <span className="text-muted">{stillIn ? "TBD" : "—"}</span>
                 )}
               </span>
-              <span className="text-xs text-[var(--text-muted)] font-mono">
-                {p.percent}%
-              </span>
-              <span className="font-mono font-semibold min-w-[80px] text-right">
+              <span className="text-xs text-muted tabular-nums">{p.percent}%</span>
+              <span
+                className={`min-w-[5rem] text-right text-base font-semibold tabular-nums ${
+                  first ? "text-gold" : ""
+                }`}
+              >
                 ${amt.toLocaleString()}
               </span>
             </div>
           );
         })}
         {payouts.length === 0 && (
-          <div className="text-sm text-[var(--text-muted)] italic">
+          <div className="text-sm text-muted italic">
             Configure payouts in settings.
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
