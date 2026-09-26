@@ -1,6 +1,57 @@
 {
   "games": [
     {
+      "id": "2026-09-26-home-cash-game",
+      "date": "2026-09-26",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 425,
+      "players": [
+        {
+          "name": "Ham",
+          "buyIn": 20,
+          "cashOut": 115,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 60,
+          "cashOut": 110,
+          "buyIns": 1
+        },
+        {
+          "name": "Mercer",
+          "buyIn": 60,
+          "cashOut": 95,
+          "buyIns": 1
+        },
+        {
+          "name": "Brods",
+          "buyIn": 40,
+          "cashOut": 60,
+          "buyIns": 2
+        },
+        {
+          "name": "Xander",
+          "buyIn": 100,
+          "cashOut": 70,
+          "buyIns": 5
+        },
+        {
+          "name": "Martell",
+          "buyIn": 80,
+          "cashOut": 0,
+          "buyIns": 4
+        },
+        {
+          "name": "Toby",
+          "buyIn": 100,
+          "cashOut": 0,
+          "buyIns": 4
+        }
+      ]
+    },
+    {
       "id": "2026-09-18-home-cash-game",
       "date": "2026-09-18",
       "title": "Home Cash Game",
