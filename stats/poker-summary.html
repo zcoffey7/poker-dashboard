@@ -535,11 +535,7 @@
 
     <script>
       const MIN_GAMES = 3;
-      // Mode CSVs (Tournament/Cash) start fresh and accumulate one session at
-      // a time, so a 5-game floor would hide every player for weeks. While
-      // those tabs are still building up, show every player who has played
-      // at least once.
-      const MIN_GAMES_MODE = 1;
+      const MIN_GAMES_MODE = 3;
 
       const TABS = [
         {
@@ -813,7 +809,7 @@
           return `${players.length} regulars (${MIN_GAMES}+ sessions) across ${totals.totalGames} player-games. Sorted by net P/L; bars scale to the largest swing per side (${totals.maxAbsPlayer.name}, ${fmtMoney(totals.maxAbs)}).`;
         }
         const sessionWord = tab.id === "tournament" ? "tournament" : "cash";
-        return `${players.length} player${players.length === 1 ? "" : "s"} across ${totals.totalGames} ${sessionWord} player-game${totals.totalGames === 1 ? "" : "s"}. Sorted by net P/L; bars scale to the largest swing per side (${totals.maxAbsPlayer.name}, ${fmtMoney(totals.maxAbs)}).`;
+        return `${players.length} player${players.length === 1 ? "" : "s"} (${MIN_GAMES_MODE}+ sessions) across ${totals.totalGames} ${sessionWord} player-game${totals.totalGames === 1 ? "" : "s"}. Sorted by net P/L; bars scale to the largest swing per side (${totals.maxAbsPlayer.name}, ${fmtMoney(totals.maxAbs)}).`;
       }
 
       function buildHeader(ctx, onRefresh) {
