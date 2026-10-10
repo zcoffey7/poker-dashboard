@@ -1,6 +1,33 @@
 {
   "games": [
     {
+      "id": "2026-10-09-home-cash-game-2",
+      "date": "2026-10-09",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 115,
+      "players": [
+        {
+          "name": "Martell",
+          "buyIn": 20,
+          "cashOut": 45,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 80,
+          "cashOut": 65,
+          "buyIns": 3
+        },
+        {
+          "name": "Ham",
+          "buyIn": 40,
+          "cashOut": 25,
+          "buyIns": 2
+        }
+      ]
+    },
+    {
       "id": "2026-10-09-home-cash-game",
       "date": "2026-10-09",
       "title": "Home Cash Game",
