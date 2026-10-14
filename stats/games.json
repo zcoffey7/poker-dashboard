@@ -1,6 +1,51 @@
 {
   "games": [
     {
+      "id": "2026-10-14-home-cash-game-2",
+      "date": "2026-10-14",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 170,
+      "players": [
+        {
+          "name": "Dooley",
+          "buyIn": 20,
+          "cashOut": 100,
+          "buyIns": 1
+        },
+        {
+          "name": "Vallis",
+          "buyIn": 50,
+          "cashOut": 115,
+          "buyIns": 2
+        },
+        {
+          "name": "Toby",
+          "buyIn": 20,
+          "cashOut": 45,
+          "buyIns": 1
+        },
+        {
+          "name": "Randell",
+          "buyIn": 20,
+          "cashOut": 35,
+          "buyIns": 1
+        },
+        {
+          "name": "Martell",
+          "buyIn": 40,
+          "cashOut": 35,
+          "buyIns": 2
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 180,
+          "cashOut": 0,
+          "buyIns": 3
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-home-cash-game",
       "date": "2026-10-14",
       "title": "Home Cash Game",
