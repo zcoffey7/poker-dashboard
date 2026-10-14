@@ -599,19 +599,34 @@
         return "$" + Math.abs(n).toLocaleString();
       }
 
-      // Curated palette of 15 visually distinct hues. We deliberately skip
-      // the 130-175° range (would clash with the emerald gain bars) and the
-      // 335-10° range (would clash with the rose loss bars) so an avatar
-      // never reads as a P/L signal. Ordered to maximize contrast between
-      // neighboring palette slots.
-      const HUE_PALETTE = [15, 220, 45, 280, 60, 200, 180, 305, 30, 255, 100, 240, 120, 80, 320, 190];
+      // One slot per name the page can show, plus spare. The first 16 stay
+      // in place so existing avatars keep their color. We skip 130-175°
+      // (emerald gain bars) and 335-10° (rose loss bars) so an avatar never
+      // reads as a P/L signal. Neighboring slots are ordered for contrast.
+      // Do not wrap with `% length`: that aliased the 17th regular onto
+      // Brods and failed the deploy before the Pages upload step.
+      const HUE_PALETTE = [15, 220, 45, 280, 60, 200, 180, 305, 30, 255, 100, 240, 120, 80, 320, 190, 334, 267, 293, 110, 230, 70, 210, 90, 129, 312, 53, 247, 38, 327, 23, 261, 299, 273, 287, 105, 235, 65, 225, 75, 215, 85, 205, 95, 195, 115, 185];
 
       function assignHues(players) {
         // Stable alphabetical assignment so a player's color doesn't change
         // when the display order changes (e.g. re-sorted by net P/L).
         const byName = [...players].sort((a, b) => a.name.localeCompare(b.name));
+        const used = new Set();
         byName.forEach((p, i) => {
-          p.hue = HUE_PALETTE[i % HUE_PALETTE.length];
+          let hue = i < HUE_PALETTE.length ? HUE_PALETTE[i] : 11;
+          let guard = 0;
+          while (
+            used.has(hue) ||
+            hue <= 10 ||
+            (hue >= 130 && hue <= 175) ||
+            hue >= 335
+          ) {
+            hue += 1;
+            if (hue >= 360) hue = 11;
+            if (++guard > 360) break;
+          }
+          used.add(hue);
+          p.hue = hue;
         });
       }
 
