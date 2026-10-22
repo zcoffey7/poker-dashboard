@@ -164,6 +164,7 @@ type TournamentStore = TournamentState & {
   undoRebuy: (id: string) => void;
   addOnPlayer: (id: string) => void;
   undoAddOn: (id: string) => void;
+  setBounties: (id: string, count: number) => void;
 
   // seating
   assignSeats: () => void;
@@ -518,6 +519,14 @@ export const useTournament = create<TournamentStore>()(
               chips: Math.max(0, p.chips - s.addOnChips),
             };
           }),
+        })),
+      setBounties: (id, count) =>
+        set((s) => ({
+          players: s.players.map((p) =>
+            p.id === id
+              ? { ...p, bounties: Math.max(0, Math.round(count) || 0) }
+              : p,
+          ),
         })),
       assignSeats: () => {
         const s = get();
@@ -938,7 +947,7 @@ export const useTournament = create<TournamentStore>()(
     {
       name: "poker-tournament-v1",
       storage: createJSONStorage(() => localStorage),
-      version: 8,
+      version: 9,
       migrate: (persistedState, version) => {
         if (!persistedState) return persistedState as TournamentState;
         let state = persistedState as Partial<TournamentState>;
@@ -1039,6 +1048,15 @@ export const useTournament = create<TournamentStore>()(
                 state.finishedAt,
               ),
             })),
+          };
+        }
+        if (version < 9) {
+          // v9 adds `settings.bountiesEnabled`. Persisted settings replace
+          // the defaults wholesale on rehydrate, so fill in whatever an
+          // older save is missing.
+          state = {
+            ...state,
+            settings: { ...DEFAULT_SETTINGS, ...state.settings },
           };
         }
         return state as TournamentState;

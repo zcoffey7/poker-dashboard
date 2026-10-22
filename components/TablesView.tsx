@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { confirmAction } from "@/lib/confirm";
 import PlayerDetailsModal from "./PlayerDetailsModal";
 import MovePlayerModal from "./MovePlayerModal";
+import EliminateButton from "./EliminateButton";
+import { BountyChip } from "./Bounties";
 import PlayedClock, { PlayerNameClock } from "./PlayedClock";
 import { IconArrowLeftRight, IconEraser, IconScale, IconShuffle } from "./icons";
 
@@ -14,7 +16,7 @@ export default function TablesView() {
   const assignSeats = useTournament((s) => s.assignSeats);
   const balanceNow = useTournament((s) => s.balanceNow);
   const clearSeats = useTournament((s) => s.clearSeats);
-  const eliminatePlayer = useTournament((s) => s.eliminatePlayer);
+  const bountiesEnabled = useTournament((s) => s.settings.bountiesEnabled);
 
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [moveId, setMoveId] = useState<string | null>(null);
@@ -43,16 +45,6 @@ export default function TablesView() {
       tone: "danger",
     });
     if (ok) clearSeats();
-  }
-
-  async function handleEliminate(id: string, name: string) {
-    const ok = await confirmAction({
-      title: `Eliminate ${name}?`,
-      message: "They'll be assigned the next finish place.",
-      confirmLabel: "Eliminate",
-      tone: "danger",
-    });
-    if (ok) eliminatePlayer(id);
   }
 
   return (
@@ -153,6 +145,7 @@ export default function TablesView() {
                         intervals={p.playIntervals}
                         onNameClick={() => setDetailsId(p.id)}
                       />
+                      {bountiesEnabled && <BountyChip count={p.bounties} />}
                       <div className="flex gap-1.5 shrink-0 ml-auto">
                         <button
                           className="btn btn-xs"
@@ -162,13 +155,7 @@ export default function TablesView() {
                           <IconArrowLeftRight />
                           Move
                         </button>
-                        <button
-                          className="btn btn-danger btn-xs"
-                          aria-label={`Eliminate ${p.name}`}
-                          onClick={() => handleEliminate(p.id, p.name)}
-                        >
-                          Out
-                        </button>
+                        <EliminateButton player={p} />
                       </div>
                     </div>
                   ))}

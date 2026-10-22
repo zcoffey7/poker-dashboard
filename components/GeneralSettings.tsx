@@ -95,6 +95,12 @@ export default function GeneralSettings({ draft, onChange }: Props) {
             label="Sound alerts"
             description="Chime at the warning threshold and on level up."
           />
+          <Toggle
+            checked={draft.settings.bountiesEnabled}
+            onChange={(v) => updateSettings({ bountiesEnabled: v })}
+            label="Bounties"
+            description="Count each player's bounties, entered when they're knocked out."
+          />
         </div>
       </Section>
 

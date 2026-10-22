@@ -4,7 +4,7 @@ A static home-game dashboard for running **tournaments** and **cash games**, plu
 
 ## Features
 
-- **Tournament mode** — blind clock with sound warnings, table seating and auto-balance, rebuys/add-ons, payout structure, finish/chop flow, and end-of-game recap
+- **Tournament mode** — blind clock with sound warnings, table seating and auto-balance, rebuys/add-ons, optional bounty counts (entered at each knockout), payout structure, finish/chop flow, and end-of-game recap
 - **Cash game mode** — per-player buy-ins and rebuys, individual cash-outs, end-game settlement with balance check, and recap
 - **Standings** — cumulative stats from `stats/PokerSummary.csv`, bundled as a standalone PWA at `/standings/`
 - **Phone-first UI** — bottom sheets that stay above the on-screen keyboard, sticky thumb-reach action bars, and three color themes (Felt, Midnight, Daylight) from the palette button

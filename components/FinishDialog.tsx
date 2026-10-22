@@ -6,6 +6,7 @@ import { useTournament } from "@/lib/store";
 import { useTournamentStats } from "@/lib/useTournamentStats";
 import { confirmAction, showNotice } from "@/lib/confirm";
 import { CASH_INCREMENT, floorTo } from "@/lib/payouts";
+import { BountyRow } from "./Bounties";
 import { IconTrophy, IconUsers } from "./icons";
 
 type Props = {
@@ -15,6 +16,8 @@ type Props = {
 export default function FinishDialog({ onClose }: Props) {
   const players = useTournament((s) => s.players);
   const finishTournament = useTournament((s) => s.finishTournament);
+  const setBounties = useTournament((s) => s.setBounties);
+  const bountiesEnabled = useTournament((s) => s.settings.bountiesEnabled);
   const titleId = useId();
 
   const pool = useTournamentStats().prizePool;
@@ -42,6 +45,16 @@ export default function FinishDialog({ onClose }: Props) {
   const [amounts, setAmounts] = useState<Record<string, number>>(() =>
     equalSplit(active.map((p) => p.id)),
   );
+  // Players still in at the finish are never eliminated, so their bounties
+  // are recorded here instead of at a knockout.
+  const [bounties, setBountyDraft] = useState<Record<string, number>>(() =>
+    Object.fromEntries(active.map((p) => [p.id, p.bounties ?? 0])),
+  );
+
+  function saveBounties() {
+    if (!bountiesEnabled) return;
+    for (const p of active) setBounties(p.id, bounties[p.id] ?? 0);
+  }
 
   const chopIds = active.filter((p) => selected[p.id]).map((p) => p.id);
   const allocated = chopIds.reduce((s, id) => s + (amounts[id] ?? 0), 0);
@@ -62,6 +75,7 @@ export default function FinishDialog({ onClose }: Props) {
         });
         if (!ok) return;
       }
+      saveBounties();
       finishTournament({ type: "winner" });
     } else {
       if (chopIds.length === 0) {
@@ -86,6 +100,7 @@ export default function FinishDialog({ onClose }: Props) {
       const chopAmounts = Object.fromEntries(
         chopIds.map((id) => [id, amounts[id] ?? 0]),
       );
+      saveBounties();
       finishTournament({
         type: "chop",
         chopPlayerIds: chopIds,
@@ -252,6 +267,22 @@ export default function FinishDialog({ onClose }: Props) {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {bountiesEnabled && active.length > 0 && (
+          <div className="flex flex-col gap-1.5 mt-5">
+            <div className="label">Bounties</div>
+            {active.map((p) => (
+              <BountyRow
+                key={p.id}
+                label={p.name}
+                hint="Bounties won"
+                playerName={p.name}
+                value={bounties[p.id] ?? 0}
+                onChange={(n) => setBountyDraft({ ...bounties, [p.id]: n })}
+              />
+            ))}
           </div>
         )}
       </div>

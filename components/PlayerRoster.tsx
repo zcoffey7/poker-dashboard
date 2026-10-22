@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useTournament } from "@/lib/store";
 import { confirmAction } from "@/lib/confirm";
 import PlayerDetailsModal from "./PlayerDetailsModal";
+import EliminateButton from "./EliminateButton";
+import { BountyChip } from "./Bounties";
 import { PlayerNameClock } from "./PlayedClock";
 import { IconPlus, IconUndo, IconUserPlus } from "./icons";
 
@@ -11,8 +13,8 @@ export default function PlayerRoster() {
   const players = useTournament((s) => s.players);
   const addPlayer = useTournament((s) => s.addPlayer);
   const addPlayersBulk = useTournament((s) => s.addPlayersBulk);
-  const eliminatePlayer = useTournament((s) => s.eliminatePlayer);
   const restorePlayer = useTournament((s) => s.restorePlayer);
+  const bountiesEnabled = useTournament((s) => s.settings.bountiesEnabled);
   const rebuyPlayer = useTournament((s) => s.rebuyPlayer);
   const rebuyChips = useTournament((s) => s.rebuyChips);
   const addOnPlayer = useTournament((s) => s.addOnPlayer);
@@ -44,16 +46,6 @@ export default function PlayerRoster() {
     if (lines.length) addPlayersBulk(lines);
     setBulk("");
     setShowBulk(false);
-  }
-
-  async function handleEliminate(p: (typeof players)[number]) {
-    const ok = await confirmAction({
-      title: `Eliminate ${p.name}?`,
-      message: "They'll be assigned the next finish place.",
-      confirmLabel: "Eliminate",
-      tone: "danger",
-    });
-    if (ok) eliminatePlayer(p.id);
   }
 
   async function handleRestore(p: (typeof players)[number]) {
@@ -156,6 +148,7 @@ export default function PlayerRoster() {
                 A{p.addOns}
               </span>
             )}
+            {bountiesEnabled && <BountyChip count={p.bounties} />}
             {/* Phones: full-width row of equal buttons under the name. */}
             <div className="grid grid-flow-col auto-cols-fr gap-1.5 w-full sm:w-auto sm:flex sm:ml-auto sm:shrink-0">
               {rebuyChips > 0 && (
@@ -181,13 +174,7 @@ export default function PlayerRoster() {
                   Add-on
                 </button>
               )}
-              <button
-                className="btn btn-danger btn-xs"
-                onClick={() => handleEliminate(p)}
-                aria-label={`Eliminate ${p.name}`}
-              >
-                Out
-              </button>
+              <EliminateButton player={p} />
             </div>
           </div>
         ))}
@@ -212,6 +199,7 @@ export default function PlayerRoster() {
                   nameAriaLabel={`View details for ${p.name}`}
                   struck
                 />
+                {bountiesEnabled && <BountyChip count={p.bounties} />}
                 <button
                   className="btn btn-ghost btn-xs shrink-0 ml-auto"
                   onClick={() => handleRestore(p)}
