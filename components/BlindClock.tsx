@@ -3,6 +3,7 @@
 import { useTournament } from "@/lib/store";
 import { fmtTime } from "@/lib/clock";
 import { confirmAction } from "@/lib/confirm";
+import { enableSound, useSoundBlocked } from "@/lib/sound";
 import {
   IconCoffee,
   IconPause,
@@ -10,6 +11,7 @@ import {
   IconRotateCcw,
   IconSkipBack,
   IconSkipForward,
+  IconVolumeX,
 } from "./icons";
 
 function fmtChips(n: number): string {
@@ -24,6 +26,7 @@ export default function BlindClock() {
   const prevLevel = useTournament((s) => s.prevLevel);
   const nextLevel = useTournament((s) => s.nextLevel);
   const resetLevel = useTournament((s) => s.resetLevel);
+  const soundBlocked = useSoundBlocked();
 
   const current = structure[clock.currentLevel];
   const next = structure[clock.currentLevel + 1];
@@ -92,14 +95,26 @@ export default function BlindClock() {
             of {structure.length}
           </span>
         </div>
-        {clock.running ? (
-          <span className="chip chip-primary">
-            <span className="live-dot" aria-hidden="true" />
-            Running
-          </span>
-        ) : (
-          <span className="chip">Paused</span>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {soundBlocked && (
+            <button
+              type="button"
+              className="chip chip-loss h-7 px-3 text-xs"
+              onClick={enableSound}
+            >
+              <IconVolumeX />
+              Enable sound
+            </button>
+          )}
+          {clock.running ? (
+            <span className="chip chip-primary">
+              <span className="live-dot" aria-hidden="true" />
+              Running
+            </span>
+          ) : (
+            <span className="chip">Paused</span>
+          )}
+        </div>
       </div>
 
       <div className="relative flex-1 min-h-0 flex flex-col items-center justify-center text-center py-1">
