@@ -5,7 +5,9 @@ import ModalShell, { ModalFooter } from "./ModalShell";
 import { useTournament } from "@/lib/store";
 import { confirmAction } from "@/lib/confirm";
 import PlayedClock from "./PlayedClock";
-import { IconMinus, IconPlus, IconTrash, IconX } from "./icons";
+import Stepper from "./Stepper";
+import { BountyRow } from "./Bounties";
+import { IconTrash, IconX } from "./icons";
 
 type Props = {
   playerId: string;
@@ -33,6 +35,8 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
   const addOnPlayer = useTournament((s) => s.addOnPlayer);
   const undoAddOn = useTournament((s) => s.undoAddOn);
   const removePlayer = useTournament((s) => s.removePlayer);
+  const setBounties = useTournament((s) => s.setBounties);
+  const bountiesEnabled = useTournament((s) => s.settings.bountiesEnabled);
   const startedAt = useTournament((s) => s.startedAt);
 
   const [name, setName] = useState(() => player?.name ?? "");
@@ -186,6 +190,18 @@ export default function PlayerDetailsModal({ playerId, onClose }: Props) {
             ${grandTotal.toLocaleString()}
           </div>
         </div>
+
+        {bountiesEnabled && (
+          <div className="mt-2">
+            <BountyRow
+              label="Bounties"
+              hint="Won this tournament"
+              playerName={player.name}
+              value={player.bounties ?? 0}
+              onChange={(n) => setBounties(player.id, n)}
+            />
+          </div>
+        )}
       </div>
 
       <ModalFooter className="justify-between">
@@ -256,25 +272,15 @@ function StepperRow({
         <div className="text-xs text-muted">{detail}</div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <div className="flex items-center rounded-[9px] border border-border-strong bg-surface">
-          <button
-            className="btn btn-ghost btn-sm btn-icon rounded-r-none"
-            onClick={onDecrement}
-            disabled={decrementDisabled}
-            aria-label={decrementLabel}
-          >
-            <IconMinus />
-          </button>
-          <div className="w-8 text-center font-semibold tabular-nums">{count}</div>
-          <button
-            className="btn btn-ghost btn-sm btn-icon rounded-l-none"
-            onClick={onIncrement}
-            disabled={incrementDisabled}
-            aria-label={incrementLabel}
-          >
-            <IconPlus />
-          </button>
-        </div>
+        <Stepper
+          value={count}
+          onDecrement={onDecrement}
+          onIncrement={onIncrement}
+          decrementDisabled={decrementDisabled}
+          incrementDisabled={incrementDisabled}
+          decrementLabel={decrementLabel}
+          incrementLabel={incrementLabel}
+        />
         <div className="w-16 text-right font-semibold tabular-nums">
           ${total.toLocaleString()}
         </div>

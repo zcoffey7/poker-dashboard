@@ -1,3 +1,5 @@
+import { BountyChip } from "./Bounties";
+
 /**
  * Full-screen chrome shared by the tournament and cash recaps: header with
  * title/meta, a scrolling body, and the results table. The actions render
@@ -66,6 +68,8 @@ export type RecapRow = {
   netValue: number;
   /** Paid finishers get a gold rank badge. */
   highlight?: boolean;
+  /** Bounties won; set only when the tournament tracks them. */
+  bounties?: number;
 };
 
 const COLUMNS =
@@ -103,8 +107,11 @@ export function RecapTable({
               {r.rank}
             </span>
             <div className="min-w-0">
-              <div className="font-semibold sm:font-medium text-[0.9375rem] sm:text-sm truncate">
-                {r.name}
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-semibold sm:font-medium text-[0.9375rem] sm:text-sm truncate">
+                  {r.name}
+                </span>
+                <BountyChip count={r.bounties} />
               </div>
               <div className="sm:hidden text-xs text-muted tabular-nums leading-snug mt-0.5">
                 {r.moneyIn} in · {r.moneyOut} out · {r.played}

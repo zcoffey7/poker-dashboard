@@ -23,6 +23,8 @@ export type Player = {
    * back to `startingStack`.
    */
   chipsBeforeElim?: number;
+  /** Bounties won this tournament (tracked when `bountiesEnabled`). */
+  bounties?: number;
 };
 
 export type Table = {
@@ -85,6 +87,8 @@ export type TournamentSettings = {
   warnSec: number;
   autoBalance: boolean;
   seatingMode: "spread" | "fill";
+  /** Ask for each player's bounty count as they're knocked out. */
+  bountiesEnabled: boolean;
 };
 
 export type FinishType = "winner" | "chop" | "elimination";

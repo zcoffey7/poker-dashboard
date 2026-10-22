@@ -28,6 +28,7 @@ type Row = {
   entries: number;
   rebuys: number;
   addOns: number;
+  bounties: number;
   moneyIn: number;
   payout: number;
   net: number;
@@ -61,6 +62,7 @@ export default function GameRecap() {
   const storedChopAmounts = useTournament((s) => s.chopAmounts);
   const unfinishTournament = useTournament((s) => s.unfinishTournament);
   const resetTournament = useTournament((s) => s.resetTournament);
+  const bountiesEnabled = useTournament((s) => s.settings.bountiesEnabled);
 
   const stats = useTournamentStats();
   const pool = stats.prizePool;
@@ -165,6 +167,7 @@ export default function GameRecap() {
           entries,
           rebuys: p.rebuys ?? 0,
           addOns,
+          bounties: p.bounties ?? 0,
           moneyIn,
           payout,
           net: payout - moneyIn,
@@ -252,6 +255,7 @@ export default function GameRecap() {
     net: fmtSignedDollars(r.net),
     netValue: r.net,
     highlight: r.payout > 0,
+    bounties: bountiesEnabled ? r.bounties : undefined,
   }));
 
   return (
@@ -301,7 +305,12 @@ export default function GameRecap() {
             }`}
           >
             {winners.map((w) => (
-              <WinnerCard key={w.id} row={w} wide={winners.length === 1} />
+              <WinnerCard
+                key={w.id}
+                row={w}
+                wide={winners.length === 1}
+                showBounties={bountiesEnabled}
+              />
             ))}
           </div>
         </section>
@@ -320,7 +329,15 @@ export default function GameRecap() {
   );
 }
 
-function WinnerCard({ row, wide }: { row: Row; wide: boolean }) {
+function WinnerCard({
+  row,
+  wide,
+  showBounties,
+}: {
+  row: Row;
+  wide: boolean;
+  showBounties: boolean;
+}) {
   return (
     <div className="card relative overflow-hidden p-5 border-gold/40">
       <div
@@ -348,7 +365,11 @@ function WinnerCard({ row, wide }: { row: Row; wide: boolean }) {
         </div>
         <div
           className={`grid gap-x-6 gap-y-3 flex-1 ${
-            wide ? "grid-cols-3 md:grid-cols-6" : "grid-cols-3"
+            !wide
+              ? "grid-cols-3"
+              : showBounties
+                ? "grid-cols-3 md:grid-cols-7"
+                : "grid-cols-3 md:grid-cols-6"
           }`}
         >
           <StatCol label="In for" value={`$${row.moneyIn.toLocaleString()}`} emphasize />
@@ -366,6 +387,7 @@ function WinnerCard({ row, wide }: { row: Row; wide: boolean }) {
           />
           <StatCol label="Buy-ins" value={`${row.entries}×`} />
           <StatCol label="Add-ons" value={`${row.addOns}×`} />
+          {showBounties && <StatCol label="Bounties" value={String(row.bounties)} />}
           {row.durationSec != null && (
             <StatCol label="Played" value={fmtDuration(row.durationSec)} />
           )}

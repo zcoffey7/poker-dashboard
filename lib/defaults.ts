@@ -46,6 +46,7 @@ export const DEFAULT_SETTINGS: TournamentSettings = {
   warnSec: 60,
   autoBalance: true,
   seatingMode: "spread",
+  bountiesEnabled: false,
 };
 
 export const DEFAULT_TOURNAMENT_NAME = "Home Game Tournament";
