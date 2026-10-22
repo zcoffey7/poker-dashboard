@@ -51,6 +51,7 @@ type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
 let ctx: AudioContext | null = null;
 const bookings = new Map<string, Booking>();
 let keepAlive: HTMLAudioElement | null = null;
+let silenceUrl = "";
 let mounted = false;
 let inGesture = false;
 let suspendedByUs = false;
@@ -258,13 +259,19 @@ function silentWav(seconds: number): Blob {
  */
 function startKeepAlive() {
   if (!window.matchMedia("(any-pointer: coarse)").matches) return;
+  if (keepAlive && !keepAlive.paused) return;
   if (!keepAlive) {
+    keepAlive = new Audio();
+    keepAlive.loop = true;
     // Chrome on Android only gives media of 5 s or more the media session
     // that keeps it playing in the background.
-    keepAlive = new Audio(URL.createObjectURL(silentWav(6)));
-    keepAlive.loop = true;
+    silenceUrl = URL.createObjectURL(silentWav(6));
   }
-  if (keepAlive.paused) void keepAlive.play().catch(() => {});
+  // A Home Screen app on iOS 26 can leave a reused element "playing" in
+  // silence once the app has been reopened (WebKit bug 295518); handing it
+  // the source again right before play() keeps it working.
+  keepAlive.src = silenceUrl;
+  void keepAlive.play().catch(() => {});
 }
 
 function sync() {
