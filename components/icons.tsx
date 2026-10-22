@@ -110,6 +110,16 @@ export function IconRotateCcw(p: IconProps) {
   );
 }
 
+export function IconVolumeX(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+      <path d="m22 9-6 6" />
+      <path d="m16 9 6 6" />
+    </Svg>
+  );
+}
+
 export function IconUsers(p: IconProps) {
   return (
     <Svg {...p}>

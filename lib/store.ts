@@ -29,7 +29,6 @@ import {
 } from "./defaults";
 import { newBlindLevelId } from "./blindLevelId";
 import { balanceTables, randomAssign } from "./seating";
-import { playLevelUp, playWarning } from "./clock";
 import { uid } from "./id";
 import {
   migrateTournamentIntervals,
@@ -686,21 +685,9 @@ export const useTournament = create<TournamentStore>()(
         if (levelStartedAt > now) levelStartedAt = now;
 
         const elapsedSec = Math.floor((now - levelStartedAt) / 1000);
-        const prevRemaining = s.clock.remainingSec;
         const remaining = Math.max(0, cur.durationSec - elapsedSec);
 
-        // Fire warning sound when crossing the warn threshold within this tick.
-        if (
-          s.settings.soundEnabled &&
-          remaining > 0 &&
-          remaining <= s.settings.warnSec &&
-          prevRemaining > s.settings.warnSec
-        ) {
-          playWarning();
-        }
-
         if (remaining <= 0) {
-          if (s.settings.soundEnabled) playLevelUp();
           // Reuse the rehydration walk so a single tick can roll through
           // *every* level that expired while the tab was backgrounded
           // (throttled intervals can skip many seconds), instead of

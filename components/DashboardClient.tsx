@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useId, useState } from "react";
 import { useClockTick } from "@/lib/clock";
 import { overlayDepth } from "@/lib/overlayStack";
+import { useClockSounds } from "@/lib/sound";
 import { useTournament } from "@/lib/store";
 import { useHasHydrated } from "@/lib/useHasHydrated";
+import { useWakeLock } from "@/lib/useWakeLock";
 import ModalShell, { ModalHeader } from "./ModalShell";
 import BlindClock from "./BlindClock";
 import StatsBar from "./StatsBar";
@@ -30,6 +32,9 @@ export default function DashboardClient() {
 
 function Dashboard() {
   useClockTick();
+  useClockSounds();
+  const running = useTournament((s) => s.clock.running);
+  useWakeLock(running);
   const toggleClock = useTournament((s) => s.toggleClock);
   const nextLevel = useTournament((s) => s.nextLevel);
   const prevLevel = useTournament((s) => s.prevLevel);
