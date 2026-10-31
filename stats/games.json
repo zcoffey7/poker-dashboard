@@ -1,6 +1,45 @@
 {
   "games": [
     {
+      "id": "2026-10-31-home-game-tournament",
+      "date": "2026-10-31",
+      "title": "Home Game Tournament",
+      "mode": "tournament",
+      "durationMinutes": 129,
+      "players": [
+        {
+          "name": "Ham",
+          "buyIn": 15,
+          "cashOut": 85,
+          "buyIns": 1
+        },
+        {
+          "name": "Toby",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 2
+        },
+        {
+          "name": "Randell",
+          "buyIn": 15,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 2
+        },
+        {
+          "name": "Donnelly",
+          "buyIn": 15,
+          "cashOut": 0,
+          "buyIns": 2
+        }
+      ]
+    },
+    {
       "id": "2026-10-31-home-cash-game",
       "date": "2026-10-31",
       "title": "Home Cash Game",
