@@ -1,6 +1,39 @@
 {
   "games": [
     {
+      "id": "2026-11-06-home-cash-game",
+      "date": "2026-11-06",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 262,
+      "players": [
+        {
+          "name": "Coffey",
+          "buyIn": 20,
+          "cashOut": 40,
+          "buyIns": 1
+        },
+        {
+          "name": "Ham",
+          "buyIn": 35,
+          "cashOut": 55,
+          "buyIns": 2
+        },
+        {
+          "name": "Randell",
+          "buyIn": 20,
+          "cashOut": 40,
+          "buyIns": 1
+        },
+        {
+          "name": "Brods",
+          "buyIn": 60,
+          "cashOut": 0,
+          "buyIns": 3
+        }
+      ]
+    },
+    {
       "id": "2026-10-31-home-game-tournament",
       "date": "2026-10-31",
       "title": "Home Game Tournament",
