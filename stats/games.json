@@ -1,6 +1,57 @@
 {
   "games": [
     {
+      "id": "2026-11-07-home-cash-game",
+      "date": "2026-11-07",
+      "title": "Home Cash Game",
+      "mode": "cash",
+      "durationMinutes": 291,
+      "players": [
+        {
+          "name": "Braedy",
+          "buyIn": 20,
+          "cashOut": 75,
+          "buyIns": 1
+        },
+        {
+          "name": "Martell",
+          "buyIn": 40,
+          "cashOut": 70,
+          "buyIns": 2
+        },
+        {
+          "name": "Ham",
+          "buyIn": 35,
+          "cashOut": 50,
+          "buyIns": 1
+        },
+        {
+          "name": "Brods",
+          "buyIn": 60,
+          "cashOut": 60,
+          "buyIns": 2
+        },
+        {
+          "name": "Kaleb",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Stamp",
+          "buyIn": 20,
+          "cashOut": 0,
+          "buyIns": 1
+        },
+        {
+          "name": "Coffey",
+          "buyIn": 60,
+          "cashOut": 0,
+          "buyIns": 3
+        }
+      ]
+    },
+    {
       "id": "2026-11-06-home-cash-game",
       "date": "2026-11-06",
       "title": "Home Cash Game",
